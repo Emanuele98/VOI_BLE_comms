@@ -144,15 +144,16 @@ The CTU state machine is handled almost entirely inside this module. It progress
         - Keep reading the Dynamic chr (at least every 20ms) and check if any Alert is detected (a field of dyn chr is filled with alert status).
         
 - **Localization process**
-      - If the peer is a CRY, the localization process starts (ble_central_on_localization function);
-      - Basically:
-            - Switch on a pad and wait a reasonable amount of time to see the change in the rx side;
-            - Read the Dynamic characteristic to know `Vrect`. Above the treshold?
-                - If yes, the position of CRU is known and we move on;
-                - If not, we try the same process with the next pad;
-      - Restrictions:
-            - Only one CRU can undergo the localization process per time to avoid misunderstandings; 
-            - If position not found after a predefined amount of time, it disconnects to allow other CRU to try the process.
+
+If the peer is a CRY, the localization process starts (ble_central_on_localization function);
+- Basically:
+    - Switch on a pad and wait a reasonable amount of time to see the change in the rx side;
+    - Read the Dynamic characteristic to know `Vrect`. Above the treshold?
+    - If yes, the position of CRU is known and we move on;
+    - If not, we try the same process with the next pad;
+- Restrictions:
+    - Only one CRU can undergo the localization process per time to avoid misunderstandings; 
+    - If position not found after a predefined amount of time, it disconnects to allow other CRU to try the process.
    
 
 - **Signal reception**
@@ -162,12 +163,13 @@ The CTU state machine is handled almost entirely inside this module. It progress
 - **Peer task handling**
 
 Here the description covers only CRU; however, the A-CTU peer task handling follows almost the same procedure with similar functions (e.g. ble_central_AUX_CTU_task_handle).
-    - Any CRUs peer structure will be assigned a task handle and a binary semaphore handle. 
-    - All CRUs will run simultaneously on the `ble_central_CRU_task_handle` function and periodically read the dynamic characteristic when available. 
-    - The availabiliy of this characteristic depends on the semaphores state bit. 
-    - If the semaphore is taken and has yet to be given back, the peer task will simply wait for a short period of time and iterate once more. Only when the semaphore is given will this task trigger a read procedure on the dynamic characteristic.
-    - The semaphore is taken (in `ble_central_CRU_task_handle`).
-    - The semaphore is given back (in `ble_central_on_CRU_dyn_read`).
+
+- Any CRUs peer structure will be assigned a task handle and a binary semaphore handle;
+- All CRUs will run simultaneously on the `ble_central_CRU_task_handle` function and periodically read the dynamic characteristic when available;
+- The availabiliy of this characteristic depends on the semaphores state bit;
+- If the semaphore is taken and has yet to be given back, the peer task will simply wait for a short period of time and iterate once more. Only when the semaphore is given will this task trigger a read procedure on the dynamic characteristic;
+- The semaphore is taken (in `ble_central_CRU_task_handle`);
+- The semaphore is given back (in `ble_central_on_CRU_dyn_read`).
   
 
 ### **Hardware utility (CTU_hw.c)**
