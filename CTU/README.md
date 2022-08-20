@@ -8,10 +8,6 @@ Bluetooth LE architecture for Bumblebee power transmission unit (CTU)
     - [**CTU states (CTU_states.c)**](#CTU-states-CTU_statesc)
     - [**BLE central client (ble_central.c)**](#ble-central-client-ble_centralc)
     - [**Hardware utility (CTU_hw.c)**](#hardware-utility-CTU_hwc)
-    - [**CRU peer structure (peer.c)**](#CRU-peer-structure-peerc)
-    - [**CTU miscellaneous utility (misc.c)**](#CTU-miscellaneous-utility-miscc)
-    - [**Airfuel Standard reference (airfuel_integration.h)**](#airfuel-standard-reference-airfuel_integrationh)
-    - [**Board support reference (CTU_bsp.h)**](#board-support-reference-CTU_bsph)
 - [**Non-volatile storage (NVS)**](#non-volatile-storage-nvs)
 - [**idf.py tool**](#idfpy-tool)
 - [**Menuconfig**](#menuconfig)
@@ -91,12 +87,10 @@ The CTU state machine is handled almost entirely inside this module. It progress
 
 - **Latching fault state**
 
-    - If `main` enters this state, the CTU has 3 "strikes" to correct any possible cause for this fault. The moment `main` leaves this state, it transitions back to the configuration state, and then to the power save state.
-    - At first, the application stops all power output.
-    - Then, the `main` task finds out if there is only one available peer in the memory pool. If it's the case, it disconnects, the total amount of consecutive latching faults will be reset to 0. Then, the system shifts to the power save state.
-   - The latching fault's most important objective is to determine what to do in the event of a CRU Alert characteristic. Therefore, while incrementing the total number of latching faults since boot, it also validates if the latching fault is caused by said CRU Alert. If it is the case, all CRUs will be disconnected and a delay of 5 seconds will be started. This allows a CRU to perhaps fix the latching fault on his own.
-    - At the count of 3 consecutive latching faults, all CRUs are disconnected and removed.
-    - All latching fault state execution shall reset the BLE stack to allow any CRU type to disconnect even though `ble_gap_disconnect` has been called for all CRUs present.
+    - If `main` enters this state, the CTU has 3 "strikes" to correct any possible cause for this fault.
+    - At first, the application stop the power output under the relative peer.
+    - The CRUs will be disconnected and a delay of 5 seconds will be started. This allows a CRU to perhaps fix the latching fault on his own.
+    - At the count of 3 consecutive latching faults, local manteinance is requested (email to @bumblebee)
 
 
 ### **BLE central client (ble_central.c)**
@@ -120,8 +114,7 @@ The CTU state machine is handled almost entirely inside this module. It progress
     - _ble_central_connect_if_interesting_
 
         - it will then run into `ble_central_connect_if_interesting` to determine if it is pertinent to connect to the newly found device. 
-        - For each BLE device in proximity, the `host` task will analyze, through the `ble_central_should_connect` function, their service UUID to determine if it is a CRU. It will also determine if said CRU is in a relatively close range.
-        - By definition, the only instance where a CTU state change should occur during the discovery process is when there are no current connections with CRUs.
+        - For each BLE device in proximity, the `host` task will analyze, through the `ble_central_should_connect` function, their service UUID to determine if it is a CRU. It will also determine if said CRU is in a relatively close range (rssi > -80dBm)
         - On an unsuccesful discovery procedure, it returns and cancels any active discovery procedure.
 
 - **Connection/Registration attempt**
@@ -141,19 +134,27 @@ The CTU state machine is handled almost entirely inside this module. It progress
     - ble_central_on_write_cccd
       - Handles both the writing process for the CRU alert characteristic and the cccd subscription (to enable notifications on CTU);
     - ble_central_on_subscribe
-      - Start the localization process
-      - Switch on a pad and wait a reasonable amount of time to see the change in the rx side
-      - Read the Dynamic characteristic to know `Vrect`;
-    - ble_central_on_localization process  [as many as the number of pads]
-      - Check if Vrect is above the treshold;
-            - If yes, the position of CRU is known and we move on;
-            - If not, we try the same process with the next pad;
-      - With the previous read of Dynamic characteristic, which allows to check also the Alert one the CTU is able to write a valid CRU control characteristic;
+      - read the first dynamic chr
+    - ble_central_on_control_enable
+      - only if the peer is an A-CTU, it checks the presence of the Control chr
     - ble_central_wpt_start
-      - Creates a task and a semaphore and assigns them to the new peer;
+      - Creates a task and a semaphore and assigns them to the new peer;   
 
     After all those steps, the peer is connected and registered for the WPT service.
-        - Keep reading the Dynamic chr (at least every 20ms) and check if any Alert is detected.
+        - Keep reading the Dynamic chr (at least every 20ms) and check if any Alert is detected (a field of dyn chr is filled with alert status).
+        
+- **Localization process**
+
+      - If the peer is a CRY, the localization process starts (ble_central_on_localization function);
+      - Basically:
+            - Switch on a pad and wait a reasonable amount of time to see the change in the rx side;
+            - Read the Dynamic characteristic to know `Vrect`. Above the treshold?
+                - If yes, the position of CRU is known and we move on;
+                - If not, we try the same process with the next pad;
+      - Restrictions:
+            - Only one CRU can undergo the localization process per time to avoid misunderstandings; 
+            - If position not found after a predefined amount of time, it disconnects to allow other CRU to try the process.
+   
 
 - **Signal reception**
 
@@ -161,12 +162,14 @@ The CTU state machine is handled almost entirely inside this module. It progress
 
 - **Peer task handling**
 
+Here the description covers only CRU; however, the A-CTU peer task handling follows almost the same procedure with similar functions (e.g. ble_central_AUX_CTU_task_handle).
+
     - Any CRUs peer structure will be assigned a task handle and a binary semaphore handle. 
     - All CRUs will run simultaneously on the `ble_central_CRU_task_handle` function and periodically read the dynamic characteristic when available. 
     - The availabiliy of this characteristic depends on the semaphores state bit. 
     - If the semaphore is taken and has yet to be given back, the peer task will simply wait for a short period of time and iterate once more. Only when the semaphore is given will this task trigger a read procedure on the dynamic characteristic.
-        - The semaphore is taken (in `ble_central_CRU_task_handle`).
-        - The semaphore is given back (in `ble_central_on_CRU_dyn_read`).
+    - The semaphore is taken (in `ble_central_CRU_task_handle`).
+    - The semaphore is given back (in `ble_central_on_CRU_dyn_read`).
   
 
 ### **Hardware utility (CTU_hw.c)**
@@ -174,17 +177,6 @@ The CTU state machine is handled almost entirely inside this module. It progress
 - The hardware module serves as a gateway to the ESP32 chip. With this module, it is possible to alter the behavior of the chip as per AFA specifications and within hardware boundaries.
 - There are a series of functions dedicated for ADC measurements and the other ones are designed to interact with the power output 
 
-
-### **Airfuel Standard reference (airfuel_integration.h)**
-
-- The Airfuel reference module is currently only useful to change the CRU control characteristic with the help of the `ENDIS_POWER_CRU_CONTROL_VAL` macro.
-- The above macro enables/disables the CRU charge output with different charge `rates`.
-- This file also contains various Airfuel value definitions, much like in the Peripheral implementation.
-
-
-### **Board support reference (CTU_bsp.h)**
-
-The board support module helps store pin mappings (GPIO/DAC/ADC) used on ESP32.
 
 ## **Non-volatile storage (NVS)**
 
