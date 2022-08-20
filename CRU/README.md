@@ -1,5 +1,5 @@
 # Peripheral (CRU)
-Bluetooth LE architecture for Bumblebee power transmission unit (PRU)
+Bluetooth LE architecture for Bumblebee Communication Transmission Unit (CRU)
 
 ## **Table of contents**
 - [**Peripheral**](#Peripheral-(PRU))
@@ -14,7 +14,7 @@ Bluetooth LE architecture for Bumblebee power transmission unit (PRU)
     
 ## **Installation**
 
-Making a PTU work with an ESP32 chip requires a few steps. They are provided by the "Get Started" section of the ESP-IDF documentation. It is important to take into account that the PTU has been tested with the IDF v4.1.1 which can be found at https://github.com/espressif/esp-idf. To directly specify an IDF version with Git, use the folloing command:
+Making a CRU work with an ESP32 chip requires a few steps. They are provided by the "Get Started" section of the ESP-IDF documentation. It is important to take into account that the PTU has been tested with the IDF v4.1.1 which can be found at https://github.com/espressif/esp-idf. To directly specify an IDF version with Git, use the folloing command:
 
 >git clone -b v4.1.1 --recursive https://github.com/espressif/esp-idf.git
 
