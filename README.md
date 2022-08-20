@@ -23,27 +23,29 @@ The following protocol is based on, but not entirely follows, the AirFuel Allian
   - CRU Static 
   - CTU Static 
   - CRU Dynamic 
-  - CRU Alert
   - CRU Control
+  - CRU Alert
 -------------------------------------------------
 
 ### Basic state procedure
 1. The CTU first needs to be configured, meaning being successfully connected to at least one A-CTU;
 2. The CRU repeatedly sends advertisements until it receives a CTU Connection Request;
 3. The CTU moves from 'Power Save State' to 'Low Power State' to enstablish a connection with first CRU;
-4. The CTU reads the value of PRU Static to know the current CRU status;
-5. The CTU writes the value of PTU Static to tell it capabilities to the CRU;
-6. The position of the relative pad to be switched on is detected (more details in the PTU README.md):
+4. When the CTU connects to either a CRU or A-CTU, the following read/write procedures take place:
+      - The CTU reads the value of Static chr;
+      - The CTU writes the value of Static chr;
+      - The CTU reads the value of Dynamic chr, which contains I2C sensor measurements (V, A, °C).
+5. If the connection is enstablished with a CRU, the localization process starts (more details in the CTU README.md):
       - The CTU switches on (in a low power mode) sequentially each transmitting pad (the command is sent over BLE to each A-CTU);
       - Reasonable time-gap for the voltage to be detected on the rx side;
       - The CTU reads the value of CRU Dynamic to know CRU measurements;
       - If Vrx above a treshold, right pad found!;
       - If timer expires, it disconnects to allow other CRU to undergo the localization process.
-7. The CTU reads the value of CRU Dynamic to know CRU current measurements, such as temperature, voltage, and current;
-8. Charging is then initiated and the CTU moves to 'Power Transfer State';
-9. The CTU then keeps reading the CRU Dynamic parameter at least every 250ms;
-10. Keeps running until the CRU detects a system error or completes charging, so it sends a CRU Alert notifications to the CTU;
-11. The CTU takes care of the Alert, going to 'Latching fault state' (system error) or back to 'Power save state' (charge complete).
+6. Charging is then initiated and the CTU moves to 'Power Transfer State';
+7. The CTU then keeps reading the CRU Dynamic parameter at least every 250ms;
+8. Keeps running until the CRU detects a system error or completes charging, so it sends a CRU Alert notifications to the CTU;
+9. The CTU takes care of the Alert, going to 'Latching fault state' (system error) or back to 'Power save state' (charge complete).
+10. The CTU eventually also go to 'Local fault state' if an alert is transmitted from any A-CTU.
 
 
 -------------------------------------------------
