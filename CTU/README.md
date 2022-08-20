@@ -144,7 +144,6 @@ The CTU state machine is handled almost entirely inside this module. It progress
         - Keep reading the Dynamic chr (at least every 20ms) and check if any Alert is detected (a field of dyn chr is filled with alert status).
         
 - **Localization process**
-
       - If the peer is a CRY, the localization process starts (ble_central_on_localization function);
       - Basically:
             - Switch on a pad and wait a reasonable amount of time to see the change in the rx side;
@@ -163,7 +162,6 @@ The CTU state machine is handled almost entirely inside this module. It progress
 - **Peer task handling**
 
 Here the description covers only CRU; however, the A-CTU peer task handling follows almost the same procedure with similar functions (e.g. ble_central_AUX_CTU_task_handle).
-
     - Any CRUs peer structure will be assigned a task handle and a binary semaphore handle. 
     - All CRUs will run simultaneously on the `ble_central_CRU_task_handle` function and periodically read the dynamic characteristic when available. 
     - The availabiliy of this characteristic depends on the semaphores state bit. 
