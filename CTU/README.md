@@ -72,7 +72,6 @@ The CTU state machine is handled almost entirely inside this module. It progress
     - By receiving a valid advertisement with WPT Service UUID and also within a `rssi` that is smaller than `MINIMUM_ADV_RSSI`, the CTU procedes with multiple read/write procedures to allow an exchange of static parameters. This process will be described in more details in the next CTU module [*BLE central client (ble_central.c)*](#ble-central-client-ble_centralc).
    - The CTU transitions to the power transfer state if there are less than `MYNEWT_VAL(BLE_MAX_CONNECTIONS)` peers connected, in which case there will be attempts to scan periodically for other CRUs. Once there are `BLE_MAX_CONNECTIONS` CRUs connected, no further scan attempts will be undertaken.
    - Also, here the `localization_process` happens. Each pad is switched on sequentially in a low power mode (to avoid charging of faulty CRUs), so the value of the `Vrect` is compared with a given treshold. If it is above the treshold, then the right pad has been found and the Power Transfer State can finally begin. 
-   - ----- This process needs still some improvements ---
 
 - **Power transfer state**
   
