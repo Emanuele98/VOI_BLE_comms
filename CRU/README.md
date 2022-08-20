@@ -6,7 +6,6 @@ Bluetooth LE architecture for Bumblebee power transmission unit (PRU)
   - [**Table of contents**](#table-of-contents)
   - [**Installation**](#installation)
   - [**Application files**](#application-files) 
-  - [**App config**](#app-config)
 - [**idf.py tool**](#idfpy-tool)
 - [**Menuconfig**](#menuconfig)
     - [**Modes of operation**](#modes-of-operation)
@@ -85,40 +84,9 @@ Another important step to consider is reviewing the configurations by using `men
     },
     };
 
-
-### **App config**
-
-The `app_config.h` file contains most of what is necessary to properly configure the PRU. As per Airfuel specifications, the static parameter definitions are written in this file as well as other reference values and limits.
-
-```
-/*******************************************************************/
-/**                   LOCAL PRU CONFIGURATIONS                    **/
-/*******************************************************************/
-
-#define OPTIONAL_FIELDS_STAT            0x00                                   /**< Optional fields requiered. */
-#define PROTOCOL_REVISION               0x00                                   /**< Protocol revision of PRU. */
-#define PRU_CATEGORY                    0x00                                   /**< Category of PRU. */
-#define PRU_INFORMATION                 0x00                                   /**< Information relative to PRU setup. */
-#define PRU_HARD_REVISION               0x00                                   /**< Hardware revision of PRU. */
-#define PRU_FIRM_REVISION               0x00                                   /**< Firmware revision of PRU. */
-#define PRECT_MAXIMUM                   0x00                                   /**< Maximum Prect allowed for PRU. */
-
-#define VRECT_DYN_MINIMUM               10000                                  /**< Minimum Vrect allowerd for PRU. */
-#define VRECT_DYN_HIGH                  20000                                  /**< Highest Vrect allowed. */
-#define VRECT_DYN_SET                   15000                                  /**< Setting of Vrect value for PRU. */
-
-#define OVER_CURRENT                    3500								   /**< Maximum current tolerated for SAADC measurements. Flow will change in the future to handle such alert. */
-#define OVER_VOLTAGE                    40000                                  /**< Maximum voltage tolerated for SAADC measurements. Flow will change in the future to handle such alert. */
-#define OVER_TEMPERATURE                60									   /**< Maximum temperature tolerated for SAADC measurements. */
-
-
-```
-
 ### **Hardware utility (ptu_hw.c)**
 
-- The hardware module serves as a gateway to the ESP32 chip. With this module, it is possible to alter the behavior of the chip as per AFA specifications and within hardware boundaries.
-- There are a series of functions dedicated for ADC measurements and the other ones are designed to interact with the power output 
-
+- The hardware module takes care of I2C measurements.
 
 ## **Non-volatile storage (NVS)**
 
