@@ -17,7 +17,7 @@ static const ble_uuid128_t WPT_PEER_STAT_UUID =
 static const ble_uuid128_t WPT_PTU_STAT_UUID =
     BLE_UUID128_INIT(0x67, 0x9A, 0x0C, 0x20, 0x00, 0x08, 0x96, 0x9E, 0xE2, 0x11, 0x46, 0xA1, 0x71, 0xE6, 0x55, 0x64);
 
-static const ble_uuid128_t WPT_PEER_DYN_UUID = 
+static const ble_uuid128_t WPT_DYN_UUID = 
     BLE_UUID128_INIT(0x67, 0x9A, 0x0C, 0x20, 0x00, 0x08, 0x96, 0x9E, 0xE2, 0x11, 0x46, 0xA1, 0x74, 0xE6, 0x55, 0x64);
 
 static const ble_uuid128_t WPT_ALERT_UUID =
@@ -33,7 +33,7 @@ static int gatt_svr_chr_write_ptu_static(uint16_t conn_handle, uint16_t attr_han
                              struct ble_gatt_access_ctxt *ctxt,
                              void *arg);
     
-static int gatt_svr_chr_read_peer_dynamic(uint16_t conn_handle, uint16_t attr_handle,
+static int gatt_svr_chr_read_dynamic(uint16_t conn_handle, uint16_t attr_handle,
                              struct ble_gatt_access_ctxt *ctxt,
                              void *arg);
 
@@ -50,25 +50,25 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
         .uuid = &wpt_service_uuid.u,
         .characteristics = (struct ble_gatt_chr_def[])
         {   {
-                // Characteristic: pru static payload.
+                // Characteristic: cru static payload.
                 .uuid = &WPT_PEER_STAT_UUID.u,
                 .access_cb = gatt_svr_chr_read_peer_static,
                 .flags = BLE_GATT_CHR_F_READ,
             },
             {
-                // Characteristic: ptu static payload.
+                // Characteristic: ctu static payload.
                 .uuid = &WPT_PTU_STAT_UUID.u,
                 .access_cb = gatt_svr_chr_write_ptu_static,
                 .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE,
             },
             {
-                // Characteristic: pru dynamic payload.
-                .uuid = &WPT_PEER_DYN_UUID.u,
-                .access_cb = gatt_svr_chr_read_peer_dynamic,
+                // Characteristic: cru dynamic payload.
+                .uuid = &WPT_DYN_UUID.u,
+                .access_cb = gatt_svr_chr_read_dynamic,
                 .flags = BLE_GATT_CHR_F_READ,
             },
             {
-                // Characteristic: pru alert payload.
+                // Characteristic: cru alert payload.
                 .uuid = &WPT_ALERT_UUID.u,
                 .access_cb = gatt_svr_chr_notify_alert_dsc,
                 .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_NOTIFY,
@@ -152,7 +152,7 @@ static int gatt_svr_chr_write_ptu_static(uint16_t conn_handle, uint16_t attr_han
 }
 
 
-static int gatt_svr_chr_read_pru_static(uint16_t conn_handle, uint16_t attr_handle,
+static int gatt_svr_chr_read_peer_static(uint16_t conn_handle, uint16_t attr_handle,
                              struct ble_gatt_access_ctxt *ctxt,
                              void *arg)
 {
@@ -196,7 +196,7 @@ static int gatt_svr_chr_read_pru_static(uint16_t conn_handle, uint16_t attr_hand
     return err_code;
 }
 
-static int gatt_svr_chr_read_pru_dynamic(uint16_t conn_handle, uint16_t attr_handle,
+static int gatt_svr_chr_read_dynamic(uint16_t conn_handle, uint16_t attr_handle,
                              struct ble_gatt_access_ctxt *ctxt,
                              void *arg)
 {
