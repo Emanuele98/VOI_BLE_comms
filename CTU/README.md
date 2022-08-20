@@ -82,11 +82,13 @@ The CTU state machine is handled almost entirely inside this module. It progress
 
 - **Local fault state**
     
-    - Any time this state is reached through the `CTU_periodic_local_check` timeout function, the BLE stack resets and the configuration state is reached.
+    - Happens when sensor values received from A-CTUs are over the defined limit (overvoltage | overcurrent | overtemperature);
+    - Any time this state is reached through the `CTU_periodic_local_check` timeout function, the BLE stack resets and the configuration state is reached;
     - The main application's duty is then to remain in a continuous loop until the `host_ctrl_on_reset` callback is run. Only then will the state flag change to the configuration state. Also, any and all peers that were previously present on the stack are now gone. They will have to advertise yet again, and connect to the CTU once again.
 
 - **Latching fault state**
 
+    - Happens when sensor values received from CRU are over the defined limit (overvoltage | overcurrent | overtemperature);
     - If `main` enters this state, the CTU has 3 "strikes" to correct any possible cause for this fault.
     - At first, the application stop the power output under the relative peer.
     - The CRUs will be disconnected and a delay of 5 seconds will be started. This allows a CRU to perhaps fix the latching fault on his own.
