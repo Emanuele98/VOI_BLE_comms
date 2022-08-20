@@ -20,11 +20,11 @@ The following protocol is based on, but not entirely follows, the AirFuel Allian
 - 1 service:
   - Wireless Power Transfer (WPT)
 - 5 characteristics
-  - CRU Static 
-  - CTU Static 
-  - CRU Dynamic 
-  - CRU Control
-  - CRU Alert
+  - CRU Static (READ)
+  - CTU Static (READ | WRITE)
+  - CRU Dynamic (READ)
+  - CRU Control (READ | WRITE)
+  - CRU Alert (READ | WRITE | NOTIFY)
 -------------------------------------------------
 
 ### Basic state procedure
