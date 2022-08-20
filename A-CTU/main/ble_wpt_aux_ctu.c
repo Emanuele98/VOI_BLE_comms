@@ -11,13 +11,13 @@ static const char* TAG = "BLE_PHERIPERAL";
 static const ble_uuid128_t WPT_SERVICE_UUID = 
     BLE_UUID128_INIT(0x67, 0x9A, 0x0C, 0x20, 0x00, 0x08, 0x96, 0x9E, 0xE2, 0x11, 0x46, 0xA1, 0xFE, 0xFF, 0x55, 0x64);
 
-static const ble_uuid128_t WPT_PRU_STAT_UUID =
+static const ble_uuid128_t WPT_PEER_STAT_UUID =
     BLE_UUID128_INIT(0x67, 0x9A, 0x0C, 0x20, 0x00, 0x08, 0x96, 0x9E, 0xE2, 0x11, 0x46, 0xA1, 0x73, 0xE6, 0x55, 0x64);
 
 static const ble_uuid128_t WPT_PTU_STAT_UUID =
     BLE_UUID128_INIT(0x67, 0x9A, 0x0C, 0x20, 0x00, 0x08, 0x96, 0x9E, 0xE2, 0x11, 0x46, 0xA1, 0x71, 0xE6, 0x55, 0x64);
 
-static const ble_uuid128_t WPT_PRU_DYN_UUID = 
+static const ble_uuid128_t WPT_DYN_UUID = 
     BLE_UUID128_INIT(0x67, 0x9A, 0x0C, 0x20, 0x00, 0x08, 0x96, 0x9E, 0xE2, 0x11, 0x46, 0xA1, 0x74, 0xE6, 0x55, 0x64);
 
 static const ble_uuid128_t WPT_CONTROL_UUID =
@@ -28,7 +28,7 @@ static const ble_uuid128_t WPT_ALERT_UUID =
 
 
 //*CHR CALLBACK FUNCTIONS
-static int gatt_svr_chr_read_pru_static(uint16_t conn_handle, uint16_t attr_handle,
+static int gatt_svr_chr_read_peer_static(uint16_t conn_handle, uint16_t attr_handle,
                              struct ble_gatt_access_ctxt *ctxt,
                              void *arg);
 
@@ -36,11 +36,11 @@ static int gatt_svr_chr_write_ptu_static(uint16_t conn_handle, uint16_t attr_han
                              struct ble_gatt_access_ctxt *ctxt,
                              void *arg);
     
-static int gatt_svr_chr_read_pru_dynamic(uint16_t conn_handle, uint16_t attr_handle,
+static int gatt_svr_chr_read_dynamic(uint16_t conn_handle, uint16_t attr_handle,
                              struct ble_gatt_access_ctxt *ctxt,
                              void *arg);
 
-static int gatt_svr_chr_write_pru_control(uint16_t conn_handle, uint16_t attr_handle,
+static int gatt_svr_chr_write_control(uint16_t conn_handle, uint16_t attr_handle,
                              struct ble_gatt_access_ctxt *ctxt,
                              void *arg);
 
@@ -56,8 +56,8 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
         .characteristics = (struct ble_gatt_chr_def[])
         {   {
                 // Characteristic: pru static payload.
-                .uuid = &WPT_PRU_STAT_UUID.u,
-                .access_cb = gatt_svr_chr_read_pru_static,
+                .uuid = &WPT_PEER_STAT_UUID.u,
+                .access_cb = gatt_svr_chr_read_peer_static,
                 .flags = BLE_GATT_CHR_F_READ,
             },
             {
@@ -68,14 +68,14 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
             },
             {
                 // Characteristic: pru dynamic payload.
-                .uuid = &WPT_PRU_DYN_UUID.u,
-                .access_cb = gatt_svr_chr_read_pru_dynamic,
+                .uuid = &WPT_DYN_UUID.u,
+                .access_cb = gatt_svr_chr_read_dynamic,
                 .flags = BLE_GATT_CHR_F_READ,
             },
             {
                 // Characteristic: pru control payload.
                 .uuid = &WPT_CONTROL_UUID.u,
-                .access_cb = gatt_svr_chr_write_pru_control,
+                .access_cb = gatt_svr_chr_write_control,
                 .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE,
             },
             {
@@ -158,7 +158,7 @@ static int gatt_svr_chr_write_ptu_static(uint16_t conn_handle, uint16_t attr_han
 }
 
 
-static int gatt_svr_chr_read_pru_static(uint16_t conn_handle, uint16_t attr_handle,
+static int gatt_svr_chr_read_peer_static(uint16_t conn_handle, uint16_t attr_handle,
                              struct ble_gatt_access_ctxt *ctxt,
                              void *arg)
 {
@@ -201,7 +201,7 @@ static int gatt_svr_chr_read_pru_static(uint16_t conn_handle, uint16_t attr_hand
     return err_code;
 }
 
-static int gatt_svr_chr_read_pru_dynamic(uint16_t conn_handle, uint16_t attr_handle,
+static int gatt_svr_chr_read_dynamic(uint16_t conn_handle, uint16_t attr_handle,
                              struct ble_gatt_access_ctxt *ctxt,
                              void *arg)
 {
@@ -233,7 +233,7 @@ static int gatt_svr_chr_read_pru_dynamic(uint16_t conn_handle, uint16_t attr_han
     return err_code;
 }
 
-static int gatt_svr_chr_write_pru_control(uint16_t conn_handle, uint16_t attr_handle,
+static int gatt_svr_chr_write_control(uint16_t conn_handle, uint16_t attr_handle,
                              struct ble_gatt_access_ctxt *ctxt,
                              void *arg)
 {
