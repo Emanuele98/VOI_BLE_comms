@@ -43,7 +43,7 @@ The next part of `app_main()` involves creating and initializing the peer struct
 - BLE related variables
     - Connection handle
     - Discovery process tracker
-    - CRU specific payloads
+    - Specific payloads
 - A FreeRTOS task handle
 - A FreeRTOS semaphore handle to manage asynchronous BLE read requests
 
