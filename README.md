@@ -9,7 +9,7 @@ The following protocol is based on, but not entirely follows, the AirFuel Allian
 ### Important notes
 
 - The NimBLE stack has been chosen as more lightweigth protocol, comprising smaller heap and flash requirements;
-- Communication Transmitting Unit (CTU) acts as a client, requesting access to the data;
+- Communication Transmitting Unit (CTU) acts as a client, requesting access to the data (here most of the system logic happens);
 - Communication Receiving Units (CRUs) and Auxiliary CTU (A-CTUs) act as servers, holding the data;
 - This implements a bluetooth protocol between one host (CTU) and many peripherals (CRUs and A-CTUs). 
 
