@@ -65,4 +65,3 @@ The following protocol is based on, but not entirely follows, the AirFuel Allian
 
  `find more details about how CTU, A-CTU and CRU and individually work in the READMEs contained in their relative folders.`
  
- (still to be updated)
