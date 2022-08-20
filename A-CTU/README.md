@@ -98,6 +98,7 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
 ### **Hardware utility (ptu_hw.c)**
 
   - The hardware module takes care of I2C measurements;
+  - Two output pins are responsible for switching the pad on/off in full/low power mode;
   - Also, one pin will continuously detect the output of the FPGA for Foreign Object Detection (FOD).
 
 ## **Non-volatile storage (NVS)**
