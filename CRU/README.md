@@ -1,4 +1,4 @@
-# Peripheral (PRU)
+# Peripheral (CRU)
 Bluetooth LE architecture for Bumblebee power transmission unit (PRU)
 
 ## **Table of contents**
@@ -51,25 +51,25 @@ Another important step to consider is reviewing the configurations by using `men
         .uuid = &wpt_service_uuid.u,
         .characteristics = (struct ble_gatt_chr_def[])
         {   {
-                // Characteristic: pru static payload.
-                .uuid = &WPT_PRU_STAT_UUID.u,
-                .access_cb = gatt_svr_chr_read_pru_static,
+                // Characteristic: peer static payload.
+                .uuid = &WPT_peer_STAT_UUID.u,
+                .access_cb = gatt_svr_chr_read_cru_static,
                 .flags = BLE_GATT_CHR_F_READ,
             },
             {
-                // Characteristic: ptu static payload.
-                .uuid = &WPT_PTU_STAT_UUID.u,
-                .access_cb = gatt_svr_chr_write_ptu_static,
+                // Characteristic: CTU static payload.
+                .uuid = &WPT_CTU_STAT_UUID.u,
+                .access_cb = gatt_svr_chr_write_ctu_static,
                 .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE,
             },
             {
-                // Characteristic: pru dynamic payload.
-                .uuid = &WPT_PRU_DYN_UUID.u,
+                // Characteristic: peer dynamic payload.
+                .uuid = &WPT_peer_DYN_UUID.u,
                 .access_cb = gatt_svr_chr_read_pru_dynamic,
                 .flags = BLE_GATT_CHR_F_READ,
             },
             {
-                // Characteristic: pru alert payload.
+                // Characteristic: peer alert payload.
                 .uuid = &WPT_ALERT_UUID.u,
                 .access_cb = gatt_svr_chr_notify_alert_dsc,
                 .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_NOTIFY,
