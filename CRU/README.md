@@ -45,31 +45,33 @@ Another important step to consider is reviewing the configurations by using `men
         - An unpacking function handles a particular set of payloads coming from a PTU. It involves the use of a buffer and a GATTS type function named `ble_hs_mbuf_from_flat`.
         - As for the updating functions, they are composed of a fixed length buffer and a call to a interface function `ble_hs_mbuf_to_flat`.
         - Every characteristic read/write/notify is handled by its respective callback function, declared at the beginning:
-    static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
+
+```
+static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
     {
         .type = BLE_GATT_SVC_TYPE_PRIMARY,
         .uuid = &wpt_service_uuid.u,
         .characteristics = (struct ble_gatt_chr_def[])
         {   {
-                // Characteristic: peer static payload.
-                .uuid = &WPT_peer_STAT_UUID.u,
-                .access_cb = gatt_svr_chr_read_cru_static,
+                // Characteristic: pru static payload.
+                .uuid = &WPT_PEER_STAT_UUID.u,
+                .access_cb = gatt_svr_chr_read_peer_static,
                 .flags = BLE_GATT_CHR_F_READ,
             },
             {
-                // Characteristic: CTU static payload.
-                .uuid = &WPT_CTU_STAT_UUID.u,
-                .access_cb = gatt_svr_chr_write_ctu_static,
+                // Characteristic: ptu static payload.
+                .uuid = &WPT_PTU_STAT_UUID.u,
+                .access_cb = gatt_svr_chr_write_ptu_static,
                 .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE,
             },
             {
-                // Characteristic: peer dynamic payload.
-                .uuid = &WPT_peer_DYN_UUID.u,
-                .access_cb = gatt_svr_chr_read_pru_dynamic,
+                // Characteristic: pru dynamic payload.
+                .uuid = &WPT_PEER_DYN_UUID.u,
+                .access_cb = gatt_svr_chr_read_peer_dynamic,
                 .flags = BLE_GATT_CHR_F_READ,
             },
             {
-                // Characteristic: peer alert payload.
+                // Characteristic: pru alert payload.
                 .uuid = &WPT_ALERT_UUID.u,
                 .access_cb = gatt_svr_chr_notify_alert_dsc,
                 .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_NOTIFY,
@@ -82,7 +84,9 @@ Another important step to consider is reviewing the configurations by using `men
     {
         0, // No more services. 
     },
-    };
+};
+
+```
 
 ### **Hardware utility (ptu_hw.c)**
 
