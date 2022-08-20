@@ -55,31 +55,31 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
         .uuid = &WPT_SERVICE_UUID.u,
         .characteristics = (struct ble_gatt_chr_def[])
         {   {
-                // Characteristic: pru static payload.
+                // Characteristic: a-ctu static payload.
                 .uuid = &WPT_PEER_STAT_UUID.u,
                 .access_cb = gatt_svr_chr_read_peer_static,
                 .flags = BLE_GATT_CHR_F_READ,
             },
             {
-                // Characteristic: ptu static payload.
+                // Characteristic: ctu static payload.
                 .uuid = &WPT_PTU_STAT_UUID.u,
                 .access_cb = gatt_svr_chr_write_ptu_static,
                 .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE,
             },
             {
-                // Characteristic: pru dynamic payload.
+                // Characteristic: a-ctu dynamic payload.
                 .uuid = &WPT_DYN_UUID.u,
                 .access_cb = gatt_svr_chr_read_dynamic,
                 .flags = BLE_GATT_CHR_F_READ,
             },
             {
-                // Characteristic: pru control payload.
+                // Characteristic: a-ctu control payload.
                 .uuid = &WPT_CONTROL_UUID.u,
                 .access_cb = gatt_svr_chr_write_control,
                 .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE,
             },
             {
-                // Characteristic: pru alert payload.
+                // Characteristic: a-ctu alert payload.
                 .uuid = &WPT_ALERT_UUID.u,
                 .access_cb = gatt_svr_chr_notify_alert_dsc,
                 .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_NOTIFY,
