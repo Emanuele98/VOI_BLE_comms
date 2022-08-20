@@ -1,0 +1,81 @@
+menu "CTU Static Configuration"
+
+    config CTU_STATIC_OP_FIELDS
+        hex "Optional fields"
+        default 0x00
+        help
+            Enter the AFA specific optional fields for the
+            CTU static characteristic. The default is 0.
+    config CTU_STATIC_POWER
+        int "Max power output"
+        default 128
+        help
+            Enter the AFA specific maximal power output for the
+            CTU static characteristic. The default is 50 Watts.
+    config CTU_STATIC_MAX_IMPEDANCE
+        hex "Max impedance"
+        default 0x00
+        help
+            Enter the AFA specific maximal impedance for the
+            CTU static characteristic. The default is 0.
+    config CTU_STATIC_MAX_LOAD
+        hex "Max load"
+        default 0x00
+        help
+            Enter the AFA specific maximal load for the
+            CTU static characteristic. The default is 0.
+    config CTU_STATIC_RFU_1
+        hex "RFU 1"
+        default 0x0000
+        help
+            Enter the AFA specific first RFU zone for the
+            CTU static characteristic. The RFU is an abreviation 
+            for "Reserved for Future Use". It is 0 by default.
+    config CTU_STATIC_CTU_CLASS
+        hex "Class"
+        default 0x03
+        help
+            Enter the AFA specific CTU Classof device for the
+            CTU static characteristic. Default is class 3.
+    config CTU_STATIC_HW_REVISION
+        hex "Hardware revision"
+        default 0x01
+        help
+            Enter the AFA specific hardware revision for the
+            CTU static characteristic. The default is 0.1 (4MSB.4LSB),
+            ex: rev 0x13 == 1.3
+    config CTU_STATIC_FW_REVISION
+        hex "Firmware revision"
+        default 0x12
+        help
+            Enter the AFA specific software revision for the
+            CTU static characteristic. The default is 1.2 (4MSB.4LSB),
+            ex: rev 0x12 == 1.2
+    config CTU_STATIC_PROT_REVISION
+        hex "Protocol revision"
+        default 0x03
+        help
+            Enter the AFA specific protocol revision for the
+            CTU static characteristic. The default is 0.3 as per AFA 
+            Specification on page 79 of BSS -A v1.00.
+    config CTU_STATIC_MAX_DEVICES
+        hex "Max number of devices"
+        default 0x01
+        help
+            Enter the AFA specific maximal number of devices for the
+            CTU static characteristic. The default number of peers is 1.
+    config CTU_STATIC_COMPANY_ID
+        hex "Company ID"
+        default 0x0000
+        help
+            Enter the AFA specific company ID for the
+            CTU static characteristic. The default is 0x0000.
+            The length for this value is 2 bytes.
+    config CTU_STATIC_RFU_2
+        hex "RFU 2"
+        default 0x00000000
+        help
+            Enter the AFA specific company ID for the CTU
+            static characteristic. The default is 0x00000000.
+            The lenght for this value is 4 bytes.
+endmenu
