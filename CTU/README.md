@@ -7,7 +7,6 @@ Bluetooth LE architecture for Bumblebee power transmission unit (CTU)
     - [**Main (main.c)**](#main-mainc)
     - [**CTU states (CTU_states.c)**](#CTU-states-CTU_statesc)
     - [**BLE central client (ble_central.c)**](#ble-central-client-ble_centralc)
-    - [**Hardware utility (CTU_hw.c)**](#hardware-utility-CTU_hwc)
 - [**Non-volatile storage (NVS)**](#non-volatile-storage-nvs)
 - [**idf.py tool**](#idfpy-tool)
 - [**Menuconfig**](#menuconfig)
@@ -171,13 +170,6 @@ The CTU state machine is handled almost entirely inside this module. It progress
     - If the semaphore is taken and has yet to be given back, the peer task will simply wait for a short period of time and iterate once more. Only when the semaphore is given will this task trigger a read procedure on the dynamic characteristic;
     - The semaphore is taken (in `ble_central_CRU_task_handle`);
     - The semaphore is given back (in `ble_central_on_CRU_dyn_read`).
-  
-
-### **Hardware utility (CTU_hw.c)**
-
-- The hardware module serves as a gateway to the ESP32 chip. With this module, it is possible to alter the behavior of the chip as per AFA specifications and within hardware boundaries.
-- There are a series of functions dedicated for ADC measurements and the other ones are designed to interact with the power output 
-
 
 ## **Non-volatile storage (NVS)**
 
