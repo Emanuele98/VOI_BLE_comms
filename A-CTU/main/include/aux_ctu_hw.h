@@ -11,6 +11,8 @@
 /* Arbitrary pin values */
 #define FULL_POWER_OUT_PIN           GPIO_NUM_26           /* GPIO26 */
 #define LOW_POWER_OUT_PIN            GPIO_NUM_25           /* GPIO25 */
+#define GPIO_OUTPUT_PIN_SEL  ((1ULL<<FULL_POWER_OUT_PIN) | (1ULL<<LOW_POWER_OUT_PIN))
+
 
 /* I2C */
 #define I2C_MASTER_SCL_IO 19                                  /*!< gpio number for I2C master clock */
@@ -35,12 +37,10 @@
 #define ACK_VAL 0x0                             /*!< I2C ack value */
 #define NACK_VAL 0x1                            /*!< I2C nack value */
 
-//TODO: adjust these values
-
 /* Critical error values (arbitrary values) */
 #define LOCAL_OTP                    60                // Local fault indicator for overtemperature (in celsius)
-#define LOCAL_OVP                    10000             // Local fault indicator for overvoltage (in mV)
-#define LOCAL_OCP                    10000             // Local fault indicator for overcurrent (in mA)
+#define LOCAL_OVP                    70               // Local fault indicator for overvoltage  (in V)
+#define LOCAL_OCP                    2.5             // Local fault indicator for overcurrent (in A)
 
 //todo: add local check of FPGA for Foreign Object Detection
 //todo: send switch on/off through alert chr

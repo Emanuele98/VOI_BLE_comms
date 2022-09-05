@@ -312,7 +312,6 @@ static int peer_dsc_add(struct peer *peer, uint16_t chr_val_handle,
         /* Can't find service for discovered descriptor; this shouldn't
          * happen.
          */
-        assert(0);
         return BLE_HS_EUNKNOWN;
     }
 
@@ -321,7 +320,6 @@ static int peer_dsc_add(struct peer *peer, uint16_t chr_val_handle,
         /* Can't find characteristic for discovered descriptor; this shouldn't
          * happen.
          */
-        assert(0);
         return BLE_HS_EUNKNOWN;
     }
 
@@ -423,7 +421,6 @@ static int peer_dsc_disced(uint16_t conn_handle, const struct ble_gatt_error *er
     int rc;
 
     peer = arg;
-    assert(peer->conn_handle == conn_handle);
 
     switch (error->status) {
     case 0:
@@ -618,7 +615,6 @@ static int peer_chr_add(struct peer *peer,  uint16_t svc_start_handle,
         /* Can't find service for discovered characteristic; this shouldn't
          * happen.
          */
-        assert(0);
         return BLE_HS_EUNKNOWN;
     }
 
@@ -673,7 +669,6 @@ static int peer_chr_disced(uint16_t conn_handle, const struct ble_gatt_error *er
     int rc;
 
     peer = arg;
-    assert(peer->conn_handle == conn_handle);
 
     //ESP_LOGW(TAG, "we also here man");
 
@@ -1053,7 +1048,6 @@ static int peer_svc_disced(uint16_t conn_handle, const struct ble_gatt_error *er
     int rc;
 
     peer = arg;
-    assert(peer->conn_handle == conn_handle);
 
     switch (error->status) {
     case 0:
@@ -1194,7 +1188,7 @@ int peer_add(uint16_t conn_handle, bool CRU)
 {
     struct peer *peer;
 
-    if ((MYNEWT_VAL(BLE_MAX_CONNECTIONS) > NUM_CRU) && (NUM_AUX_CTU < 5))
+    if ((MYNEWT_VAL(BLE_MAX_CONNECTIONS) > NUM_CRU + NUM_AUX_CTU))
     {
         /* Make sure the connection handle is unique. */
         peer = peer_find(conn_handle);
@@ -1221,6 +1215,7 @@ int peer_add(uint16_t conn_handle, bool CRU)
                 if(AUX_CTU_position_empty(i))
                 {
                     peer->position = i;
+                    ESP_LOGI(TAG, "AUX-CTU POSITION = %d", peer->position);
                     break;  
                 } 
             }            

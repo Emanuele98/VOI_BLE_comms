@@ -30,7 +30,7 @@ The following protocol is based on, but not entirely follows, the AirFuel Allian
 ### Basic state procedure
 1. The CTU first needs to be configured, meaning being successfully connected to at least one A-CTU;
 2. The CRU repeatedly sends advertisements until it receives a CTU Connection Request;
-3. The CTU moves from 'Power Save State' to 'Low Power State' to enstablish a connection with first CRU;
+3. The CTU moves from 'Configuration state' to 'Low Power State' to enstablish a connection with first CRU;
 4. When the CTU connects to either a CRU or A-CTU, the following read/write procedures take place:
       - The CTU reads the value of Static chr;
       - The CTU writes the value of Static chr;
@@ -43,9 +43,9 @@ The following protocol is based on, but not entirely follows, the AirFuel Allian
       - If timer expires, it disconnects to allow other CRU to undergo the localization process.
 6. Charging is then initiated and the CTU moves to 'Power Transfer State';
 7. The CTU then keeps reading the CRU Dynamic parameter at least every 250ms;
-8. Keeps running until the CRU detects a system error or completes charging, so it sends a CRU Alert notifications to the CTU;
-9. The CTU takes care of the Alert, going to 'Latching fault state' (system error) or back to 'Power save state' (charge complete).
-10. The CTU eventually also go to 'Local fault state' if an alert is transmitted from any A-CTU.
+8. Keeps running until the CRU detects an Alert or completes charging, so it sends a CRU Alert notifications to the CTU;
+9. The CTU takes care of the Alert, going to 'Remote fault' state or back to 'Power save state' (charge complete).
+10. The CTU eventually also go to 'Local fault' state if an alert is transmitted from any CRU.
 
 
 -------------------------------------------------
@@ -63,5 +63,6 @@ The following protocol is based on, but not entirely follows, the AirFuel Allian
 - Fields of Dynamic chr changed to allow float measurements to be sent over BLE;
 - Control chr kept only for A-CTU; removed from CRU as considered useless.
 
+Ps. right now Static chrs are just empty.
+
  `find more details about how CTU, A-CTU and CRU and individually work in the READMEs contained in their relative folders.`
- 

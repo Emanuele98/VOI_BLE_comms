@@ -6,12 +6,8 @@ make.exe all --print-data-base --no-builtin-variables --no-builtin-rules --quest
 # PARTICULAR PURPOSE.
 
 # This program built for i686-pc-msys
- 
-Makefile:8: /make/project.mk: No such file or directory
-make.exe: *** No rule to make target `/make/project.mk'.  Stop.
 
-
-# Make data base, printed on Sat Aug 20 15:33:51 2022
+# Make data base, printed on Mon Sep  5 07:45:53 2022
 
 # Variables
 
@@ -36,7 +32,7 @@ HOMEDRIVE = C:
 # automatic
 ^D = $(patsubst %/,%,$(dir $^))
 # makefile
-CURDIR := /c/Users/degan/OneDrive/Desktop/AirfuelProtocolSuite/ESP-32/CTU_first_try
+CURDIR := /c/Users/degan/OneDrive/Desktop/VOI_comms_BLE/CTU
 # default
 SHELL := /bin/sh
 # environment
@@ -60,7 +56,7 @@ PROGRAMDATA = C:\ProgramData
 # environment
 NINJA = C:\ninja
 # environment
-VSCODE_CWD = C:\Users\degan\AppData\Local\Programs\Microsoft VS Code
+VSCODE_CWD = C:\Users\degan\OneDrive\Desktop\VOI_comms_BLE\A-CTU
 # environment
 PATH = /c/Program Files/Common Files/Oracle/Java/javapath:/c/Program Files (x86)/VMware/VMware Workstation/bin/:/c/Program Files (x86)/Microsoft SDKs/Azure/CLI2/wbin:/c/WINDOWS/system32:/c/WINDOWS:/c/WINDOWS/System32/Wbem:/c/WINDOWS/System32/WindowsPowerShell/v1.0/:/c/WINDOWS/System32/OpenSSH/:/c/ProgramData/chocolatey/bin:/c/Program Files/nodejs/:/c/Program Files/MATLAB/R2021b/bin:/c/Program Files (x86)/Nordic Semiconductor/nrf-command-line-tools/bin/:/c/Program Files/PuTTY/:/c/MinGW/bin:/usr/bin:/c/Program Files/CMake/bin:/c/Program Files/Git/cmd:/c/Program Files/Amazon/AWSCLIV2/:/c/Program Files/OpenSSL/bin:/c/Program Files (x86)/GNU Tools ARM Embedded/5.4 2016q3/bin:/c/Users/degan/AppData/Local/Microsoft/WindowsApps:/c/Users/degan/AppData/Local/Programs/Microsoft VS Code/bin:/c/Users/degan/AppData/Roaming/npm:/c/Users/degan/.deno/bin:/c/Program Files/heroku/bin:/c/Users/degan/AppData/Local/GitHubDesktop/bin:/c/Program Files/snap/bin:/c/Users/degan/AppData/Local/Microsoft/WindowsApps:/c/Program Files/OpenSSL-Win64/bin:.
 # environment
@@ -78,7 +74,7 @@ USERPROFILE = C:\Users\degan
 # environment
 CHOCOLATEYINSTALL = C:\ProgramData\chocolatey
 # environment
-!C: = c:\Users\degan\OneDrive\Desktop\AirfuelProtocolSuite\ESP-32\CTU_first_try
+!C: = c:\Users\degan\OneDrive\Desktop\VOI_comms_BLE\CTU
 # environment
 ALLUSERSPROFILE = C:\ProgramData
 # environment
@@ -92,7 +88,7 @@ NRFGOSTUDIOPATH = C:\Program Files (x86)\Nordic Semiconductor\nRFgo Studio
 # automatic
 %F = $(notdir $%)
 # environment
-CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_13868_IWYGQYYEFJERJEBW
+CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_25244_KVJJUQODMPZRFFIA
 # environment
 COMPUTERNAME = LAPTOP-CQUHDE6I
 # environment
@@ -112,9 +108,9 @@ VSCODE_AMD_ENTRYPOINT = vs/workbench/api/node/extensionHostProcess
 # environment
 CHOCOLATEYTOOLSLOCATION = C:\tools
 # environment
-VSCODE_CODE_CACHE_PATH = C:\Users\degan\AppData\Roaming\Code\CachedData\e4503b30fc78200f846c62cf8091b76ff5547662
+VSCODE_CODE_CACHE_PATH = C:\Users\degan\AppData\Roaming\Code\CachedData\784b0177c56c607789f9638da7b6bf3230d47a8c
 # environment
-APPLICATION_INSIGHTS_NO_DIAGNOSTIC_CHANNEL = true
+APPLICATION_INSIGHTS_NO_DIAGNOSTIC_CHANNEL = 1
 # environment
 COMMONPROGRAMFILES = C:\Program Files (x86)\Common Files
 # environment
@@ -154,7 +150,7 @@ PROCESSOR_IDENTIFIER = Intel64 Family 6 Model 140 Stepping 1, GenuineIntel
 # environment
 OS = Windows_NT
 # environment
-VSCODE_IPC_HOOK = \\.\pipe\ec26bdb7e4eb9ca2cf9b8b9dd759f3ba-1.70.2-main-sock
+VSCODE_IPC_HOOK = \\.\pipe\ec26bdb7e4eb9ca2cf9b8b9dd759f3ba-1.71.0-main-sock
 # environment
 PYTHONPATH = C:\esp\esp-idf\tools\ci\python_packages
 # environment
@@ -218,7 +214,7 @@ TERM = cygwin
 # environment
 FPS_BROWSER_APP_PROFILE_STRING = Internet Explorer
 # environment
-VSCODE_PID = 13868
+VSCODE_PID = 25244
 # environment
 USERDOMAIN_ROAMINGPROFILE = LAPTOP-CQUHDE6I
 # variable set hash-table stats:
@@ -230,9 +226,9 @@ USERDOMAIN_ROAMINGPROFILE = LAPTOP-CQUHDE6I
 
 # Directories
 
-# . (device 1328, inode 854465): 12 files, no impossibilities.
+# . (device 1328, inode 957189): 11 files, no impossibilities.
 
-# 12 files, no impossibilities in 1 directories.
+# 11 files, no impossibilities in 1 directories.
 
 # Implicit Rules
 
@@ -256,8 +252,7 @@ all:
 # Not a target:
 Makefile:
 #  Implicit rule search has not been done.
- 
-#  Last modified 2022-08-18 12:35:08
+#  Last modified 2022-08-18 11:35:08
 #  File has not been updated.
 
 # Not a target:
@@ -287,6 +282,9 @@ Makefile:
 # strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
 # strcache free: total = 4070 / max = 4070 / min = 4070 / avg = 4070
 
-# Finished Make data base on Sat Aug 20 15:33:51 2022
+# Finished Make data base on Mon Sep  5 07:45:53 2022
 
  
+Makefile:8: /make/project.mk: No such file or directory
+make.exe: *** No rule to make target `/make/project.mk'.  Stop.
+

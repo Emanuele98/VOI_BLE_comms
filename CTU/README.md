@@ -58,14 +58,10 @@ The CTU state machine is handled almost entirely inside this module. It progress
 
     - The Configuration State only starts the periodic local check timer (to determine if any Local Faults are present).
     //to be added - connection to at least 1 aux ctu
-    
-- **Power save state**
-  
-    - The power save state is the main state from which the CTU will run. In this state, `main` is in a busy wait kind of loop.
-    - Transitioning to the low power state happens when ad CRU advertisement is detected.
 
 - **Low power state**
   
+    - The power save state is the main state from which the CTU will run. In this state, `main` is in a busy wait kind of loop.
     - In this state, both the `main` and `host` are involved. The `main` handles very little in the current application, but depending on the application, it can house some logic.
     - The `host`, on the other hand handles both the connection procedure and the registration sequence.
     - By receiving a valid advertisement with WPT Service UUID and also within a `rssi` that is smaller than `MINIMUM_ADV_RSSI`, the CTU procedes with multiple read/write procedures to allow an exchange of static parameters. This process will be described in more details in the next CTU module [*BLE central client (ble_central.c)*](#ble-central-client-ble_centralc).
@@ -202,4 +198,3 @@ Logging configurations can be found inside the `menuconfig` interface. It can be
 ### **sdkconfig file**
 
 The sdkconfig file and its *.old and *.defaults counterparts are all representing configurations defined in `menuconfig` prior to compilation. It is important not to change values directly inside those files, but to simply go to `menuconfig` instead.
-

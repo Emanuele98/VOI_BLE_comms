@@ -20,6 +20,7 @@
 #include "freertos/task.h"
 #include "freertos/timers.h"
 #include "freertos/semphr.h"
+#include <sys/time.h>
 
 #include "ble_central.h"
 #include "peer.h"
@@ -27,10 +28,13 @@
 /* Software timers duration */
 #define LOCAL_CHECK_TIMER_PERIOD      (pdMS_TO_TICKS(350))
 #define PERIODIC_SCAN_TIMER_PERIOD    (pdMS_TO_TICKS(1000))
-#define PERIODIC_SWITCH_TIMER_PERIOD  (pdMS_TO_TICKS(5000))
+#define PERIODIC_SWITCH_TIMER_PERIOD  (pdMS_TO_TICKS(3000))
 
 /* Voltage treshold for localization process */
-#define VOLTAGE_LOC_THRESH 800
+#define VOLTAGE_LOC_THRESH 110
+
+/* Voltage treshold for checking charging complete */
+#define CURRENT_LOC_THRESH 0.1
 
 /* Type definition for state task parameters */
 typedef struct CTU_task_params_s CTU_task_params_t;
@@ -64,16 +68,14 @@ typedef enum {
  * 
  * @param NULL_STATE                0: Not currently used
  * @param CTU_CONFIG_STATE          1: Configuration state
- * @param CTU_POWER_SAVE_STATE      2: Power save state
- * @param CTU_LOW_POWER_STATE       3: Low power state
- * @param CTU_POWER_TRANSFER_STATE  4: Power transfer state
- * @param CTU_LOCAL_FAULT_STATE     5: Local fault state
- * @param CTU_LATCHING_FAULT_STATE  6: Latching fault state
+ * @param CTU_LOW_POWER_STATE       2: Low power state
+ * @param CTU_POWER_TRANSFER_STATE  3: Power transfer state
+ * @param CTU_LOCAL_FAULT_STATE     4: Local fault state
+ * @param CTU_LATCHING_FAULT_STATE  5: Latching fault state
 */
 typedef enum {
     NULL_STATE = 0,
     CTU_CONFIG_STATE,
-    CTU_POWER_SAVE_STATE,
     CTU_LOW_POWER_STATE,
     CTU_POWER_TRANSFER_STATE,
     CTU_LOCAL_FAULT_STATE,

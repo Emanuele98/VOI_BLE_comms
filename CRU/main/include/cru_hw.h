@@ -6,8 +6,11 @@
 #include "driver/i2c.h"
 #include "esp_log.h"
 
-#define I2C_MASTER_SCL_IO 19                                  /*!< gpio number for I2C master clock */
-#define I2C_MASTER_SDA_IO 18                                  /*!< gpio number for I2C master data  */
+//#define I2C_MASTER_SCL_IO 19                                  /*!< gpio number for I2C master clock */
+//#define I2C_MASTER_SDA_IO 18                                  /*!< gpio number for I2C master data  */
+
+#define I2C_MASTER_SCL_IO 22                                  /*!< gpio number for I2C master clock */
+#define I2C_MASTER_SDA_IO 21                                  /*!< gpio number for I2C master data  */
 #define I2C_MASTER_NUM     1                                  /*!< I2C port number for master dev */
 #define I2C_MASTER_FREQ_HZ 400000                             /*!< I2C master clock frequency */
 #define I2C_MASTER_TX_BUF_DISABLE 0                           /*!< I2C master doesn't need buffer */

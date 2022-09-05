@@ -10,6 +10,8 @@
 
 #include "ble_central.h"
 
+struct timeval tv_start;
+
 static const char* TAG = "MAIN";
 
 void ble_store_config_init(void);
@@ -54,13 +56,10 @@ static void host_ctrl_on_reset(int reason)
 */
 static void host_ctrl_on_sync(void)
 {
-    int rc;
-
     ESP_LOGI(TAG, "Device synced");
 
     /* Make sure we have proper identity address set (public preferred) */
-    rc = ble_hs_util_ensure_addr(0);
-    assert(rc == 0);
+    ble_hs_util_ensure_addr(0);
 
     /* Initialize configuration state */
     CTU_state_change(CTU_CONFIG_STATE, NULL);
@@ -153,8 +152,6 @@ void init_setup(void)
     
     /* Initialize I2C semaphore */
     i2c_sem = xSemaphoreCreateMutex();
-
-    assert(m_set_state_sem != NULL);
 }
 
 /** 
@@ -165,8 +162,6 @@ void init_setup(void)
 */
 void app_main(void)
 {
-    int rc;
-
     /* Initialize NVS partition */
     esp_err_t esp_err_code = nvs_flash_init();
     if  (esp_err_code == ESP_ERR_NVS_NO_FREE_PAGES || esp_err_code == ESP_ERR_NVS_NEW_VERSION_FOUND)
@@ -192,12 +187,10 @@ void app_main(void)
     ble_hs_cfg.sync_cb = host_ctrl_on_sync;
 
     /* Initialize data structures to track connected peers. */
-    rc = peer_init(MYNEWT_VAL(BLE_MAX_CONNECTIONS) + 4, 64, 64, 64);
-    assert(rc == 0);
+    peer_init(MYNEWT_VAL(BLE_MAX_CONNECTIONS), 64, 64, 64);
 
     /* Set the default device name. */
-    rc = ble_svc_gap_device_name_set("Airfuel CTU");
-    assert(rc == 0);
+    ble_svc_gap_device_name_set("Airfuel CTU");
 
     /* XXX Need to have template for store */
     ble_store_config_init();
@@ -208,7 +201,8 @@ void app_main(void)
     /* Initialize all elements of CTU */
     init_setup();
 
+    gettimeofday(&tv_start, NULL);
+
     /* Runtime function for main context */
     CTU_states_run();
-
 }

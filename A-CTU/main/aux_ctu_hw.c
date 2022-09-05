@@ -53,7 +53,7 @@ float i2c_read_voltage_sensor(void)
 
     //printf("first byte: %02x\n", byte_1);
     //printf("second byte : %02x\n", byte_2);
-    value = (int16_t)(first_byte << 8 | second_byte) * 0.00125;
+    value = (int16_t)(first_byte << 8 | second_byte) * 0.00125 * 3.9412;
     printf("sensor val: %.02f [V]\n", value);
 
     exit:
@@ -157,7 +157,6 @@ void enable_full_power_output(void)
     enabled = 1;
     gpio_set_level(FULL_POWER_OUT_PIN, 1);
     ESP_LOGI(TAG, "SWITCHIN FULL POWER ON!");
-
 }
 
 void disable_full_power_output(void)
@@ -172,7 +171,6 @@ void enable_low_power_output(void)
     enabled = 1;
     gpio_set_level(LOW_POWER_OUT_PIN, 1);
     ESP_LOGI(TAG, "SWITCHIN LOW POWER ON");
-
 }
 
 void disable_low_power_output(void)

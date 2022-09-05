@@ -83,9 +83,10 @@ wpt_ptu_static_payload_t _value4_name;
 #define PRU_FIRM_REVISION               0x00                                   /**< Firmware revision of PRU. */
 #define PRECT_MAXIMUM                   0x00                                   /**< Maximum Prect allowed for PRU. */
 
-#define OVER_CURRENT                    3500								   /**< Maximum current tolerated */
-#define OVER_VOLTAGE                    40000                                  /**< Maximum voltage tolerated */
-#define OVER_TEMPERATURE                600									   /**< Maximum temperature tolerated */
+//*LIMITS BEFORE SENDING ALERTS
+#define OVER_CURRENT                    0.7									   /**< Maximum current tolerated */
+#define OVER_VOLTAGE                    170 	                               /**< Maximum voltage tolerated */
+#define OVER_TEMPERATURE                50									   /**< Maximum temperature tolerated */
 
 
 union i2c{

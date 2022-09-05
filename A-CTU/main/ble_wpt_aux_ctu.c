@@ -205,7 +205,7 @@ static int gatt_svr_chr_read_dynamic(uint16_t conn_handle, uint16_t attr_handle,
                              struct ble_gatt_access_ctxt *ctxt,
                              void *arg)
 {
-    ESP_LOGE(TAG, "READ DYNAMIC CALLBACK");
+    //ESP_LOGE(TAG, "READ DYNAMIC CALLBACK");
 
     int err_code;
 
@@ -224,9 +224,9 @@ static int gatt_svr_chr_read_dynamic(uint16_t conn_handle, uint16_t attr_handle,
 											dyn_payload.alert,
 											dyn_payload.RFU}; // 14 bytes of data
 
-    ESP_LOGW(TAG, "- DYN CHR - rx voltage = %.02f", dyn_payload.vrect.f);
-    ESP_LOGW(TAG, "- DYN CHR - rx voltage = %.02f", dyn_payload.irect.f);
-    ESP_LOGW(TAG, "- DYN CHR - rx temperature = %.02f", dyn_payload.temp.f);
+    //ESP_LOGW(TAG, "- DYN CHR - rx voltage = %.02f", dyn_payload.vrect.f);
+    //ESP_LOGW(TAG, "- DYN CHR - rx voltage = %.02f", dyn_payload.irect.f);
+    //ESP_LOGW(TAG, "- DYN CHR - rx temperature = %.02f", dyn_payload.temp.f);
 
     err_code = os_mbuf_append(ctxt->om, &data,
                         sizeof data);
@@ -258,17 +258,22 @@ static int gatt_svr_chr_write_control(uint16_t conn_handle, uint16_t attr_handle
     //change power output accordingly
     if(control_payload.enable)
     {
+        enable_full_power_output();
+        /*
         if(control_payload.full_power) {
         enable_full_power_output();
         } else {
         enable_low_power_output();
         }
+        */
     } else {
+        disable_full_power_output();
+        /*
         if(control_payload.full_power) {
         disable_full_power_output();
         } else {
         disable_low_power_output();
-        }
+        }*/
     }
 
     return err_code;

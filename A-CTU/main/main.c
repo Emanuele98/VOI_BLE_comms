@@ -16,8 +16,8 @@
 
 #define APP_ADV_INTERVAL                32                                     /**< The advertising interval (in units of 0.625 ms. This value corresponds to 20 ms). */
 
-#define DYNAMIC_PARAM_TIMER_INTERVAL    pdMS_TO_TICKS(500)                      /**< Timer synced to Dynamic parameter characteristic (50 ms). */
-#define NOTIFICATION_INTERVAL           pdMS_TO_TICKS(250)				       /**< Timer synced to Alert (Notification) parameter characteristic (250 ms). */
+#define DYNAMIC_PARAM_TIMER_INTERVAL    pdMS_TO_TICKS(50)                      /**< Timer synced to Dynamic parameter characteristic (50 ms). */
+#define ALERT_PARAM_TIMER_INTERVAL      pdMS_TO_TICKS(250)				       /**< Timer synced to Alert parameter characteristic (250 ms). */
 
 /* WPT SERVICE BEING ADVERTISED */
 #define WPT_SVC_UUID16                  0xFFFE
@@ -206,7 +206,7 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
                     event->connect.status);
         if (event->connect.status == 0) {
             rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
-            assert(rc == 0);
+            
         }
 
         if (event->connect.status != 0) {
@@ -317,7 +317,7 @@ void init_sw_timers(void)
     //
     // Create timers
     dynamic_t_handle = xTimerCreate("dynamic params", DYNAMIC_PARAM_TIMER_INTERVAL, pdTRUE, NULL, dynamic_param_timeout_handler);
-    alert_t_handle = xTimerCreate("alert", NOTIFICATION_INTERVAL, pdTRUE, NULL, alert_timeout_handler);
+    alert_t_handle = xTimerCreate("alert", ALERT_PARAM_TIMER_INTERVAL, pdTRUE, NULL, alert_timeout_handler);
 
     /*uncomment to test the I2C without the need of being connected to the central unit */
     xTimerStart(dynamic_t_handle, 0);
@@ -352,6 +352,20 @@ void init_hw(void)
     i2c_param_config(i2c_master_port, &conf);
     err_code =  i2c_driver_install(i2c_master_port, conf.mode, I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE, 0);
     ESP_ERROR_CHECK(err_code);
+
+    gpio_config_t io_conf;
+    //disable interrupt
+    io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
+    //set as output mode
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    //bit mask of the pins that you want to set
+    io_conf.pin_bit_mask = GPIO_OUTPUT_PIN_SEL;
+    //disable pull-down mode
+    io_conf.pull_down_en = 0;
+    //disable pull-up mode
+    io_conf.pull_up_en = 0;
+    //configure GPIO with the given settings
+    gpio_config(&io_conf);
 }
 
 /** 
@@ -369,6 +383,11 @@ void init_setup(void)
 
     /* Initialize I2C semaphore */
     i2c_sem = xSemaphoreCreateMutex();
+}
+
+void on_reset(void)
+{
+    ESP_LOGI(TAG, "on_reset");
 }
 
 /** 
@@ -399,16 +418,27 @@ void app_main(void)
     ble_hs_cfg.sync_cb = host_ctrl_on_sync;
 
     rc = gatt_svr_init();
-    assert(rc == 0);
+    if (rc!=0){
+    esp_restart();
+    }
 
     /* Set the default device name. */
     rc = ble_svc_gap_device_name_set(DEVICE_NAME);
-    assert(rc == 0);
+    if (rc!=0){
+    esp_restart();
+    }
 
     /* Host management loop (Host context) */
     nimble_port_freertos_init(host_task);
 
     /* Initialize all elements of AUX CTU (timers and I2C)*/
     init_setup();
+/*
+    while(1){
+        vTaskDelay(3000 / portTICK_PERIOD_MS);
+        ESP_ERROR_CHECK(esp_register_shutdown_handler(&on_reset));
+        esp_restart();
+    }
+*/
 
 }

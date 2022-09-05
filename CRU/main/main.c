@@ -16,8 +16,8 @@
 
 #define APP_ADV_INTERVAL                32                                     /**< The advertising interval (in units of 0.625 ms. This value corresponds to 20 ms). */
 
-#define DYNAMIC_PARAM_TIMER_INTERVAL    pdMS_TO_TICKS(500)                    /**< Timer synced to Dynamic parameter characteristic (50 ms). */
-#define NOTIFICATION_INTERVAL           pdMS_TO_TICKS(250)				       /**< Timer synced to Alert (Notification) parameter characteristic (250 ms). */
+#define DYNAMIC_PARAM_TIMER_INTERVAL    pdMS_TO_TICKS(50)                    /**< Timer synced to Dynamic parameter characteristic (50 ms). */
+#define ALERT_PARAM_TIMER_INTERVAL      pdMS_TO_TICKS(250)				       /**< Timer synced to Alert parameter characteristic (250 ms). */
 
 #define WPT_SVC_UUID16               0xFFFE
 
@@ -306,9 +306,9 @@ void init_sw_timers(void)
     //
     // Create timers
     dynamic_t_handle = xTimerCreate("dynamic params", DYNAMIC_PARAM_TIMER_INTERVAL, pdTRUE, NULL, dynamic_param_timeout_handler);
-    alert_t_handle = xTimerCreate("alert", NOTIFICATION_INTERVAL, pdTRUE, NULL, alert_timeout_handler);
+    alert_t_handle = xTimerCreate("alert", ALERT_PARAM_TIMER_INTERVAL, pdTRUE, NULL, alert_timeout_handler);
 
-    //xTimerStart(dynamic_t_handle, 0);
+    xTimerStart(dynamic_t_handle, 0);
 
 
     if ((dynamic_t_handle == NULL) || (alert_t_handle == NULL))
