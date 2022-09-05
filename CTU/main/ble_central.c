@@ -460,6 +460,7 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
         ESP_LOGE(TAG, "on_AUX_CTU_dyn_read");    
         return ble_gap_terminate(peer->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
         //todo: error here. It resets
+        //add some sort of error handling --> use position to differentiate which --> x5 --> disconnects
 
 
 }
@@ -495,7 +496,6 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
         // Check if the task has not already been deleted
         if (eTaskGetState(peer->task_handle) != eDeleted)
         {
-            ESP_LOGE(TAG, "Killing it");
             ble_central_kill_CRU(peer->task_handle, peer->sem_handle, conn_handle);
         }
         goto err;
@@ -515,7 +515,7 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
         //DISABLE POWER INTERFACE
         ble_central_update_control_enables(0, 1, Aux_CTU);
         peer->position = 0;
-        //todo: disconnect!
+        ble_central_kill_CRU(peer->task_handle, peer->sem_handle, conn_handle);
     }
 
     if(peer->dyn_payload.irect.f < CURRENT_LOC_THRESH)
@@ -524,6 +524,7 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
         ESP_LOGE(TAG, "battery charged!");
         //DISABLE POWER INTERFACE
         ble_central_update_control_enables(0, 1, Aux_CTU);
+        //todo: disconnect for a long period (need MAC Identification)
     }
 
     return 0;
@@ -579,6 +580,7 @@ static int ble_central_on_alert_read(uint16_t conn_handle,
    
     return 0;
 
+//todo: remove all these and keep only the kill_CRU or kill_AUX_CTU
     err:
         ESP_LOGE(TAG, "on_alert_read");    
         return ble_gap_terminate(peer->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
