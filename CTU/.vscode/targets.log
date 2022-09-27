@@ -6,8 +6,12 @@ make.exe all --print-data-base --no-builtin-variables --no-builtin-rules --quest
 # PARTICULAR PURPOSE.
 
 # This program built for i686-pc-msys
+ 
+Makefile:8: /make/project.mk: No such file or directory
+make.exe: *** No rule to make target `/make/project.mk'.  Stop.
 
-# Make data base, printed on Mon Sep  5 14:38:14 2022
+
+# Make data base, printed on Tue Sep 27 09:59:12 2022
 
 # Variables
 
@@ -88,7 +92,7 @@ NRFGOSTUDIOPATH = C:\Program Files (x86)\Nordic Semiconductor\nRFgo Studio
 # automatic
 %F = $(notdir $%)
 # environment
-CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_6084_XTHXYLNUGTFDVGIY
+CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_12364_GYIGRTPAMOFUQSIM
 # environment
 COMPUTERNAME = LAPTOP-CQUHDE6I
 # environment
@@ -108,7 +112,7 @@ VSCODE_AMD_ENTRYPOINT = vs/workbench/api/node/extensionHostProcess
 # environment
 CHOCOLATEYTOOLSLOCATION = C:\tools
 # environment
-VSCODE_CODE_CACHE_PATH = C:\Users\degan\AppData\Roaming\Code\CachedData\784b0177c56c607789f9638da7b6bf3230d47a8c
+VSCODE_CODE_CACHE_PATH = C:\Users\degan\AppData\Roaming\Code\CachedData\74b1f979648cc44d385a2286793c226e611f59e7
 # environment
 APPLICATION_INSIGHTS_NO_DIAGNOSTIC_CHANNEL = 1
 # environment
@@ -150,7 +154,7 @@ PROCESSOR_IDENTIFIER = Intel64 Family 6 Model 140 Stepping 1, GenuineIntel
 # environment
 OS = Windows_NT
 # environment
-VSCODE_IPC_HOOK = \\.\pipe\ec26bdb7e4eb9ca2cf9b8b9dd759f3ba-1.71.0-main-sock
+VSCODE_IPC_HOOK = \\.\pipe\ec26bdb7e4eb9ca2cf9b8b9dd759f3ba-1.71.2-main-sock
 # environment
 PYTHONPATH = C:\esp\esp-idf\tools\ci\python_packages
 # environment
@@ -214,7 +218,7 @@ TERM = cygwin
 # environment
 FPS_BROWSER_APP_PROFILE_STRING = Internet Explorer
 # environment
-VSCODE_PID = 6084
+VSCODE_PID = 12364
 # environment
 USERDOMAIN_ROAMINGPROFILE = LAPTOP-CQUHDE6I
 # variable set hash-table stats:
@@ -252,7 +256,7 @@ all:
 # Not a target:
 Makefile:
 #  Implicit rule search has not been done.
-#  Last modified 2022-08-18 11:35:08
+#  Last modified 2022-08-18 12:35:08
 #  File has not been updated.
 
 # Not a target:
@@ -282,9 +286,6 @@ Makefile:
 # strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
 # strcache free: total = 4070 / max = 4070 / min = 4070 / avg = 4070
 
-# Finished Make data base on Mon Sep  5 14:38:14 2022
+# Finished Make data base on Tue Sep 27 09:59:12 2022
 
  
-Makefile:8: /make/project.mk: No such file or directory
-make.exe: *** No rule to make target `/make/project.mk'.  Stop.
-

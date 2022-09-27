@@ -127,13 +127,11 @@ void write_nvs_partition(void)
 */
 void init_sw_timers(void)
 {
+    /* Software timer for sequential switching of the charging pads */
     localization_switch_pads_t_handle = xTimerCreate("localization", PERIODIC_SWITCH_TIMER_PERIOD, pdTRUE, NULL, CTU_periodic_pad_switch);
 
     /* Software timer for periodic scanning once 1 CRU is connected */
     periodic_scan_t_handle = xTimerCreate("scan", PERIODIC_SCAN_TIMER_PERIOD, pdTRUE, NULL, CTU_periodic_scan_timeout);
-
-    /* Software timer for local checks */
-    periodic_local_check_t_handle = xTimerCreate("localcheck", LOCAL_CHECK_TIMER_PERIOD, pdTRUE, NULL, CTU_periodic_local_check);
 }
 
 /** 
@@ -202,6 +200,11 @@ void app_main(void)
     init_setup();
 
     gettimeofday(&tv_start, NULL);
+
+    //ESP_LOGI(TAG, "%d", MAC);
+
+
+    //ESP_LOGE(TAG, "RAM 0 left %d", esp_get_minimum_free_heap_size());
 
     /* Runtime function for main context */
     CTU_states_run();

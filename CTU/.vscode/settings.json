@@ -1,6 +1,7 @@
 {
     "makefile.extensionOutputFolder": "./.vscode",
     "files.associations": {
-        "CTU_states.h": "c"
+        "CTU_states.h": "c",
+        "peer.h": "c"
     }
 }

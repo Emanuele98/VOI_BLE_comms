@@ -26,15 +26,14 @@
 #include "peer.h"
 
 /* Software timers duration */
-#define LOCAL_CHECK_TIMER_PERIOD      (pdMS_TO_TICKS(350))
 #define PERIODIC_SCAN_TIMER_PERIOD    (pdMS_TO_TICKS(1000))
 #define PERIODIC_SWITCH_TIMER_PERIOD  (pdMS_TO_TICKS(3000))
 
-/* Voltage treshold for localization process */
-#define VOLTAGE_LOC_THRESH 110
+/* Voltage treshold during LOW-POWER mode */
+#define VOLTAGE_LOW_THRESH 30
 
-/* Voltage treshold for checking charging complete */
-#define CURRENT_LOC_THRESH 0.1
+/*Voltage treshold during FULL-POWER mode */
+#define VOLTAGE_FULL_THRESH 110
 
 /* Type definition for state task parameters */
 typedef struct CTU_task_params_s CTU_task_params_t;
@@ -47,7 +46,6 @@ struct peer;
 
 /* All states timer handles */
 TimerHandle_t periodic_scan_t_handle;
-TimerHandle_t periodic_local_check_t_handle;
 TimerHandle_t localization_switch_pads_t_handle;
 
 /**
@@ -71,7 +69,7 @@ typedef enum {
  * @param CTU_LOW_POWER_STATE       2: Low power state
  * @param CTU_POWER_TRANSFER_STATE  3: Power transfer state
  * @param CTU_LOCAL_FAULT_STATE     4: Local fault state
- * @param CTU_LATCHING_FAULT_STATE  5: Latching fault state
+ * @param CTU_REMOTE_FAULT_STATE  5: Latching fault state
 */
 typedef enum {
     NULL_STATE = 0,
@@ -79,7 +77,7 @@ typedef enum {
     CTU_LOW_POWER_STATE,
     CTU_POWER_TRANSFER_STATE,
     CTU_LOCAL_FAULT_STATE,
-    CTU_LATCHING_FAULT_STATE
+    CTU_REMOTE_FAULT_STATE
 } CTU_state_t;
 
 /**
@@ -105,9 +103,6 @@ void CTU_states_run(void);
 
 /* State setter (Semaphore protected) */
 BaseType_t CTU_state_change(CTU_state_t p_state, void *arg);
-
-/* Periodic timer that validates if any local faults are detected from ADC readings */
-void CTU_periodic_local_check(void *arg);
 
 /* Periodic scan timer used when CTU has more than 1 connexion simultaneously */
 void CTU_periodic_scan_timeout(void *arg);

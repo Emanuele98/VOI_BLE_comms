@@ -58,8 +58,9 @@ union i2c {
 typedef struct
 {
     union i2c         vrect;              /**< [mandatory] Vrect value from I2C (4 bytes). */
-    union i2c         irect;              /**< [mandatory] Irect value from I2C (2 bytes). */
-    union i2c         temp;               /**< [optional] Temperature ratio calculated from temperature sensor (2 bytes). */
+    union i2c         irect;              /**< [mandatory] Irect value from I2C (4 bytes). */
+    union i2c         temp1;               /**< [optional] Temperature value from I2C (4 bytes). */
+    union i2c         temp2;               /**< [optional] Temperature value from I2C (4 bytes). */
 	uint8_t	          alert;		      /**< [mandatory] CRU alert field for warnings to send to CTU (1 byte). */
 	uint8_t	          RFU;		          /**< [optional] Reserved for future use (1 byte). */
 } wpt_dynamic_payload_t;
@@ -86,10 +87,7 @@ typedef struct
 typedef union
 {
 	struct {
-		uint8_t           mode_transition:2;    /**< [mandatory] Defines which optional fields are populated (1 byte). */
-		uint8_t           wired_charger:1;      /**< [mandatory] Defines which optional fields are populated (1 byte). */
 		uint8_t           charge_complete:1;    /**< [mandatory] Defines which optional fields are populated (1 byte). */
-		uint8_t           self_protection:1;    /**< [mandatory] Defines which optional fields are populated (1 byte). */
 		uint8_t           overtemperature:1;    /**< [mandatory] Defines which optional fields are populated (1 byte). */
 		uint8_t           overcurrent:1;        /**< [mandatory] Defines which optional fields are populated (1 byte). */
 		uint8_t           overvoltage:1;        /**< [mandatory] Defines which optional fields are populated (1 byte). */
@@ -138,6 +136,9 @@ struct peer {
 
     /* POSITION OF THE PAD UPON WHICH THE PEER IS PLACED */
     int8_t position;
+
+    /* last voltage value */
+    float Vlast;
     
     /* bool to detect if localization process is currently going */
     bool localization_process;
@@ -167,6 +168,8 @@ uint8_t peer_get_NUM_CRU(void);
 uint8_t peer_get_NUM_AUX_CTU(void);
 bool is_peer_alone(void);
 bool CTU_is_peer_charging(struct peer *peer);
+bool CTU_is_charging(void);
+uint8_t low_power_find(void);
 
 // find the aux CTU
 struct peer *Aux_CTU_find(uint16_t pos);

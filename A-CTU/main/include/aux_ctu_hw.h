@@ -6,12 +6,15 @@
 #include "driver/i2c.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
+#include <sys/time.h>
 
 
 /* Arbitrary pin values */
 #define FULL_POWER_OUT_PIN           GPIO_NUM_26           /* GPIO26 */
 #define LOW_POWER_OUT_PIN            GPIO_NUM_25           /* GPIO25 */
-#define GPIO_OUTPUT_PIN_SEL  ((1ULL<<FULL_POWER_OUT_PIN) | (1ULL<<LOW_POWER_OUT_PIN))
+#define OR_GATE                      GPIO_NUM_33           /* GPIO33 */
+#define FOD_FPGA                     GPIO_NUM_27           /* GPIO27 */
+#define GPIO_OUTPUT_PIN_SEL  ((1ULL<<FULL_POWER_OUT_PIN) | (1ULL<<LOW_POWER_OUT_PIN) | (1ULL<<OR_GATE) | (1ULL<<FOD_FPGA))
 
 
 /* I2C */
@@ -43,10 +46,11 @@
 #define LOCAL_OCP                    2.5             // Local fault indicator for overcurrent (in A)
 
 //todo: add local check of FPGA for Foreign Object Detection
-//todo: send switch on/off through alert chr
+//todo: FOD --> switch off locally --> send through alert chr --> CTU will know the pad is off already
 
 /* Keeps power output state in memory */
-uint8_t enabled;
+uint8_t low_power;
+uint8_t full_power;
 
 /* Semaphore used to protect against I2C reading simultaneously */
 SemaphoreHandle_t i2c_sem;
@@ -78,5 +82,19 @@ void enable_low_power_output(void);
  * @details Changes the current state of the LOW POWER power output to OFF.
 */
 void disable_low_power_output(void);
+
+/**
+ * @brief Enable OR gate
+ * @details Avoid interferences between the pads
+ * 
+ */
+void enable_OR_output(void);
+
+/**
+ * @brief Disable OR gate
+ * @details Allow circuit to be switched on
+ * 
+ */
+void disable_OR_output(void);
 
 #endif

@@ -17,7 +17,7 @@ static void CTU_power_transfer_state(void *arg);
 
 /* Fault state handle functions */
 static void CTU_local_fault_state(void *arg);
-static void CTU_latching_fault_state(void *arg);
+static void CTU_remote_fault_state(void *arg);
 
 //defined in ble_central.c
 extern const ble_uuid_t *wpt_svc_uuid;
@@ -37,11 +37,6 @@ static int counter = 0;
 */
 void CTU_states_run(void)
 {
-    enabled[0] = 0;
-    enabled[1] = 0;
-    enabled[2] = 0;
-    enabled[3] = 0;
-
     //ESP_LOGI(TAG, "States main fct is run by task %s on core CPU%d", pcTaskGetTaskName(xTaskGetCurrentTaskHandle()),
     //                                                                xTaskGetAffinity(xTaskGetCurrentTaskHandle()));
 
@@ -96,12 +91,15 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
         }
         else if (p_state == CTU_LOW_POWER_STATE)
         {
-            // Keep power interface closed
-            enabled[0] = 0;
-            enabled[1] = 0;
-            enabled[2] = 0;
-            enabled[3] = 0;
-            //todo:send the command to the connected A-CTUs
+            // Disable power interfaces
+            struct peer *peer;
+
+            SLIST_FOREACH(peer, &peers, next) {
+            if(!peer->CRU)
+            {
+                ble_central_update_control_enables(0, 1, peer);
+            }
+            }
 
             m_CTU_task_param.state_fn = CTU_low_power_state;
             m_CTU_task_param.state = CTU_LOW_POWER_STATE;
@@ -127,12 +125,12 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
 
             ESP_LOGI(TAG,"Local Fault State");
         }
-        else if (p_state == CTU_LATCHING_FAULT_STATE)
+        else if (p_state == CTU_remote_fault_state)
         {
             struct peer *peer = (struct peer *)arg;
 
-            m_CTU_task_param.state_fn = CTU_latching_fault_state;
-            m_CTU_task_param.state = CTU_LATCHING_FAULT_STATE;
+            m_CTU_task_param.state_fn = CTU_remote_fault_state;
+            m_CTU_task_param.state = CTU_REMOTE_FAULT_STATE;
             m_CTU_task_param.itvl = LATCHING_FAULT_MAIN_ITVL;
 
             ESP_LOGI(TAG,"Peer %d causes Latching Fault State",peer->conn_handle);
@@ -157,16 +155,29 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
 */
 static void CTU_configuration_state(void *arg)
 {
-
-    /* Start local check timer */
-    xTimerStart(periodic_local_check_t_handle, 0);  
-
     //scan other CRUs
     ble_central_scan_start(BLE_HS_FOREVER, BLE_PERIODIC_SCAN_ITVL, BLE_PERIODIC_SCAN_WIND);
     xTimerStart(periodic_scan_t_handle, pdMS_TO_TICKS(1000));
 
-    /* Enter low power state only when at least one A-CTU is connected */
-    if(peer_get_NUM_AUX_CTU()) {
+
+    //set power interfaces to 0
+    low_power_pads[0] = 0;
+    low_power_pads[1] = 0;
+    low_power_pads[2] = 0;
+    low_power_pads[3] = 0;
+    full_power_pads[0] = 0;
+    full_power_pads[1] = 0;
+    full_power_pads[2] = 0;
+    full_power_pads[3] = 0;
+
+
+    /* Enter low power state only when the A-CTUs are connected */
+    /*
+    if(peer_get_NUM_AUX_CTU() == 2) {
+        CTU_state_change(CTU_LOW_POWER_STATE, NULL);
+    }
+*/
+    if (peer_get_NUM_AUX_CTU()+peer_get_NUM_CRU()) {
         CTU_state_change(CTU_LOW_POWER_STATE, NULL);
     }
 }
@@ -198,7 +209,6 @@ static void CTU_low_power_state(void *arg)
 static void CTU_power_transfer_state(void *arg)
 {
     //sending power!
-    //todo: repeating state -> calculate efficiency and send data over mqtt!
 }
 
 
@@ -218,21 +228,16 @@ static void CTU_local_fault_state(void *arg)
     struct peer *peer = (struct peer *)arg;
     if(peer != NULL) {
         ble_central_update_control_enables(0, 0, peer);
+        low_power_pads[peer->position-1] = 0;
+        full_power_pads[peer->position-1] = 0;
     }       
 
     //disconnect from the Auxiliary CTU
     ble_central_kill_AUX_CTU(peer->task_handle, peer->sem_handle, peer->conn_handle);
 
-//todo: add exponential timer for peer->alert_payload.alert_field.overtemperature
-
     //if no A-CTU connected anymore --> reset BLE stack and go back to configuration state
     if (peer_get_NUM_AUX_CTU() == 0)
     {
-        if (i2c_sem != NULL)
-        {
-            vSemaphoreDelete(i2c_sem);
-        }
-
         /* Stop all tasks and all timers currently running */
         ble_central_kill_all_AUX_CTU();
         CTU_states_stop_timers();
@@ -257,23 +262,20 @@ static void CTU_local_fault_state(void *arg)
  * @param arg void argument which contains the peer 
  */
 
-static void CTU_latching_fault_state(void *arg)
+static void CTU_remote_fault_state(void *arg)
 {
     //disable power interface
     struct peer *peer = (struct peer *)arg;
     if(peer->position) {
+        low_power_pads[peer->position-1] = 0;
+        full_power_pads[peer->position-1] = 0;
         struct peer *Aux_CTU = Aux_CTU_find(peer->position);
         if(Aux_CTU != NULL) {
             ble_central_update_control_enables(0, 0, Aux_CTU);    
         }
     }
 
-    if ( peer_get_NUM_CRU() == 0)
-    {
-        /* Kill any CRU task remaining */
-        ble_central_kill_all_CRU();
-    }
-
+    //todo: use identification 
 
     latching_fault_count++;
     if (peer->alert_payload.alert_field.overcurrent +
@@ -295,44 +297,12 @@ static void CTU_latching_fault_state(void *arg)
         ESP_LOGE(TAG, "Local manteinance needed!");
         //todo: send email to dave@bumblebee.com
     }
-}
 
-//! DOUBLE CHECK 
-//todo: this function does what it is already done locally by each A-CTU! Probably to be removed 
-
-/** 
- * @brief Periodic timer handle function for local faults
- * @details This handle function will diagnose the A-CTU I2C values 
- *          
- * 
- * @param arg void argument (not currently used)
- */
-void CTU_periodic_local_check(void *arg)
-{
-    //check voltage, current and temperature for each peer
-    struct peer *peer;
-
-    SLIST_FOREACH(peer, &peers, next) {
-        if(!peer->CRU)
-        {
-            if (peer->dyn_payload.vrect.f >= LOCAL_OVP)
-                {
-                    ESP_LOGE(TAG, "Voltage on pad %d too high!! -> value=%.02f",peer->position + 1, peer->dyn_payload.vrect.f);
-                    CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
-                }
-            if (peer->dyn_payload.irect.f >= LOCAL_OCP)
-                {
-                    ESP_LOGE(TAG, "Current on pad %d too high!! -> value=%.02f", peer->position + 1, peer->dyn_payload.irect.f);
-                    CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
-                }
-            if (peer->dyn_payload.temp.f >= LOCAL_OTP)
-                {
-                    ESP_LOGE(TAG, "Temperature on pad %d too high!! -> value=%.02f", peer->position + 1, peer->dyn_payload.temp.f);
-                    CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
-                }
-        }
+    if(!peer_get_NUM_CRU())
+    {
+        CTU_state_change(CTU_LOW_POWER_STATE, NULL );
     }
-   return;
+
 }
 
 /** 
@@ -379,116 +349,99 @@ void CTU_periodic_pad_switch(void *arg)
 
     get_pads_already_on(pads_already_on);
 
-    uint8_t i = 0;
-
     //check if the pads is already charging another CRU (pads_already_on) 
     //and also if it is already enable in low power mode ( enabled )
                                
     switch(counter)
     {
-        retry:
-            case 0:
-            //cannot happen but keep for testing
-                if(size == 0) {
-                    break;
-                }
-                if (size > 1) 
+        case 0:
+        //cannot happen but keep for testing
+            if (size > 1) 
+            {
+                counter++;
+            } 
+            if (!pads_already_on[0] && !low_power_pads[0])
+            {
+                low_power_pads[0] = 1;
+                for (uint8_t i=0; i<4; i++)
                 {
-                    counter++;
-                } 
-                if (!pads_already_on[0] && !enabled[0])
-                {
-                    enabled[0] = 1;
-                    for (uint8_t i=0; i<4; i++)
+                    if((i!=0) && (!pads_already_on[i]))
                     {
-                        if((i!=0) && (!pads_already_on[i]))
-                        {
-                            enabled[i] = 0;
-                        }
+                        low_power_pads[i] = 0;
                     }
-                    ESP_LOGI(TAG, "Switch on first pad");
-                    break;
                 }
-                if (size == 1) {
-                    break;
-                }
-            
-            case 1:
-                if (size > 2)
-                {
-                    counter++;
-                } else if (size == 2) 
-                    {
-                        counter = 0;
-                    }
-                if(!pads_already_on[1] && !enabled[1])
-                {
-                    enabled[1] = 1;
-                    for (uint8_t i=0; i<4; i++)
-                    {
-                        if((i!=1) && (!pads_already_on[i]))
-                        {
-                            enabled[i] = 0;
-                        }
-                    }                   
-                    ESP_LOGI(TAG, "Switch on second pad");
-                    break;
-                }
-
-            case 2:
-                if (size > 3)
-                {
-                    counter++;
-                } else if (size == 3) 
-                    {
-                        counter = 0;
-                    }
-                if(!pads_already_on[2] && !enabled[2])
-                {
-                    enabled[2] = 1;
-                    for (uint8_t i=0; i<4; i++)
-                    {
-                        if((i!=2) && (!pads_already_on[i]))
-                        {
-                            enabled[i] = 0;
-                        }
-                    } 
-                    ESP_LOGI(TAG, "Switch on third pad");
-                    break;
-                }
-
-            case 3:
-                if (size > 4)
-                {
-                    counter++;
-                } else if (size == 4) 
-                    {
-                        counter = 0;
-                    }
-                if(!pads_already_on[3] && !enabled[3])
-                {
-                    enabled[3] = 1;
-                    for (uint8_t i=0; i<4; i++)
-                    {
-                        if((i!=3) && (!pads_already_on[i]))
-                        {
-                            enabled[i] = 0;
-                        }
-                    }
-                    ESP_LOGI(TAG, "Switch on fourth pad");
-                    break;
-                }
-
-            default:
-                //after 1 retry, it means all pads are on. just break
-                if (i==0) {
-                    i = 1;
-                    goto retry;
-                } 
+                ESP_LOGI(TAG, "Switch on first pad");
                 break;
+            }
+            if (size == 1) {
+                break;
+            }
+        
+        case 1:
+            if (size > 2)
+            {
+                counter++;
+            } else if (size == 2) 
+                {
+                    counter = 0;
+                }
+            if(!pads_already_on[1] && !low_power_pads[1])
+            {
+                low_power_pads[1] = 1;
+                for (uint8_t i=0; i<4; i++)
+                {
+                    if((i!=1) && (!pads_already_on[i]))
+                    {
+                        low_power_pads[i] = 0;
+                    }
+                }                   
+                ESP_LOGI(TAG, "Switch on second pad");
+                break;
+            }
+
+        case 2:
+            if (size > 3)
+            {
+                counter++;
+            } else if (size == 3) 
+                {
+                    counter = 0;
+                }
+            if(!pads_already_on[2] && !low_power_pads[2])
+            {
+                low_power_pads[2] = 1;
+                for (uint8_t i=0; i<4; i++)
+                {
+                    if((i!=2) && (!pads_already_on[i]))
+                    {
+                        low_power_pads[i] = 0;
+                    }
+                } 
+                ESP_LOGI(TAG, "Switch on third pad");
+                break;
+            }
+
+        case 3:
+            counter = 0;
+            if(!pads_already_on[3] && !low_power_pads[3])
+            {
+                low_power_pads[3] = 1;
+                for (uint8_t i=0; i<4; i++)
+                {
+                    if((i!=3) && (!pads_already_on[i]))
+                    {
+                        low_power_pads[i] = 0;
+                    }
+                }
+                ESP_LOGI(TAG, "Switch on fourth pad");
+                break;
+            }
+
+        default:
+            break;
     }   
     
-    //ESP_LOGI(TAG,  "%d - %d - %d - %d", enabled[0], enabled[1], enabled[2], enabled[3]);
+    //ESP_LOGI(TAG,  "%d - %d - %d - %d", low_power_pads[0], low_power_pads[1], low_power_pads[2], low_power_pads[3]);
                                                                                                                  
 }
 
@@ -508,9 +461,5 @@ void CTU_states_stop_timers(void)
     if (xTimerIsTimerActive(periodic_scan_t_handle) == pdTRUE)
     {
         xTimerStop(periodic_scan_t_handle, 10);
-    }
-    if (xTimerIsTimerActive(periodic_local_check_t_handle) == pdTRUE)
-    {
-        xTimerStop(periodic_local_check_t_handle, 10);
     }
 }

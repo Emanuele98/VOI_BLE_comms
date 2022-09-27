@@ -168,8 +168,18 @@ static int gatt_svr_chr_read_peer_static(uint16_t conn_handle, uint16_t attr_han
 	static_payload.hard_rev = PRU_HARD_REVISION;
 	static_payload.firm_rev = PRU_FIRM_REVISION;
 	static_payload.prect_max = PRECT_MAXIMUM;
-	static_payload.company_id = COMPANY_ID;
 
+    //IDENTIFICATION OF CRU
+    //*1
+    uint16_t identification = 1;
+    //*2
+    //uint16_t identification = 2;
+    //*3
+    //uint16_t identification = 3;
+    //*4
+    //uint16_t identification = 4;
+    
+	static_payload.company_id = identification;
 
     unsigned char *rfu_p = (unsigned char*)&static_payload.RFU2;
 
@@ -212,17 +222,22 @@ static int gatt_svr_chr_read_dynamic(uint16_t conn_handle, uint16_t attr_handle,
 											dyn_payload.irect.b[1],
 											dyn_payload.irect.b[2],
 											dyn_payload.irect.b[3],		
-											dyn_payload.temp.b[0],
-											dyn_payload.temp.b[1],
-											dyn_payload.temp.b[2],
-											dyn_payload.temp.b[3],
+											dyn_payload.temp1.b[0],
+											dyn_payload.temp1.b[1],
+											dyn_payload.temp1.b[2],
+											dyn_payload.temp1.b[3],
+                                            dyn_payload.temp2.b[0],
+											dyn_payload.temp2.b[1],
+											dyn_payload.temp2.b[2],
+											dyn_payload.temp2.b[3],
 											dyn_payload.alert,
-											dyn_payload.RFU}; // 14 bytes of data
-
+											dyn_payload.RFU}; // 18 bytes of data
+/*
     ESP_LOGW(TAG, "- DYN CHR - rx voltage = %.02f", dyn_payload.vrect.f);
     ESP_LOGW(TAG, "- DYN CHR - rx voltage = %.02f", dyn_payload.irect.f);
-    ESP_LOGW(TAG, "- DYN CHR - rx temperature = %.02f", dyn_payload.temp.f);
-
+    ESP_LOGW(TAG, "- DYN CHR - rx temperature = %.02f", dyn_payload.temp1.f);
+    ESP_LOGW(TAG, "- DYN CHR - rx temperature = %.02f", dyn_payload.temp2.f);
+*/
     err_code = os_mbuf_append(ctxt->om, &data,
                         sizeof data);
     return err_code;
@@ -236,10 +251,7 @@ static int gatt_svr_chr_notify_alert_dsc(uint16_t conn_handle, uint16_t attr_han
     //ESP_LOGE(TAG, "WRITE ALERT CALLBACK");
     int err_code = 0 ;
 
-    uint8_t data[alert_CHAR_SIZE];
-
-    //simulate alert situation
-    //alert_payload.alert_field.overtemperature = 1;
+    uint8_t data[ALERT_CHAR_SIZE];
 
     data[0] = alert_payload.alert_field.internal;
 

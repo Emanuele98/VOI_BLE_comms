@@ -77,7 +77,7 @@ The CTU state machine is handled almost entirely inside this module. It progress
 - **Local fault state**
     
     - Happens when sensor values received from A-CTUs are over the defined limit (overvoltage | overcurrent | overtemperature);
-    - Any time this state is reached through the `CTU_periodic_local_check` timeout function, the BLE stack resets and the configuration state is reached;
+    - Any time this state is reached, the BLE stack resets and the configuration state is reached;
     - The main application's duty is then to remain in a continuous loop until the `host_ctrl_on_reset` callback is run. Only then will the state flag change to the configuration state. Also, any and all peers that were previously present on the stack are now gone. They will have to advertise yet again, and connect to the CTU once again.
 
 - **Latching fault state**

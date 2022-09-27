@@ -58,7 +58,7 @@ static void dynamic_param_timeout_handler(void *arg)
             //temperature 1
             case 2:
                 counter = 0;
-                dyn_payload.temp.f = i2c_read_temperature_sensor();
+                dyn_payload.temp1.f = i2c_read_temperature_sensor();
                 //dyn_payload.temp.f = 10.14;
                 break;
         }
@@ -68,7 +68,7 @@ static void dynamic_param_timeout_handler(void *arg)
 static void alert_timeout_handler(void *arg)
 {      
   		// Validate temperature levels
-		if (dyn_payload.temp.f > OVER_TEMPERATURE)
+		if (dyn_payload.temp1.f > OVER_TEMPERATURE)
 		{	alert_payload.alert_field.overtemperature = 1;	}
 		else
 		{	alert_payload.alert_field.overtemperature = 0;	}
@@ -85,6 +85,14 @@ static void alert_timeout_handler(void *arg)
 		else
 		{	alert_payload.alert_field.overcurrent = 0;	}
 
+        //validate whether the battery is charged
+        if ((dyn_payload.vrect.f > VOLTAGE_FULL_THRESH) && (dyn_payload.irect.f < CURRENT_THRESH))
+        {   alert_payload.alert_field.charge_complete = 1;  }
+        else
+        {   alert_payload.alert_field.charge_complete = 0;  }
+
+        //simulate alert situation
+        alert_payload.alert_field.charge_complete = 1;
 
         // Values are then assigned to global payload instance of dynamic characteristic
         dyn_payload.alert = alert_payload.alert_field.internal;

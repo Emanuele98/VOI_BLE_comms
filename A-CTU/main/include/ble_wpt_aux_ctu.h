@@ -40,7 +40,6 @@
 TimerHandle_t dynamic_t_handle, alert_t_handle;
 
 #define N_BYTES_IN_UUID 16
-#define COMPANY_ID                      0x00FF                                 /**< Airfuel company id. Is passed in advertising data. */
 
 /******************************************************************/
 
@@ -64,8 +63,8 @@ wpt_control_payload_t _value5_name;
 #define PRU_CONTROL_CHAR_SIZE                                  4
 #define PTU_STATIC_CHAR_SIZE                                   17
 #define PRU_STATIC_CHAR_SIZE                                   20
-#define PRU_DYNAMIC_CHAR_SIZE                                  14
-#define alert_CHAR_SIZE                		                    6
+#define PRU_DYNAMIC_CHAR_SIZE                                  18
+#define ALERT_CHAR_SIZE                		                    1
 
 
 /*******************************************************************/
@@ -81,9 +80,13 @@ wpt_control_payload_t _value5_name;
 #define PRECT_MAXIMUM                   0x00                                   /**< Maximum Prect allowed for PRU. */
 
 
-#define OVER_CURRENT                    3500								   /**< Maximum current tolerated for I2C measurements. Flow will change in the future to handle such alert. */
-#define OVER_VOLTAGE                    40000                                  /**< Maximum voltage tolerated for I2C measurements. Flow will change in the future to handle such alert. */
-#define OVER_TEMPERATURE                600									   /**< Maximum temperature tolerated for I2C measurements. */
+#define OVER_CURRENT                    2.5									   /**< Maximum current tolerated for I2C measurements. Flow will change in the future to handle such alert. */
+#define OVER_VOLTAGE                    70 	    	                           /**< Maximum voltage tolerated for I2C measurements. Flow will change in the future to handle such alert. */
+#define OVER_TEMPERATURE                60									   /**< Maximum temperature tolerated for I2C measurements. */
+/*Voltage treshold during FULL-POWER mode */
+#define VOLTAGE_FULL_THRESH 110
+/* Voltage treshold for checking charging complete */
+#define CURRENT_THRESH 0.1
 
 union i2c{
 	float f;
@@ -95,7 +98,8 @@ typedef struct
 {
     union i2c         vrect;              /**< [mandatory] Vrect value from I2C (4 bytes). */
     union i2c         irect;              /**< [mandatory] Irect value from I2C (4 bytes). */
-    union i2c         temp;               /**< [optional] Temperature value from I2C (4 bytes). */
+    union i2c         temp1;               /**< [optional] Temperature value from I2C (4 bytes). */
+    union i2c         temp2;               /**< [optional] Temperature value from I2C (4 bytes). */
 	uint8_t	          alert;		      /**< [mandatory] CRU alert field for warnings to send to CTU (1 byte). */
 	uint8_t	          RFU;		          /**< [optional] Reserved for future use (1 byte). */
 } wpt_dynamic_payload_t;
@@ -122,10 +126,7 @@ typedef struct
 typedef union
 {
 	struct {
-		uint8_t           mode_transition:2;    /**< [mandatory] Defines which optional fields are populated (1 byte). */
-		uint8_t           wired_charger:1;      /**< [mandatory] Defines which optional fields are populated (1 byte). */
 		uint8_t           charge_complete:1;    /**< [mandatory] Defines which optional fields are populated (1 byte). */
-		uint8_t           self_protection:1;    /**< [mandatory] Defines which optional fields are populated (1 byte). */
 		uint8_t           overtemperature:1;    /**< [mandatory] Defines which optional fields are populated (1 byte). */
 		uint8_t           overcurrent:1;        /**< [mandatory] Defines which optional fields are populated (1 byte). */
 		uint8_t           overvoltage:1;        /**< [mandatory] Defines which optional fields are populated (1 byte). */

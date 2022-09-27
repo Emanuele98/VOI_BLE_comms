@@ -63,18 +63,13 @@
 
 #define N_BYTES_IN_CTU_STATIC               17
 
-#define MINIMUM_ADV_RSSI                    -80
+#define MINIMUM_ADV_RSSI                    -100
 
-#define WPT_SVC_UUID16               0xFFFE
-
-
-/* Critical error values (arbitrary values) */
-#define LOCAL_OTP                    10000                // Local fault indicator for overtemperature (in celsius)
-#define LOCAL_OVP                    10000                // Local fault indicator for overvoltage (in mV)
-#define LOCAL_OCP                    10000                // Local fault indicator for overcurrent (in mA)
+#define WPT_SVC_UUID16                      0xFFFE
 
 /* Keeps power outputs state in memory */
-uint8_t enabled[4];
+uint8_t low_power_pads[4];
+uint8_t full_power_pads[4];
 
 
 struct ble_hs_adv_fields;
@@ -88,8 +83,6 @@ uint8_t peer_addr[6];
 uint8_t CTU_static_data[N_BYTES_IN_CTU_STATIC];
 
 struct peer;
-
-//todo: add efficiency check when localization process is complete (start a timer and send data to MQTT broker)
 
 void ble_central_scan_start(uint32_t timeout, uint16_t scan_itvl, uint16_t scan_wind);
 void ble_central_update_control_enables(uint8_t enable, uint8_t full_power, struct peer *peer);

@@ -60,15 +60,15 @@ wpt_ptu_static_payload_t _value4_name;
 #define WPT_SERVICE_UUID                                       0xFFFE
 
 #define WPT_CHARGING_PTU_STATIC_UUID                           0xE671
-#define WPT_CHARGING_alert_UUID                            0xE672
+#define WPT_CHARGING_alert_UUID                                0xE672
 #define WPT_CHARGING_PRU_STATIC_UUID                           0xE673
 #define WPT_CHARGING_PRU_DYNAMIC_UUID                          0xE674
 
 // XXX_CHAR_SIZE characteristic sizes.
 #define PTU_STATIC_CHAR_SIZE                                   17
 #define PRU_STATIC_CHAR_SIZE                                   20
-#define PRU_DYNAMIC_CHAR_SIZE                                  20
-#define alert_CHAR_SIZE                                    6
+#define PRU_DYNAMIC_CHAR_SIZE                                  18
+#define ALERT_CHAR_SIZE                                         1
 
 
 /*******************************************************************/
@@ -87,6 +87,10 @@ wpt_ptu_static_payload_t _value4_name;
 #define OVER_CURRENT                    0.7									   /**< Maximum current tolerated */
 #define OVER_VOLTAGE                    170 	                               /**< Maximum voltage tolerated */
 #define OVER_TEMPERATURE                50									   /**< Maximum temperature tolerated */
+/*Voltage treshold during FULL-POWER mode */
+#define VOLTAGE_FULL_THRESH 110
+/* Voltage treshold for checking charging complete */
+#define CURRENT_THRESH 0.1
 
 
 union i2c{
@@ -99,7 +103,8 @@ typedef struct
 {
     union i2c         vrect;              /**< [mandatory] Vrect value from I2C (4 bytes). */
     union i2c         irect;              /**< [mandatory] Irect value from I2C (4 bytes). */
-    union i2c         temp;               /**< [optional] Temperature value from I2C (4 bytes). */
+    union i2c         temp1;               /**< [optional] Temperature value from I2C (4 bytes). */
+    union i2c         temp2;               /**< [optional] Temperature value from I2C (4 bytes). NOT CURRENTLY USED */
 	uint8_t	          alert;		      /**< [mandatory] CRU alert field for warnings to send to CTU (1 byte). */
 	uint8_t	          RFU;		          /**< [optional] Reserved for future use (1 byte). */
 } wpt_dynamic_payload_t;
@@ -127,10 +132,7 @@ typedef struct
 typedef union
 {
 	struct {
-		uint8_t           mode_transition:2;    /**< [mandatory] Defines which optional fields are populated (1 byte). */
-		uint8_t           wired_charger:1;      /**< [mandatory] Defines which optional fields are populated (1 byte). */
 		uint8_t           charge_complete:1;    /**< [mandatory] Defines which optional fields are populated (1 byte). */
-		uint8_t           self_protection:1;    /**< [mandatory] Defines which optional fields are populated (1 byte). */
 		uint8_t           overtemperature:1;    /**< [mandatory] Defines which optional fields are populated (1 byte). */
 		uint8_t           overcurrent:1;        /**< [mandatory] Defines which optional fields are populated (1 byte). */
 		uint8_t           overvoltage:1;        /**< [mandatory] Defines which optional fields are populated (1 byte). */
@@ -157,7 +159,7 @@ typedef struct
     uint8_t           firm_rev;           /**< [mandatory] Firmware revision for PTU (1 bytes). */
     uint8_t           protocol_rev;       /**< [mandatory] Airfuel resonant supported revision (1 bytes). */
     uint8_t           max_num_devices;    /**< [mandatory] Maximum number of connected devices the PTU can support (1 bytes). */
-	uint16_t	      company_id;	      /**< [mandatory] Company ID for PTU provider (2 byte). */
+	uint32_t	      company_id;	      /**< [mandatory] Company ID for PTU provider (4 byte). */
 	uint32_t	      RFU2;		          /**< [N/A] Reserved for future use (4 byte). */
 } wpt_ptu_static_payload_t;
 

@@ -8,6 +8,9 @@
 
 #include "include/aux_ctu_hw.h"
 
+struct timeval tv_start;
+
+
 /*******************************************************************/
 /**                           DEFINES                             **/
 /*******************************************************************/
@@ -16,7 +19,7 @@
 
 #define APP_ADV_INTERVAL                32                                     /**< The advertising interval (in units of 0.625 ms. This value corresponds to 20 ms). */
 
-#define DYNAMIC_PARAM_TIMER_INTERVAL    pdMS_TO_TICKS(50)                      /**< Timer synced to Dynamic parameter characteristic (50 ms). */
+#define DYNAMIC_PARAM_TIMER_INTERVAL    pdMS_TO_TICKS(500)                      /**< Timer synced to Dynamic parameter characteristic (50 ms). */
 #define ALERT_PARAM_TIMER_INTERVAL      pdMS_TO_TICKS(250)				       /**< Timer synced to Alert parameter characteristic (250 ms). */
 
 /* WPT SERVICE BEING ADVERTISED */
@@ -46,40 +49,34 @@ void dynamic_param_timeout_handler(void *arg)
             case 0:
                 counter++;
                 dyn_payload.vrect.f = i2c_read_voltage_sensor();
-                //dyn_payload.vrect.f = 10.11;
                 break;
             
             //current
             case 1:
                 counter++;
                 dyn_payload.irect.f = i2c_read_current_sensor();
-                //dyn_payload.irect.f = 10.12;
                 break;
 
             //temperature 1
             case 2:
-                counter = 0;
-                dyn_payload.temp.f = i2c_read_temperature_sensor(1);
-                //dyn_payload.temp.f = 10.13;
+                counter++;
+                dyn_payload.temp1.f = i2c_read_temperature_sensor(1);
                 break;
-/*
+
             //temperature 2
             case 3:
                 counter = 0;
-                Temp2 = i2c_read_temperature_sensor(2);
+                dyn_payload.temp2.f = i2c_read_temperature_sensor(2);
                 break;
-*/
+
         }
     }
 }
 
-//TODO: check values --> a notification is sent when alert is triggered 
-//todo: switch on/off locally --> send notification through  alert chr
-//add switch off here?
 void alert_timeout_handler(void *arg)
 {      
   		// Validate temperature levels
-		if (dyn_payload.temp.f > OVER_TEMPERATURE)
+		if ((dyn_payload.temp1.f > OVER_TEMPERATURE) || (dyn_payload.temp2.f > OVER_TEMPERATURE))
 		{	alert_payload.alert_field.overtemperature = 1;	}
 		else
 		{	alert_payload.alert_field.overtemperature = 0;	}
@@ -96,10 +93,8 @@ void alert_timeout_handler(void *arg)
 		else
 		{	alert_payload.alert_field.overcurrent = 0;	}
 
-
         // Values are then assigned to global payload instance of dynamic characteristic
         dyn_payload.alert = alert_payload.alert_field.internal;
-
 }
 
 /**
@@ -320,7 +315,7 @@ void init_sw_timers(void)
     alert_t_handle = xTimerCreate("alert", ALERT_PARAM_TIMER_INTERVAL, pdTRUE, NULL, alert_timeout_handler);
 
     /*uncomment to test the I2C without the need of being connected to the central unit */
-    xTimerStart(dynamic_t_handle, 0);
+    //xTimerStart(dynamic_t_handle, 0);
 
 
     if ((dynamic_t_handle == NULL) || (alert_t_handle == NULL))
@@ -433,6 +428,12 @@ void app_main(void)
 
     /* Initialize all elements of AUX CTU (timers and I2C)*/
     init_setup();
+
+    //just for testing
+    disable_OR_output();
+
+    gettimeofday(&tv_start, NULL);
+
 /*
     while(1){
         vTaskDelay(3000 / portTICK_PERIOD_MS);
@@ -440,5 +441,4 @@ void app_main(void)
         esp_restart();
     }
 */
-
 }

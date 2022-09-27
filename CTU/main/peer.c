@@ -118,21 +118,46 @@ bool is_peer_alone(void)
     return NUM_CRU == 1;
 }
 
+uint8_t low_power_find(void)
+{
+    uint8_t n;
+    for(n=0; n<4; n++)
+    {
+        if(low_power_pads[n])
+        {
+            break;
+        }
+    }
+    return n;
+}
+
 /**
- * @brief Boolean function for CRU charge state
+ * @brief Boolean function for charging state
  * @details This function asserts if a specified peer is charging or not.
  * 
- * @param peer The analyzed CRUs structure
- * @return True if peer is charging, false in any other case
+ * @param peer The analyzed peer structure
+ * @return True if peer is charging in full-power mode, false in any other case
 */
 bool CTU_is_peer_charging(struct peer *peer)
 {
-    if (peer->alert_payload.alert_field.charge_complete ||
-        peer->alert_payload.alert_field.wired_charger)
+    return full_power_pads[peer->position-1];
+}
+
+/**
+ * @brief Boolean function for full-power charge state
+ * @details This function asserts if at least one charging pad is in full-power mode.
+ * 
+ * @return True if peer is yes, false in any other case
+*/
+bool CTU_is_charging(void)
+{
+    if(full_power_pads[0] || full_power_pads[1] || full_power_pads[2] || full_power_pads[3])
     {
-        return false;
+        return 1;
+    } else 
+    {
+        return 0;
     }
-    return true;
 }
 
 /**
@@ -1143,20 +1168,33 @@ int peer_delete(uint16_t conn_handle)
     struct peer *peer;
     int rc;
 
-    ESP_LOGW(TAG, "Deleting peer with conn_handle=%d; %d peers remaining", 
-                    conn_handle, NUM_CRU - 1);
-
     peer = peer_find(conn_handle);
-    if (peer == NULL) {
-        return BLE_HS_ENOTCONN;
-    }  
 
-    SLIST_REMOVE(&peers, peer, peer, next);
     if(peer->CRU) {
         NUM_CRU--;
     } else {
         NUM_AUX_CTU--;
     }
+
+    ESP_LOGW(TAG, "Deleting peer with conn_handle=%d; %d peers remaining", 
+                    conn_handle, NUM_CRU + NUM_AUX_CTU);
+
+    if (peer == NULL) {
+        return BLE_HS_ENOTCONN;
+    }  
+
+    if (peer->sem_handle != NULL)
+    {
+        vSemaphoreDelete(peer->sem_handle);
+    }
+
+    if (peer->task_handle != NULL)
+    {
+        esp_task_wdt_delete(peer->task_handle);
+        vTaskDelete(peer->task_handle);
+    }
+
+    SLIST_REMOVE(&peers, peer, peer, next);
 
     while ((svc = SLIST_FIRST(&peer->svcs)) != NULL) {
         SLIST_REMOVE_HEAD(&peer->svcs, next);
@@ -1208,9 +1246,10 @@ int peer_add(uint16_t conn_handle, bool CRU)
             NUM_CRU++;
         } else {
             NUM_AUX_CTU++;
+            //todo: use MAC address for setting the position
             //add position of the pad
             //check nobody else is in the same position before declaring it
-            for(int8_t i = 1; i < 5; i++)
+         /*   for(int8_t i = 1; i < 5; i++)
             {
                 if(AUX_CTU_position_empty(i))
                 {
@@ -1218,7 +1257,8 @@ int peer_add(uint16_t conn_handle, bool CRU)
                     ESP_LOGI(TAG, "AUX-CTU POSITION = %d", peer->position);
                     break;  
                 } 
-            }            
+            }  
+           */           
         }
         peer->conn_handle = conn_handle;
         peer->CRU = CRU;
