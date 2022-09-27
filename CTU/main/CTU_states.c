@@ -172,14 +172,16 @@ static void CTU_configuration_state(void *arg)
 
 
     /* Enter low power state only when the A-CTUs are connected */
-    /*
+
     if(peer_get_NUM_AUX_CTU() == 2) {
         CTU_state_change(CTU_LOW_POWER_STATE, NULL);
     }
-*/
+
+/*
     if (peer_get_NUM_AUX_CTU()+peer_get_NUM_CRU()) {
         CTU_state_change(CTU_LOW_POWER_STATE, NULL);
     }
+*/
 }
 
 /**

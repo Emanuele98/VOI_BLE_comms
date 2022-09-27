@@ -1316,7 +1316,7 @@ static int ble_central_should_connect(const struct ble_gap_disc_desc *disc)
             if(fields.appearance == 1) {
                 return 1;
             } /* ALLOW CONNECTION TO CRU ONLY AFTER AT LEAST ONE SUCCESSFULL CONNECTION TO A-CTU */
-            else if((fields.appearance == 2) /*&& (peer_get_NUM_AUX_CTU() > 1)*/) {
+            else if((fields.appearance == 2) && (peer_get_NUM_AUX_CTU() > 1)) {
                 return 2;
             }
         }
