@@ -103,8 +103,9 @@ typedef struct
 /**@brief Control characteristic structure. This contains elements necessary for control payload. */
 typedef struct
 {
-	uint8_t           enable;             /**< [mandatory] PTU turn on, PTU on indication, etc. (1 byte). */
-	uint8_t           full_power;          /**< [mandatory] Whether PRU is allowed in PTU (1 byte). */
+	uint8_t           enable;              /**< [mandatory] Enable command for PTU (1 byte). */
+	uint8_t           full_power;          /**< [mandatory] Full power mode or not (1 byte). */
+	uint8_t           critical;            /**< [optional] Critical transition (1 byte). Do not involve the OR gate */
 	uint16_t          RFU;                 /**< [N/A] Undefined (2 byte). */
 } wpt_control_payload_t;
 
@@ -136,6 +137,9 @@ struct peer {
 
     /* POSITION OF THE PAD UPON WHICH THE PEER IS PLACED */
     int8_t position;
+
+    /* keep track of comms error of the peer */
+    int8_t error;
 
     /* last voltage value */
     float Vlast;

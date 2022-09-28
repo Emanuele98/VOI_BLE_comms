@@ -160,12 +160,16 @@ float i2c_read_temperature_sensor(bool n_temp_sens)
 
 void enable_full_power_output(void)
 {
-    full_power = 1;
-    gpio_set_level(FULL_POWER_OUT_PIN, 1);
-    gettimeofday(&tv_stop, NULL);
-    float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
-    printf("---Time: %f sec\n", time_sec);
-    ESP_LOGI(TAG, "SWITCHIN FULL POWER ON!");
+    if ((!or_gate) && (!low_power))
+    {
+        //enable only if OR GATE is low
+        full_power = 1;
+        gpio_set_level(FULL_POWER_OUT_PIN, 1);
+        gettimeofday(&tv_stop, NULL);
+        float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
+        printf("---Time: %f sec\n", time_sec);
+        ESP_LOGI(TAG, "SWITCHIN FULL POWER ON!");
+    }
 }
 
 void disable_full_power_output(void)
@@ -180,12 +184,16 @@ void disable_full_power_output(void)
 
 void enable_low_power_output(void)
 {
-    low_power = 1;
-    gpio_set_level(LOW_POWER_OUT_PIN, 1);
-    gettimeofday(&tv_stop, NULL);
-    float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
-    printf("---Time: %f sec\n", time_sec);
-    ESP_LOGI(TAG, "SWITCHIN LOW POWER ON");
+    //enable only if OR GATE is low
+    if ((!or_gate) && (!full_power))
+    {
+        low_power = 1;
+        gpio_set_level(LOW_POWER_OUT_PIN, 1);
+        gettimeofday(&tv_stop, NULL);
+        float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
+        printf("---Time: %f sec\n", time_sec);
+        ESP_LOGI(TAG, "SWITCHIN LOW POWER ON");
+    }
 }
 
 void disable_low_power_output(void)
@@ -200,15 +208,21 @@ void disable_low_power_output(void)
 
 void enable_OR_output(void)
 {
-    gpio_set_level(OR_GATE, 1);
-    gettimeofday(&tv_stop, NULL);
-    float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
-    printf("---Time: %f sec\n", time_sec);
-    ESP_LOGI(TAG, "ENABLE OR GATE");
+    //enable only if both low and full modes are
+    if ((!low_power) && (!full_power))
+    {
+        or_gate = 1;
+        gpio_set_level(OR_GATE, 1);
+        gettimeofday(&tv_stop, NULL);
+        float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
+        printf("---Time: %f sec\n", time_sec);
+        ESP_LOGI(TAG, "ENABLE OR GATE");
+    }
 }
 
 void disable_OR_output(void)
 {
+    or_gate = 0;
     gpio_set_level(OR_GATE, 0);
     gettimeofday(&tv_stop, NULL);
     float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);

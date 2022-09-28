@@ -269,33 +269,41 @@ static int gatt_svr_chr_write_control(uint16_t conn_handle, uint16_t attr_handle
     
     control_payload.enable = data[0];
 	control_payload.full_power = data[1];
-	control_payload.RFU = ((uint16_t)data[2]<<8)|data[3];
+    control_payload.critical = data[2];
+	control_payload.RFU = ((uint16_t)data[3]<<8)|data[4];
 
-    //change power output accordingly
-    if(control_payload.enable)
+    if(control_payload.critical)
     {
-        //disable OR gate
-        disable_OR_output();
-        //wait 
-        vTaskDelay(500 / portTICK_PERIOD_MS);
-        //enable power
-        if(control_payload.full_power) {
-        enable_full_power_output();
-        } else {
-        enable_low_power_output();
-        }
-    } else {
-        //diable power
-        if(control_payload.full_power) {
-        disable_full_power_output();
-        } else {
         disable_low_power_output();
-        }
-        //wait
-        vTaskDelay(500 / portTICK_PERIOD_MS);
-        //enable OR gate
-        enable_OR_output();
-    }
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        enable_full_power_output();
+        } else
+            {
+            if(control_payload.enable)
+            {
+                //disable OR gate
+                disable_OR_output();
+                //wait 
+                vTaskDelay(500 / portTICK_PERIOD_MS);
+                //enable power
+                if(control_payload.full_power) {
+                enable_full_power_output();
+                } else {
+                enable_low_power_output();
+                }
+            } else {
+                    //disable power
+                    if(control_payload.full_power) {
+                    disable_full_power_output();
+                    } else {
+                    disable_low_power_output();
+                    }
+                    //wait
+                    vTaskDelay(500 / portTICK_PERIOD_MS);
+                    //enable OR gate
+                    enable_OR_output();
+                }
+            }
     return err_code;
 }
 

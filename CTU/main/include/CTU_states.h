@@ -33,7 +33,7 @@
 #define VOLTAGE_LOW_THRESH 30
 
 /*Voltage treshold during FULL-POWER mode */
-#define VOLTAGE_FULL_THRESH 110
+#define VOLTAGE_FULL_THRESH 80
 
 /* Type definition for state task parameters */
 typedef struct CTU_task_params_s CTU_task_params_t;

@@ -93,6 +93,9 @@ void alert_timeout_handler(void *arg)
 		else
 		{	alert_payload.alert_field.overcurrent = 0;	}
 
+        /* just for TESTING */
+        //alert_payload.alert_field.overcurrent = 1;
+
         // Values are then assigned to global payload instance of dynamic characteristic
         dyn_payload.alert = alert_payload.alert_field.internal;
 }
@@ -222,6 +225,15 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
         {
             xTimerStop(alert_t_handle, 10);
         }
+
+        //! close power interfaces
+        disable_full_power_output();
+        disable_low_power_output();
+        //wait
+        vTaskDelay(500 / portTICK_PERIOD_MS);
+        //enable OR gate
+        enable_OR_output();
+
         /* Connection terminated; resume advertising. */
         bleprph_advertise();
         return 0;
@@ -361,6 +373,14 @@ void init_hw(void)
     io_conf.pull_up_en = 0;
     //configure GPIO with the given settings
     gpio_config(&io_conf);
+
+    //disable power interfaces
+    disable_full_power_output();
+    disable_low_power_output();
+    //wait
+    vTaskDelay(500 / portTICK_PERIOD_MS);
+    //enable OR gate
+    enable_OR_output();
 }
 
 /** 
@@ -428,9 +448,6 @@ void app_main(void)
 
     /* Initialize all elements of AUX CTU (timers and I2C)*/
     init_setup();
-
-    //just for testing
-    disable_OR_output();
 
     gettimeofday(&tv_start, NULL);
 

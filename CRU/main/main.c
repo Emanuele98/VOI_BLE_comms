@@ -92,7 +92,7 @@ static void alert_timeout_handler(void *arg)
         {   alert_payload.alert_field.charge_complete = 0;  }
 
         //simulate alert situation
-        alert_payload.alert_field.charge_complete = 1;
+        //alert_payload.alert_field.charge_complete = 1;
 
         // Values are then assigned to global payload instance of dynamic characteristic
         dyn_payload.alert = alert_payload.alert_field.internal;

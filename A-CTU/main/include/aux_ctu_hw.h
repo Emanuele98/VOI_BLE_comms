@@ -12,7 +12,8 @@
 /* Arbitrary pin values */
 #define FULL_POWER_OUT_PIN           GPIO_NUM_26           /* GPIO26 */
 #define LOW_POWER_OUT_PIN            GPIO_NUM_25           /* GPIO25 */
-#define OR_GATE                      GPIO_NUM_33           /* GPIO33 */
+//#define OR_GATE                      GPIO_NUM_33           /* GPIO33 */
+#define OR_GATE                      GPIO_NUM_15           /* GPIO15 */
 #define FOD_FPGA                     GPIO_NUM_27           /* GPIO27 */
 #define GPIO_OUTPUT_PIN_SEL  ((1ULL<<FULL_POWER_OUT_PIN) | (1ULL<<LOW_POWER_OUT_PIN) | (1ULL<<OR_GATE) | (1ULL<<FOD_FPGA))
 
@@ -48,9 +49,10 @@
 //todo: add local check of FPGA for Foreign Object Detection
 //todo: FOD --> switch off locally --> send through alert chr --> CTU will know the pad is off already
 
-/* Keeps power output state in memory */
+/* Keeps output states in memory */
 uint8_t low_power;
 uint8_t full_power;
+uint8_t or_gate;
 
 /* Semaphore used to protect against I2C reading simultaneously */
 SemaphoreHandle_t i2c_sem;

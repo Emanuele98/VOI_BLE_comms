@@ -87,6 +87,10 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
             m_CTU_task_param.state = CTU_CONFIG_STATE;
             m_CTU_task_param.itvl = CONFIG_MAIN_ITVL;
 
+            //scan other CRUs
+            ble_central_scan_start(BLE_HS_FOREVER, BLE_PERIODIC_SCAN_ITVL, BLE_PERIODIC_SCAN_WIND);
+            xTimerStart(periodic_scan_t_handle, pdMS_TO_TICKS(1000));
+
             ESP_LOGI(TAG,"Configuration State");
         }
         else if (p_state == CTU_LOW_POWER_STATE)
@@ -97,7 +101,7 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
             SLIST_FOREACH(peer, &peers, next) {
             if(!peer->CRU)
             {
-                ble_central_update_control_enables(0, 1, peer);
+                ble_central_update_control_enables(0, 1, 0, peer);
             }
             }
 
@@ -155,11 +159,6 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
 */
 static void CTU_configuration_state(void *arg)
 {
-    //scan other CRUs
-    ble_central_scan_start(BLE_HS_FOREVER, BLE_PERIODIC_SCAN_ITVL, BLE_PERIODIC_SCAN_WIND);
-    xTimerStart(periodic_scan_t_handle, pdMS_TO_TICKS(1000));
-
-
     //set power interfaces to 0
     low_power_pads[0] = 0;
     low_power_pads[1] = 0;
@@ -172,16 +171,16 @@ static void CTU_configuration_state(void *arg)
 
 
     /* Enter low power state only when the A-CTUs are connected */
-
+/*
     if(peer_get_NUM_AUX_CTU() == 2) {
         CTU_state_change(CTU_LOW_POWER_STATE, NULL);
     }
+*/
 
-/*
     if (peer_get_NUM_AUX_CTU()+peer_get_NUM_CRU()) {
         CTU_state_change(CTU_LOW_POWER_STATE, NULL);
     }
-*/
+
 }
 
 /**
@@ -226,10 +225,11 @@ static void CTU_power_transfer_state(void *arg)
 
 static void CTU_local_fault_state(void *arg)
 {
+    //todo: check again
     //disable power interface
     struct peer *peer = (struct peer *)arg;
     if(peer != NULL) {
-        ble_central_update_control_enables(0, 0, peer);
+        ble_central_update_control_enables(0, 0, 0, peer);
         low_power_pads[peer->position-1] = 0;
         full_power_pads[peer->position-1] = 0;
     }       
@@ -273,7 +273,7 @@ static void CTU_remote_fault_state(void *arg)
         full_power_pads[peer->position-1] = 0;
         struct peer *Aux_CTU = Aux_CTU_find(peer->position);
         if(Aux_CTU != NULL) {
-            ble_central_update_control_enables(0, 0, Aux_CTU);    
+            ble_central_update_control_enables(0, 0, 0, Aux_CTU);    
         }
     }
 
@@ -353,7 +353,7 @@ void CTU_periodic_pad_switch(void *arg)
 
     //check if the pads is already charging another CRU (pads_already_on) 
     //and also if it is already enable in low power mode ( enabled )
-                               
+                                   
     switch(counter)
     {
         case 0:
