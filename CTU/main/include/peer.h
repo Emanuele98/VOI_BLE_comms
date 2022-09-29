@@ -181,8 +181,6 @@ struct peer *Aux_CTU_find(uint16_t pos);
 //localization functions
 bool current_localization_process(void);
 int get_peer_position(uint16_t conn_handle);
-void get_pads_already_on(uint8_t* pads);
-
 
 
 #endif

@@ -74,18 +74,6 @@ int get_peer_position(uint16_t conn_handle)
     return peer->position;
 }
 
-void get_pads_already_on(uint8_t* pads)
-{
-    struct peer *peer;
-
-    SLIST_FOREACH(peer, &peers, next) {
-        if ((peer->CRU) && (peer->position != 0)) {
-            pads[peer->position -1] = 1;
-        }
-    }
-}
-
-
 /**
  * @brief Function that returns if a localization process is being done by any peer
  * @details This function searches through a linked list of peers

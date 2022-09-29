@@ -405,6 +405,7 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
 
     //SEND SWITCH COMMAND THROUGH CONTROL CHR WHEN low_power_pads[pad position] changes
     //LOW POWER mode
+    //double check if full_power is on
     //off check to make sure first it switches off and then on
 
     switch(peer->position)
@@ -413,7 +414,7 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
             //ESP_LOGI(TAG, " first pad - %d - %d" , last_pad1, low_power_pads[0]);
             if(last_pad1 != low_power_pads[0])
             {
-                if (low_power_pads[0])
+                if ((low_power_pads[0]) && (!full_power_pads[0]))
                 {
                     if (off)
                     {
@@ -434,7 +435,7 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
             //ESP_LOGI(TAG, "second pad - %d - %d" , last_pad2, low_power_pads[1]);
             if(last_pad2 != low_power_pads[1])
             {
-                if (low_power_pads[1]) 
+                if ((low_power_pads[1]) && (!full_power_pads[1]))
                 {   
                     if (off)
                     {
@@ -454,7 +455,7 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
         case 3:
             if(last_pad3 != low_power_pads[2])
             {
-                if (low_power_pads[2]) 
+                if ((low_power_pads[2]) && (!full_power_pads[2]))
                 {
                     if (off)
                     {
@@ -474,7 +475,7 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
         case 4:
             if(last_pad4 != low_power_pads[3])
             {
-                if (low_power_pads[3]) 
+                if ((low_power_pads[3]) && (!full_power_pads[3]))
                 {
                     if (off)
                     {
@@ -771,13 +772,6 @@ static void ble_central_CRU_task_handle(void *arg)
 
     peer->localization_process = false;
     count = 0;
-
-    //discard pad which are already on!
-    uint8_t size = peer_get_NUM_AUX_CTU();
-    uint8_t pads_already_on[size];
-    memset(pads_already_on, 0, size);
-
-    get_pads_already_on(pads_already_on);
     
     /* WPT task loop */
     while (1)

@@ -344,14 +344,8 @@ void CTU_periodic_pad_switch(void *arg)
 {
     //number of pads
     uint8_t size = peer_get_NUM_AUX_CTU();
-    //uint8_t size = 2;
-    uint8_t pads_already_on[size];
-    memset(pads_already_on, 0, size);
 
-
-    get_pads_already_on(pads_already_on);
-
-    //check if the pads is already charging another CRU (pads_already_on) 
+    //check if the pads is already charging another CRU (full_power_pads) 
     //and also if it is already enable in low power mode ( enabled )
                                    
     switch(counter)
@@ -362,12 +356,12 @@ void CTU_periodic_pad_switch(void *arg)
             {
                 counter++;
             } 
-            if (!pads_already_on[0] && !low_power_pads[0])
+            if (!full_power_pads[0] && !low_power_pads[0])
             {
                 low_power_pads[0] = 1;
                 for (uint8_t i=0; i<4; i++)
                 {
-                    if((i!=0) && (!pads_already_on[i]))
+                    if((i!=0) && (!full_power_pads[i]))
                     {
                         low_power_pads[i] = 0;
                     }
@@ -387,12 +381,12 @@ void CTU_periodic_pad_switch(void *arg)
                 {
                     counter = 0;
                 }
-            if(!pads_already_on[1] && !low_power_pads[1])
+            if(!full_power_pads[1] && !low_power_pads[1])
             {
                 low_power_pads[1] = 1;
                 for (uint8_t i=0; i<4; i++)
                 {
-                    if((i!=1) && (!pads_already_on[i]))
+                    if((i!=1) && (!full_power_pads[i]))
                     {
                         low_power_pads[i] = 0;
                     }
@@ -409,12 +403,12 @@ void CTU_periodic_pad_switch(void *arg)
                 {
                     counter = 0;
                 }
-            if(!pads_already_on[2] && !low_power_pads[2])
+            if(!full_power_pads[2] && !low_power_pads[2])
             {
                 low_power_pads[2] = 1;
                 for (uint8_t i=0; i<4; i++)
                 {
-                    if((i!=2) && (!pads_already_on[i]))
+                    if((i!=2) && (!full_power_pads[i]))
                     {
                         low_power_pads[i] = 0;
                     }
@@ -425,12 +419,12 @@ void CTU_periodic_pad_switch(void *arg)
 
         case 3:
             counter = 0;
-            if(!pads_already_on[3] && !low_power_pads[3])
+            if(!full_power_pads[3] && !low_power_pads[3])
             {
                 low_power_pads[3] = 1;
                 for (uint8_t i=0; i<4; i++)
                 {
-                    if((i!=3) && (!pads_already_on[i]))
+                    if((i!=3) && (!full_power_pads[i]))
                     {
                         low_power_pads[i] = 0;
                     }
