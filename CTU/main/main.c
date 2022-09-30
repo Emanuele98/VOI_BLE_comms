@@ -206,6 +206,8 @@ void app_main(void)
 
     //ESP_LOGE(TAG, "RAM 0 left %d", esp_get_minimum_free_heap_size());
 
+    led_strip_install();
+
     /* Runtime function for main context */
-    CTU_states_run();
+    //CTU_states_run();
 }

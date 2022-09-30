@@ -19,15 +19,15 @@ struct timeval tv_start;
 
 #define APP_ADV_INTERVAL                32                                     /**< The advertising interval (in units of 0.625 ms. This value corresponds to 20 ms). */
 
-#define DYNAMIC_PARAM_TIMER_INTERVAL    pdMS_TO_TICKS(500)                      /**< Timer synced to Dynamic parameter characteristic (50 ms). */
-#define ALERT_PARAM_TIMER_INTERVAL      pdMS_TO_TICKS(250)				       /**< Timer synced to Alert parameter characteristic (250 ms). */
+#define DYNAMIC_PARAM_TIMER_INTERVAL    pdMS_TO_TICKS(10)                      /**< Timer synced to Dynamic parameter characteristic (10 ms). */
+#define ALERT_PARAM_TIMER_INTERVAL      pdMS_TO_TICKS(10)				       /**< Timer synced to Alert parameter characteristic (10 ms). */
 
 /* WPT SERVICE BEING ADVERTISED */
 #define WPT_SVC_UUID16                  0xFFFE
 
 static const char* TAG = "MAIN";
 
-int counter = 0;
+static int counter = 0, Temp_counter = 0, Volt_counter = 0, Curr_counter = 0;
 
 
 
@@ -35,6 +35,17 @@ int counter = 0;
 static uint8_t own_addr_type;
 static int bleprph_gap_event(struct ble_gap_event *event, void *arg);
 
+
+void switch_safely_off(void)
+{
+    //disable interfaces
+    disable_full_power_output();
+    disable_low_power_output();
+    //wait
+    vTaskDelay(500 / portTICK_PERIOD_MS);
+    //enable OR gate
+    enable_OR_output();
+}
 
 
 
@@ -73,25 +84,43 @@ void dynamic_param_timeout_handler(void *arg)
     }
 }
 
+// close power interfaces here to add safety redundacy
+// check if the value is greater 10 times (100 ms)
+
 void alert_timeout_handler(void *arg)
 {      
   		// Validate temperature levels
 		if ((dyn_payload.temp1.f > OVER_TEMPERATURE) || (dyn_payload.temp2.f > OVER_TEMPERATURE))
-		{	alert_payload.alert_field.overtemperature = 1;	}
-		else
-		{	alert_payload.alert_field.overtemperature = 0;	}
+		{
+            Temp_counter++;
+            if (Temp_counter > 9)
+            {
+                alert_payload.alert_field.overtemperature = 1;
+                switch_safely_off();
+            } 
+    	}
 
         // Validate voltage levels
 		if (dyn_payload.vrect.f > OVER_VOLTAGE)
-		{	alert_payload.alert_field.overvoltage = 1;	}
-		else
-		{	alert_payload.alert_field.overvoltage = 0;	}
+		{
+            Volt_counter++;
+            if (Volt_counter > 9)
+            {
+                alert_payload.alert_field.overvoltage = 1;
+                switch_safely_off();
+            }	
+        }
 
         // Validate current levels
 		if (dyn_payload.irect.f > OVER_CURRENT)
-		{	alert_payload.alert_field.overcurrent = 1;	}
-		else
-		{	alert_payload.alert_field.overcurrent = 0;	}
+		{
+            Curr_counter++;
+            if (Curr_counter > 9)
+            {
+                alert_payload.alert_field.overcurrent = 1;	
+                switch_safely_off();
+            }
+        }
 
         /* just for TESTING */
         //alert_payload.alert_field.overcurrent = 1;
@@ -216,6 +245,7 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
     case BLE_GAP_EVENT_DISCONNECT:
 
         ESP_LOGI(TAG, "disconnect; reason=%d ", event->disconnect.reason);
+
         /* Stop timers */
         if (xTimerIsTimerActive(dynamic_t_handle) == pdTRUE)
         {
@@ -226,13 +256,10 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
             xTimerStop(alert_t_handle, 10);
         }
 
-        //! close power interfaces
-        disable_full_power_output();
-        disable_low_power_output();
-        //wait
-        vTaskDelay(500 / portTICK_PERIOD_MS);
-        //enable OR gate
-        enable_OR_output();
+        switch_safely_off();
+
+        // reset alerts counters
+        Temp_counter = Volt_counter = Curr_counter = 0;
 
         /* Connection terminated; resume advertising. */
         bleprph_advertise();
@@ -306,10 +333,15 @@ static void host_ctrl_on_sync(void)
     }
 
     /* Printing ADDR */
-    uint8_t addr_val[6] = {0};
-    rc = ble_hs_id_copy_addr(own_addr_type, addr_val, NULL);
-    ESP_LOGI(TAG, "Device Address: \n ");
-    ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x \n", addr_val[5], addr_val[4], addr_val[3], addr_val[2], addr_val[1], addr_val[0]);
+    //uint8_t addr_val[6] = {0};
+    //rc = ble_hs_id_copy_addr(own_addr_type, addr_val, NULL);
+    //ESP_LOGI(TAG, "Device Address: \n ");
+    //ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x \n", addr_val[5], addr_val[4], addr_val[3], addr_val[2], addr_val[1], addr_val[0]);
+
+    //uint8_t mac[6] = {0};
+    //esp_efuse_mac_get_default(mac);
+    //ESP_LOGI(TAG, "MAC Address: \n ");
+    //ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x \n", mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
 
     /* Begin advertising. */
     bleprph_advertise();
@@ -325,10 +357,6 @@ void init_sw_timers(void)
     // Create timers
     dynamic_t_handle = xTimerCreate("dynamic params", DYNAMIC_PARAM_TIMER_INTERVAL, pdTRUE, NULL, dynamic_param_timeout_handler);
     alert_t_handle = xTimerCreate("alert", ALERT_PARAM_TIMER_INTERVAL, pdTRUE, NULL, alert_timeout_handler);
-
-    /*uncomment to test the I2C without the need of being connected to the central unit */
-    //xTimerStart(dynamic_t_handle, 0);
-
 
     if ((dynamic_t_handle == NULL) || (alert_t_handle == NULL))
     {
@@ -374,13 +402,9 @@ void init_hw(void)
     //configure GPIO with the given settings
     gpio_config(&io_conf);
 
-    //disable power interfaces
-    disable_full_power_output();
-    disable_low_power_output();
-    //wait
-    vTaskDelay(500 / portTICK_PERIOD_MS);
-    //enable OR gate
-    enable_OR_output();
+    //todo: add FOD detection
+
+    switch_safely_off();
 }
 
 /** 
@@ -450,6 +474,9 @@ void app_main(void)
     init_setup();
 
     gettimeofday(&tv_start, NULL);
+
+    /*uncomment to test the I2C without the need of being connected to the central unit */
+    //xTimerStart(dynamic_t_handle, 0);
 
 /*
     while(1){

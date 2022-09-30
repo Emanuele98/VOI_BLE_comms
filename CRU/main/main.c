@@ -16,16 +16,17 @@
 
 #define APP_ADV_INTERVAL                32                                     /**< The advertising interval (in units of 0.625 ms. This value corresponds to 20 ms). */
 
-#define DYNAMIC_PARAM_TIMER_INTERVAL    pdMS_TO_TICKS(50)                    /**< Timer synced to Dynamic parameter characteristic (50 ms). */
-#define ALERT_PARAM_TIMER_INTERVAL      pdMS_TO_TICKS(250)				       /**< Timer synced to Alert parameter characteristic (250 ms). */
+#define DYNAMIC_PARAM_TIMER_INTERVAL    pdMS_TO_TICKS(10)                    /**< Timer synced to Dynamic parameter characteristic (50 ms). */
+#define ALERT_PARAM_TIMER_INTERVAL      pdMS_TO_TICKS(30)				       /**< Timer synced to Alert parameter characteristic (250 ms). */
 
 #define WPT_SVC_UUID16               0xFFFE
 
 static const char* TAG = "MAIN";
 
-int counter = 0;
+static int counter = 0, Temp_counter = 0, Volt_counter = 0, Curr_counter = 0, ChargeComp_counter = 0;
 
-
+int i2c_master_port;
+i2c_config_t conf;
 
 //nimBLE
 static uint8_t own_addr_type;
@@ -69,27 +70,52 @@ static void alert_timeout_handler(void *arg)
 {      
   		// Validate temperature levels
 		if (dyn_payload.temp1.f > OVER_TEMPERATURE)
-		{	alert_payload.alert_field.overtemperature = 1;	}
-		else
-		{	alert_payload.alert_field.overtemperature = 0;	}
+        {
+            Temp_counter++;
+            ESP_LOGI(TAG, "OVER TEMPERATURE");
+            if (Temp_counter > 19)
+            {
+                ESP_LOGE(TAG, "OVER TEMPERATURE");
+                alert_payload.alert_field.overtemperature = 1;
+            } 
+    	}
 
         // Validate voltage levels
 		if (dyn_payload.vrect.f > OVER_VOLTAGE)
-		{	alert_payload.alert_field.overvoltage = 1;	}
-		else
-		{	alert_payload.alert_field.overvoltage = 0;	}
+		{
+            Volt_counter++;
+            ESP_LOGI(TAG, "OVER VOLTAGE");
+            if (Volt_counter > 19)
+            {
+                ESP_LOGE(TAG, "OVER VOLTAGE");
+                alert_payload.alert_field.overvoltage = 1;
+            }	
+        }
 
         // Validate current levels
 		if (dyn_payload.irect.f > OVER_CURRENT)
-		{	alert_payload.alert_field.overcurrent = 1;	}
-		else
-		{	alert_payload.alert_field.overcurrent = 0;	}
+		{
+            Curr_counter++;
+            ESP_LOGI(TAG, "OVER CURRENT");
+            if (Curr_counter > 19)
+            {
+                ESP_LOGE(TAG, "OVER CURRENT");
+                alert_payload.alert_field.overcurrent = 1;	
+            }
+        }
 
         //validate whether the battery is charged
         if ((dyn_payload.vrect.f > VOLTAGE_FULL_THRESH) && (dyn_payload.irect.f < CURRENT_THRESH))
-        {   alert_payload.alert_field.charge_complete = 1;  }
-        else
-        {   alert_payload.alert_field.charge_complete = 0;  }
+        {   
+            ChargeComp_counter++;
+            ESP_LOGI(TAG, "CHARGE COMPLETE");
+            if (ChargeComp_counter > 99)
+            {
+                ESP_LOGE(TAG, "CHARGE COMPLETE");
+                alert_payload.alert_field.charge_complete = 1;
+            }
+        }
+
 
         //simulate alert situation
         //alert_payload.alert_field.charge_complete = 1;
@@ -175,6 +201,25 @@ static void bleprph_advertise(void)
     }
 }
 
+/** 
+ * @brief Initialization function for hardware
+ * @details This init function serves for initialization as well as
+ *          configuration of I2C Master interface
+ *          
+*/
+void init_hw(void)
+{
+    i2c_master_port = I2C_MASTER_NUM;
+    conf.mode = I2C_MODE_MASTER;
+    conf.sda_io_num = I2C_MASTER_SDA_IO;
+    conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
+    conf.scl_io_num = I2C_MASTER_SCL_IO;
+    conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
+    conf.master.clk_speed = I2C_MASTER_FREQ_HZ;
+    i2c_param_config(i2c_master_port, &conf);
+    i2c_driver_install(i2c_master_port, conf.mode, I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE, 0);
+}
+
 /**
  * The nimble host executes this callback when a GAP event occurs.  The
  * application associates a GAP event callback with each connection that forms.
@@ -197,6 +242,9 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
 
     switch (event->type) {
     case BLE_GAP_EVENT_CONNECT:
+        /* I2C driver install */
+        init_hw();
+
         /* A new connection was established or a connection attempt failed. */
         ESP_LOGI(TAG, "connection %s; status=%d ",
                     event->connect.status == 0 ? "established" : "failed",
@@ -213,6 +261,8 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
         return 0;
 
     case BLE_GAP_EVENT_DISCONNECT:
+        /* I2C driver disinstall */
+        i2c_driver_delete(i2c_master_port);
 
         ESP_LOGI(TAG, "disconnect; reason=%d ", event->disconnect.reason);
         /* Stop timers */
@@ -224,6 +274,10 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
         {
             xTimerStop(alert_t_handle, 10);
         }
+
+        // reset alerts counters
+        Temp_counter = Volt_counter = Curr_counter = ChargeComp_counter = 0 ;
+
         /* Connection terminated; resume advertising. */
         bleprph_advertise();
         return 0;
@@ -316,38 +370,11 @@ void init_sw_timers(void)
     dynamic_t_handle = xTimerCreate("dynamic params", DYNAMIC_PARAM_TIMER_INTERVAL, pdTRUE, NULL, dynamic_param_timeout_handler);
     alert_t_handle = xTimerCreate("alert", ALERT_PARAM_TIMER_INTERVAL, pdTRUE, NULL, alert_timeout_handler);
 
-    xTimerStart(dynamic_t_handle, 0);
-
-
     if ((dynamic_t_handle == NULL) || (alert_t_handle == NULL))
     {
         ESP_LOGW(TAG, "Timers were not created successfully");
         return;
     }
-
-}
-
-/** 
- * @brief Initialization function for hardware
- * @details This init function serves for initialization as well as
- *          configuration of I2C Master interface
- *          
-*/
-void init_hw(void)
-{
-    esp_err_t err_code;
-
-    int i2c_master_port = I2C_MASTER_NUM;
-    i2c_config_t conf;
-    conf.mode = I2C_MODE_MASTER;
-    conf.sda_io_num = I2C_MASTER_SDA_IO;
-    conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
-    conf.scl_io_num = I2C_MASTER_SCL_IO;
-    conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
-    conf.master.clk_speed = I2C_MASTER_FREQ_HZ;
-    i2c_param_config(i2c_master_port, &conf);
-    err_code =  i2c_driver_install(i2c_master_port, conf.mode, I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE, 0);
-    ESP_ERROR_CHECK(err_code);
 }
 
 /** 
@@ -361,7 +388,7 @@ void init_setup(void)
     init_sw_timers();
     
     /* Initialize GPIOs and other hardware peripherals (I2C) */
-    init_hw();
+    //init_hw();
 
     /* Initialize I2C semaphore */
     i2c_sem = xSemaphoreCreateMutex();
@@ -407,4 +434,6 @@ void app_main(void)
     /* Initialize all elements of CRU (timers and I2C)*/
     init_setup();   
 
+    /* just for testing I2C */
+    //xTimerStart(dynamic_t_handle, 0);
 }

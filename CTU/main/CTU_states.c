@@ -171,16 +171,16 @@ static void CTU_configuration_state(void *arg)
 
 
     /* Enter low power state only when the A-CTUs are connected */
-/*
-    if(peer_get_NUM_AUX_CTU() == 2) {
+
+    if(peer_get_NUM_AUX_CTU() == 3) {
         CTU_state_change(CTU_LOW_POWER_STATE, NULL);
     }
-*/
 
+/*
     if (peer_get_NUM_AUX_CTU()+peer_get_NUM_CRU()) {
         CTU_state_change(CTU_LOW_POWER_STATE, NULL);
     }
-
+*/
 }
 
 /**
@@ -235,21 +235,24 @@ static void CTU_local_fault_state(void *arg)
     }       
 
     //disconnect from the Auxiliary CTU
+    peer->error = 5;
     ble_central_kill_AUX_CTU(peer->task_handle, peer->sem_handle, peer->conn_handle);
 
     //if no A-CTU connected anymore --> reset BLE stack and go back to configuration state
+/*
     if (peer_get_NUM_AUX_CTU() == 0)
     {
-        /* Stop all tasks and all timers currently running */
+        // Stop all tasks and all timers currently running
         ble_central_kill_all_AUX_CTU();
         CTU_states_stop_timers();
 
-        /* Idle until BLE stack resets */
+        // Idle until BLE stack resets
         CTU_state_change(NULL_STATE,NULL);
         
-        /* Reset BLE stack */
+        // Reset BLE stack
         ble_hs_sched_reset(BLE_HS_EAPP);
     }
+*/
 }
 
 /** 
@@ -282,8 +285,10 @@ static void CTU_remote_fault_state(void *arg)
     latching_fault_count++;
     if (peer->alert_payload.alert_field.overcurrent +
         peer->alert_payload.alert_field.overvoltage +
-        peer->alert_payload.alert_field.overtemperature > 0)
+        peer->alert_payload.alert_field.overtemperature +
+        peer->alert_payload.alert_field.charge_complete > 0)
     {
+        peer->error = 5;
         ble_central_kill_CRU(peer->task_handle, peer->sem_handle, peer->conn_handle);
 
         /* Wait for alert to resolve by itself */

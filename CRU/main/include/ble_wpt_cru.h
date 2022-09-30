@@ -66,7 +66,7 @@ wpt_ptu_static_payload_t _value4_name;
 
 // XXX_CHAR_SIZE characteristic sizes.
 #define PTU_STATIC_CHAR_SIZE                                   17
-#define PRU_STATIC_CHAR_SIZE                                   20
+#define PRU_STATIC_CHAR_SIZE                                   6
 #define PRU_DYNAMIC_CHAR_SIZE                                  18
 #define ALERT_CHAR_SIZE                                         1
 
@@ -74,18 +74,9 @@ wpt_ptu_static_payload_t _value4_name;
 /*******************************************************************/
 /**                   LOCAL PRU CONFIGURATIONS                    **/
 /*******************************************************************/
-
-#define OPTIONAL_FIELDS_STAT            0x00                                   /**< Optional fields requiered. */
-#define PROTOCOL_REVISION               0x00                                   /**< Protocol revision of PRU. */
-#define PRU_CATEGORY                    0x00                                   /**< Category of PRU. */
-#define PRU_INFORMATION                 0x00                                   /**< Information relative to PRU setup. */
-#define PRU_HARD_REVISION               0x00                                   /**< Hardware revision of PRU. */
-#define PRU_FIRM_REVISION               0x00                                   /**< Firmware revision of PRU. */
-#define PRECT_MAXIMUM                   0x00                                   /**< Maximum Prect allowed for PRU. */
-
-//*LIMITS BEFORE SENDING ALERTS
-#define OVER_CURRENT                    0.7									   /**< Maximum current tolerated */
-#define OVER_VOLTAGE                    170 	                               /**< Maximum voltage tolerated */
+//LIMITS BEFORE SENDING ALERTS
+#define OVER_CURRENT                    0.85								   /**< Maximum current tolerated */
+#define OVER_VOLTAGE                    180 	                               /**< Maximum voltage tolerated */
 #define OVER_TEMPERATURE                50									   /**< Maximum temperature tolerated */
 /*Voltage treshold during FULL-POWER mode */
 #define VOLTAGE_FULL_THRESH 110
@@ -112,22 +103,14 @@ typedef struct
 /** @brief Dynamic characteristic structure. This contains elements necessary for static payload. */
 typedef struct
 {
-    uint8_t           optional_fields;    /**< [mandatory] Defines which optional fields are populated (1 byte). */
-    uint8_t           protocol_rev;       /**< [mandatory] Airfuel resonantsupported revision (1 bytes). */
-    uint8_t           RFU1;				  /**< [N/A] Reserved for future use (1 bytes). */
-	uint8_t		      pru_cat;            /**< [mandatory] Category of PRU (according to Airfuel) (1 bytes). */
-	uint8_t           pru_info;           /**< [mandatory] Information regarding capabilities of PRU (1 bytes). */
-    uint8_t           hard_rev;           /**< [mandatory] Hardware revision for PRU (1 bytes). */
-    uint8_t           firm_rev;           /**< [mandatory] Firmware revision for PRU (1 bytes). */
-    uint8_t           prect_max;          /**< [mandatory] Indicates how much power to provide to PRU (1 bytes). */
-    uint16_t          vrect_min_stat;     /**< [mandatory] Lowest Vrect value restriction (2 bytes). */
-	uint16_t	      vrect_high_stat;	  /**< [mandatory] Highest Vrect value restriction (2 byte). */
-	uint16_t	      vrect_set;          /**< [mandatory] Set the desired voltage output for Vrect value (2 byte). */
-	uint16_t		  company_id;	      /**< [optional] Company ID for PRU (2 byte). */
-	uint32_t	      RFU2;		          /**< [N/A] Reserved for future use (4 byte). */
+    uint8_t           mac_0;    /**< [mandatory] MAC address field 0 (1 byte). */
+    uint8_t           mac_1;    /**< [mandatory] MAC address field 1 (1 byte). */
+    uint8_t           mac_2;    /**< [mandatory] MAC address field 2 (1 byte). */
+    uint8_t           mac_3;    /**< [mandatory] MAC address field 3 (1 byte). */
+    uint8_t           mac_4;    /**< [mandatory] MAC address field 4 (1 byte). */
+    uint8_t           mac_5;    /**< [mandatory] MAC address field 5 (1 byte). */
 } wpt_static_payload_t;
 
-//todo: implement charge_complete and wired_charger
 /**@brief Alert characteristic structure. This contains elements necessary for alert payload. */
 typedef union
 {

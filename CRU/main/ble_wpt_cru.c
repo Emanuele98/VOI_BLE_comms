@@ -147,6 +147,12 @@ static int gatt_svr_chr_write_ptu_static(uint16_t conn_handle, uint16_t attr_han
     xTimerStart(dynamic_t_handle, 0);
     xTimerStart(alert_t_handle, 0);
 
+    //set alert values to initial state 0
+    alert_payload.alert_field.overtemperature = 0; 
+    alert_payload.alert_field.overvoltage = 0;
+    alert_payload.alert_field.overcurrent = 0;
+    alert_payload.alert_field.charge_complete = 0;
+
     return err_code;
 
 }
@@ -161,45 +167,24 @@ static int gatt_svr_chr_read_peer_static(uint16_t conn_handle, uint16_t attr_han
     int err_code ;
 
     //INIT STATIC PAYLOAD 
-    static_payload.optional_fields = OPTIONAL_FIELDS_STAT;
-	static_payload.protocol_rev = PROTOCOL_REVISION;
-	static_payload.pru_cat = PRU_CATEGORY;
-	static_payload.pru_info = PRU_INFORMATION;
-	static_payload.hard_rev = PRU_HARD_REVISION;
-	static_payload.firm_rev = PRU_FIRM_REVISION;
-	static_payload.prect_max = PRECT_MAXIMUM;
+    uint8_t mac[6] = {0};
+    esp_efuse_mac_get_default(mac);
+    ESP_LOGI(TAG, "MAC Address: \n ");
+    ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x \n", mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
 
-    //IDENTIFICATION OF CRU
-    //*1
-    uint16_t identification = 1;
-    //*2
-    //uint16_t identification = 2;
-    //*3
-    //uint16_t identification = 3;
-    //*4
-    //uint16_t identification = 4;
-    
-	static_payload.company_id = identification;
+    static_payload.mac_0 = mac[0];
+    static_payload.mac_1 = mac[1];
+    static_payload.mac_2 = mac[2];
+    static_payload.mac_3 = mac[3];
+    static_payload.mac_4 = mac[4];
+    static_payload.mac_5 = mac[5];
 
-    unsigned char *rfu_p = (unsigned char*)&static_payload.RFU2;
-
-    uint8_t data[PRU_STATIC_CHAR_SIZE] = {static_payload.optional_fields,
-    											static_payload.protocol_rev,
-                                                static_payload.RFU1,
-											    static_payload.pru_cat,
-											    static_payload.pru_info,
-											    static_payload.hard_rev,
-											    static_payload.firm_rev,
-											    static_payload.prect_max,
-											    static_payload.vrect_min_stat >> 8,
-											    static_payload.vrect_min_stat & 0x00FF,
-											    static_payload.vrect_high_stat >> 8,
-											    static_payload.vrect_high_stat & 0x00FF,
-											    static_payload.vrect_set >> 8,
-											    static_payload.vrect_set & 0x00FF,
-											    static_payload.company_id >> 8,
-											    static_payload.company_id & 0x00FF,
-											    rfu_p[0],rfu_p[1],rfu_p[2],rfu_p[3]}; // 20 bytes of data
+    uint8_t data[PRU_STATIC_CHAR_SIZE] = { static_payload.mac_0,
+                                           static_payload.mac_1,
+                                           static_payload.mac_2,
+                                           static_payload.mac_3,
+                                           static_payload.mac_4,
+                                           static_payload.mac_5 }; // 6 bytes of data
                                                 
     err_code = os_mbuf_append(ctxt->om, &data,
                         sizeof data);

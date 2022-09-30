@@ -544,31 +544,32 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
     // Check the charge has actually started (during the first 3 seconds) -- kind of double check on the localization algorithm
     gettimeofday(&tv_stop, NULL);
     time_sec = tv_stop.tv_sec - tv_loc.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_loc.tv_usec);
-    if ( time_sec < 5 )
+    if ( time_sec < 10 )
     {
         if(peer->dyn_payload.vrect.f > VOLTAGE_FULL_THRESH)
         {
+            //todo: need different variables for each pad?
             correct = true;
         }
     }
 
     if ((!correct) && (time_sec > 5 ))
     {
-        ESP_LOGE(TAG, "Voltage not received during the first 3s! --> LOCALIZATION ALGORITHM FAILED");
+        ESP_LOGE(TAG, "Voltage not received during the first 5s! --> LOCALIZATION ALGORITHM FAILED");
         peer->error = 5;
         ble_central_kill_CRU(peer->task_handle, peer->sem_handle, peer->conn_handle);
         return 1;
     }
 
     //DOUBLE CHECK THE IT IS STILL RECEIVING VOLTAGE: this if-clause is triggered during the transistion from high to low received voltage
-    if ((peer->dyn_payload.vrect.f < VOLTAGE_FULL_THRESH) && (peer->Vlast > VOLTAGE_FULL_THRESH))
+    if ((peer->dyn_payload.vrect.f < VOLTAGE_FULL_THRESH) && (correct))
     {
+        correct = false;
         ESP_LOGE(TAG, "Voltage no longer received! --> SCOOTER WAS MOVED");
         peer->error = 5;
         ble_central_kill_CRU(peer->task_handle, peer->sem_handle, peer->conn_handle);
         return 1;
     }
-    peer->Vlast = peer->dyn_payload.vrect.f;
 
     return 0;
 }
@@ -772,6 +773,7 @@ static void ble_central_CRU_task_handle(void *arg)
 
     peer->localization_process = false;
     count = 0;
+    correct = false;
     
     /* WPT task loop */
     while (1)
@@ -880,7 +882,6 @@ static int ble_central_wpt_start(uint16_t conn_handle, void *arg)
         return 0;
     }
 
-    peer->Vlast = 0;
     peer->error = 0;
 
     TaskHandle_t task_handle;
@@ -1327,7 +1328,7 @@ static int ble_central_should_connect(const struct ble_gap_disc_desc *disc)
             if(fields.appearance == 1) {
                 return 1;
             } /* ALLOW CONNECTION TO CRU ONLY AFTER AT LEAST ONE SUCCESSFULL CONNECTION TO A-CTU */
-            else if((fields.appearance == 2) && (peer_get_NUM_AUX_CTU() > 0)) {
+            else if((fields.appearance == 2) && (peer_get_NUM_AUX_CTU() > 2)) {
                 return 2;
             }
         }
@@ -1573,18 +1574,18 @@ static void ble_central_unpack_AUX_CTU_alert_param(struct os_mbuf* om, uint16_t 
 
         if(peer->alert_payload.alert_field.overvoltage)
         {
-            ESP_LOGW(TAG, "ALERT -- OVERVOLTAGE");
-            CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
+            ESP_LOGW(TAG, "ALERT -- OVERVOLTAGE -- aux ctu position %d", peer->position);
+            //CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
         } else if(peer->alert_payload.alert_field.overcurrent)
             {
-                ESP_LOGW(TAG, "ALERT -- OVERCURRENT");
-                CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
+                ESP_LOGW(TAG, "ALERT -- OVERCURRENT -- aux ctu position %d", peer->position);
+                //CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
             } else if(peer->alert_payload.alert_field.overtemperature)
                 {
-                    ESP_LOGW(TAG, "ALERT -- OVERTEMPERATURE");
-                    CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
+                    ESP_LOGW(TAG, "ALERT -- OVERTEMPERATURE -- aux ctu position %d", peer->position);
+                    //CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
                 }
-        vTaskDelay(50);
+        //vTaskDelay(50);
     }
 }
 
@@ -1603,23 +1604,22 @@ static void ble_central_unpack_CRU_alert_param(struct os_mbuf* om, uint16_t conn
 
         if(peer->alert_payload.alert_field.overvoltage)
         {
-            ESP_LOGW(TAG, "ALERT -- OVERVOLTAGE");
+            ESP_LOGW(TAG, "ALERT -- OVERVOLTAGE -- cru");
             CTU_state_change(CTU_REMOTE_FAULT_STATE, (void *)peer);
         } else if(peer->alert_payload.alert_field.overcurrent)
             {
-                ESP_LOGW(TAG, "ALERT -- OVERCURRENT");
+                ESP_LOGW(TAG, "ALERT -- OVERCURRENT -- cru");
                 CTU_state_change(CTU_REMOTE_FAULT_STATE, (void *)peer);
             } else if(peer->alert_payload.alert_field.overtemperature)
                 {
-                    ESP_LOGW(TAG, "ALERT -- OVERTEMPERATURE");
+                    ESP_LOGW(TAG, "ALERT -- OVERTEMPERATURE -- cru");
                     vTaskDelay(1000*120); //wait 2 additional minute
                     CTU_state_change(CTU_REMOTE_FAULT_STATE, (void *)peer);
                 }  else if (peer->alert_payload.alert_field.charge_complete)
                     {
-                        ESP_LOGW(TAG, "CHARGE COMPLETE");
+                        ESP_LOGE(TAG, "CHARGE COMPLETE");
                         //Disconnect and wait for a while
-                        //todo: remote fault state?
-                        ble_central_kill_CRU(peer->task_handle, peer->sem_handle, peer->conn_handle);
+                        CTU_state_change(CTU_REMOTE_FAULT_STATE, (void *)peer);
                         if ((!CTU_is_charging()) && (m_CTU_task_param.state != CTU_LOW_POWER_STATE))
                         {
                             CTU_state_change(CTU_LOW_POWER_STATE, NULL);
@@ -1636,48 +1636,40 @@ static void ble_central_unpack_static_param(const struct ble_gatt_attr *attr, ui
 
     if (peer!=NULL)
     {
-        /* Single byte values (bytes 1 through 8) */
-        peer->stat_payload.optional_fields = attr->om->om_data[0];
-        peer->stat_payload.protocol_rev = attr->om->om_data[1];
-        peer->stat_payload.RFU1 = attr->om->om_data[2];
-        peer->stat_payload.CRU_cat = attr->om->om_data[3];
-        peer->stat_payload.CRU_info = attr->om->om_data[4];
-        peer->stat_payload.hard_rev = attr->om->om_data[5];
-        peer->stat_payload.firm_rev = attr->om->om_data[6];
-        peer->stat_payload.prect_max = attr->om->om_data[7];
-
-        /* Double byte values (bytes 9 through 16) */
-        peer->stat_payload.vrect_min_stat = attr->om->om_data[8];
-        peer->stat_payload.vrect_min_stat <<= 8;
-        peer->stat_payload.vrect_min_stat += attr->om->om_data[9] & 0xFF;
-
-        peer->stat_payload.vrect_high_stat = attr->om->om_data[10];
-        peer->stat_payload.vrect_high_stat <<= 8;
-        peer->stat_payload.vrect_high_stat += attr->om->om_data[11] & 0xFF;
-
-        peer->stat_payload.vrect_set = attr->om->om_data[12];
-        peer->stat_payload.vrect_set <<= 8;
-        peer->stat_payload.vrect_set += attr->om->om_data[13] & 0xFF;
-    
-        peer->stat_payload.company_id = attr->om->om_data[14];
-        peer->stat_payload.company_id <<= 8;
-        peer->stat_payload.company_id += attr->om->om_data[15] & 0xFF;
-
-        /* Quadruple byte value of RFU (bytes 17 through 20) */
-        peer->stat_payload.RFU2 = attr->om->om_data[18];
-        peer->stat_payload.RFU2 <<= 8;
-        peer->stat_payload.RFU2 += attr->om->om_data[19] & 0xFFFF;
-        peer->stat_payload.RFU2 <<= 8;
-        peer->stat_payload.RFU2 += attr->om->om_data[20] & 0xFFFF;
-        peer->stat_payload.RFU2 <<= 8;
-        peer->stat_payload.RFU2 += attr->om->om_data[21] & 0xFFFF;
-        //ESP_LOGI(TAG, "CRU STATIC PARAM: Vrect Min = %d    /    Vrect High = %d    /    Vrect Set = %d", 
-        //         peer->stat_payload.vrect_min_stat, peer->stat_payload.vrect_high_stat, peer->stat_payload.vrect_set);
+        peer->stat_payload.mac_0 = attr->om->om_data[0];
+        peer->stat_payload.mac_1 = attr->om->om_data[1];
+        peer->stat_payload.mac_2 = attr->om->om_data[2];
+        peer->stat_payload.mac_3 = attr->om->om_data[3];
+        peer->stat_payload.mac_4 = attr->om->om_data[4];
+        peer->stat_payload.mac_5 = attr->om->om_data[5];
     }
 
+    //ASSIGN CORRECT POSITION OF A-CTU USING THEIR MAC ADDRESSES
     if(!peer->CRU)
     {
-        peer->position = peer->stat_payload.company_id;
+        if ((peer->stat_payload.mac_5 == 0x70) && (peer->stat_payload.mac_4 == 0x81) && (peer->stat_payload.mac_3 == 0x24) 
+            && (peer->stat_payload.mac_2 == 0xfb) && (peer->stat_payload.mac_1 == 0x0b) && (peer->stat_payload.mac_0 == 0xac))
+        {
+            peer->position = 1;
+
+        } else if ((peer->stat_payload.mac_5 == 0x84) && (peer->stat_payload.mac_4 == 0x68) && (peer->stat_payload.mac_3 == 0x24) 
+                   && (peer->stat_payload.mac_2 == 0xfb) && (peer->stat_payload.mac_1 == 0x0b) && (peer->stat_payload.mac_0 == 0xac))
+            {
+                peer->position = 2;
+
+            } else if ((peer->stat_payload.mac_5 == 0x44) && (peer->stat_payload.mac_4 == 0x0b) && (peer->stat_payload.mac_3 == 0x27) 
+                       && (peer->stat_payload.mac_2 == 0xfb) && (peer->stat_payload.mac_1 == 0x0b) && (peer->stat_payload.mac_0 == 0xac))
+                {
+                    peer->position = 3;
+
+                } else if ((peer->stat_payload.mac_5 == 0x98) && (peer->stat_payload.mac_4 == 0xbb) && (peer->stat_payload.mac_3 == 0x25) 
+                           && (peer->stat_payload.mac_2 == 0xfb) && (peer->stat_payload.mac_1 == 0x0b) && (peer->stat_payload.mac_0 == 0xac))
+                    {
+                        peer->position = 4;
+                
+                    } else {
+                            peer->position = 0;
+                            }
         ESP_LOGI(TAG, "AUX-CTU POSITION = %d", peer->position);
     }
 }
