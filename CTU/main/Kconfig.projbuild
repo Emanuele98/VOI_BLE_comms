@@ -60,7 +60,7 @@ menu "CTU Static Configuration"
             Specification on page 79 of BSS -A v1.00.
     config CTU_STATIC_MAX_DEVICES
         hex "Max number of devices"
-        default 0x01
+        default 9
         help
             Enter the AFA specific maximal number of devices for the
             CTU static characteristic. The default number of peers is 1.

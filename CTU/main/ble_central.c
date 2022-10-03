@@ -12,6 +12,7 @@
 #define TASK_STACK_SIZE   2000
 #define TASK_PRIORITY     16
 
+//todo: remove most of them
 /* NVS fields that have to be set at boot */
 const char ch_arr[N_CTU_PARAMS][MAX_N_CHAR_IN_CONFIG] = {
     "optional fields",
@@ -33,6 +34,7 @@ uint8_t last_pad1 = 0, last_pad2 = 0, last_pad3 = 0, last_pad4 = 0;
 
 //defined in main.c 
 extern struct timeval tv_start;
+extern led_strip_t* strip;
 
 //timer
 struct timeval tv_loc;
@@ -44,12 +46,6 @@ bool off = true;
 
 //variable to know which pad is actually on in Low Power mode
 uint8_t current_low_power = 0;
-
-//check the full charge actually charge
-bool correct = false;
-
-
-
 
 /* Debug tag */
 static const char* TAG = "BLE_CENTRAL";
@@ -354,8 +350,8 @@ static int ble_central_on_localization_process(uint16_t conn_handle,
         low_power_pads[3] = low_power_pads[2] = low_power_pads[1] = low_power_pads[0] = 0;
         full_power_pads[Aux_CTU->position-1] = 1;
         ble_central_update_control_enables(1, 1, 1, Aux_CTU);
-        
-        gettimeofday(&tv_loc, NULL);
+
+        gettimeofday(&tv_loc, NULL);      
 
         if (is_peer_alone())
         {
@@ -544,28 +540,38 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
     // Check the charge has actually started (during the first 3 seconds) -- kind of double check on the localization algorithm
     gettimeofday(&tv_stop, NULL);
     time_sec = tv_stop.tv_sec - tv_loc.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_loc.tv_usec);
-    if ( time_sec < 10 )
+    if ( time_sec < 5 )
     {
         if(peer->dyn_payload.vrect.f > VOLTAGE_FULL_THRESH)
         {
-            //todo: need different variables for each pad?
-            correct = true;
+            peer->correct = true;
         }
-    }
+    } 
 
-    if ((!correct) && (time_sec > 5 ))
+    if ((!peer->correct) && (time_sec > 5 ))
     {
-        ESP_LOGE(TAG, "Voltage not received during the first 5s! --> LOCALIZATION ALGORITHM FAILED");
+        ESP_LOGE(TAG, "Voltage not received during the first 5s!");
         peer->error = 5;
         ble_central_kill_CRU(peer->task_handle, peer->sem_handle, peer->conn_handle);
         return 1;
     }
 
-    //DOUBLE CHECK THE IT IS STILL RECEIVING VOLTAGE: this if-clause is triggered during the transistion from high to low received voltage
-    if ((peer->dyn_payload.vrect.f < VOLTAGE_FULL_THRESH) && (correct))
+    //MISALIGNMENT CHECK
+    if(peer->dyn_payload.vrect.f < VOLTAGE_MIS_THRESH )
     {
-        correct = false;
-        ESP_LOGE(TAG, "Voltage no longer received! --> SCOOTER WAS MOVED");
+        //set LED orange
+        set_led(60);
+    } else 
+    {
+        //set LED green
+        set_led(120);
+    }
+
+    //DOUBLE CHECK THE IT IS STILL RECEIVING VOLTAGE
+    if ((peer->dyn_payload.vrect.f < VOLTAGE_FULL_THRESH) && (peer->correct))
+    {
+        peer->correct = false;
+        ESP_LOGE(TAG, "Voltage no longer received! --> SCOOTER LEFT THE PLATFORM");
         peer->error = 5;
         ble_central_kill_CRU(peer->task_handle, peer->sem_handle, peer->conn_handle);
         return 1;
@@ -773,7 +779,7 @@ static void ble_central_CRU_task_handle(void *arg)
 
     peer->localization_process = false;
     count = 0;
-    correct = false;
+    peer->correct = false;
     
     /* WPT task loop */
     while (1)
@@ -1444,6 +1450,8 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
                 ESP_LOGI(TAG, "Connection EVT with CRU");
                 /* Adds CRU to list of connections */
                 rc = peer_add(event->connect.conn_handle, 1);
+                //turn on red
+                set_led(0);
             }
 
             if (rc != ESP_OK)
@@ -1460,7 +1468,6 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
                 peer_delete(event->connect.conn_handle);
                 ESP_LOGE(TAG, "Failed to discover services; rc=%d\n", rc);
             }
-
             break;
         }
         else 
@@ -1487,26 +1494,28 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
             ESP_LOGE(TAG, "CRU");
             peer->error = 5;
             ble_central_kill_CRU(peer->task_handle, peer->sem_handle, event->disconnect.conn.conn_handle);
+            strip->clear(strip, 10);
         } else {
             ESP_LOGE(TAG, "A-CTU in position: %d", peer->position);
         }
 
         peer_delete(event->disconnect.conn.conn_handle);
-        //vTaskDelay(20000); //wait 20 s
 
+        if (peer_get_NUM_AUX_CTU() != 3)
+        {
+            // stop the eventual switching going on
+            //DISABLE localization process timer if it was ongoing
+            if (xTimerIsTimerActive(localization_switch_pads_t_handle) == pdTRUE)
+            {
+                xTimerStop(localization_switch_pads_t_handle, 0);
+            }
+            CTU_state_change(CTU_CONFIG_STATE, NULL);
+        }
     
         if ((peer_get_NUM_AUX_CTU() + peer_get_NUM_CRU()) == 0)
         {
             /* Reinitialize the whole peer structure */
             peer_init(MYNEWT_VAL(BLE_MAX_CONNECTIONS), 64, 64, 64);
-
-            if (m_CTU_task_param.state != CTU_REMOTE_FAULT_STATE ||
-                m_CTU_task_param.state != CTU_LOCAL_FAULT_STATE ||
-                m_CTU_task_param.state != NULL_STATE)
-            {
-                /* Goto the config state */
-                CTU_state_change(CTU_CONFIG_STATE, NULL);
-            }
         }
         break;
 
@@ -1575,17 +1584,20 @@ static void ble_central_unpack_AUX_CTU_alert_param(struct os_mbuf* om, uint16_t 
         if(peer->alert_payload.alert_field.overvoltage)
         {
             ESP_LOGW(TAG, "ALERT -- OVERVOLTAGE -- aux ctu position %d", peer->position);
-            //CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
+            CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
         } else if(peer->alert_payload.alert_field.overcurrent)
             {
                 ESP_LOGW(TAG, "ALERT -- OVERCURRENT -- aux ctu position %d", peer->position);
-                //CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
+                CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
             } else if(peer->alert_payload.alert_field.overtemperature)
                 {
                     ESP_LOGW(TAG, "ALERT -- OVERTEMPERATURE -- aux ctu position %d", peer->position);
-                    //CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
-                }
-        //vTaskDelay(50);
+                    CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
+                } else if(peer->alert_payload.alert_field.FOD)
+                {
+                    ESP_LOGW(TAG, "ALERT -- FOD -- aux ctu position %d", peer->position);
+                    CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
+                } 
     }
 }
 
@@ -1613,7 +1625,8 @@ static void ble_central_unpack_CRU_alert_param(struct os_mbuf* om, uint16_t conn
             } else if(peer->alert_payload.alert_field.overtemperature)
                 {
                     ESP_LOGW(TAG, "ALERT -- OVERTEMPERATURE -- cru");
-                    vTaskDelay(1000*120); //wait 2 additional minute
+                    //use queues instead? check times and use identification
+                    //vTaskDelay(1000*120); //wait 2 additional minute
                     CTU_state_change(CTU_REMOTE_FAULT_STATE, (void *)peer);
                 }  else if (peer->alert_payload.alert_field.charge_complete)
                     {

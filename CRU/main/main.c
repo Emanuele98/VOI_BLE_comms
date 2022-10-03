@@ -109,7 +109,7 @@ static void alert_timeout_handler(void *arg)
         {   
             ChargeComp_counter++;
             ESP_LOGI(TAG, "CHARGE COMPLETE");
-            if (ChargeComp_counter > 99)
+            if (ChargeComp_counter > 999)
             {
                 ESP_LOGE(TAG, "CHARGE COMPLETE");
                 alert_payload.alert_field.charge_complete = 1;

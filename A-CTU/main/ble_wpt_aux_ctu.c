@@ -156,6 +156,8 @@ static int gatt_svr_chr_write_ptu_static(uint16_t conn_handle, uint16_t attr_han
     alert_payload.alert_field.overtemperature = 0; 
     alert_payload.alert_field.overvoltage = 0;
     alert_payload.alert_field.overcurrent = 0;
+    alert_payload.alert_field.FOD = 0;
+    alert_payload.alert_field.charge_complete = 0;
 
     return err_code;
 

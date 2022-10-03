@@ -37,9 +37,11 @@
 #include "esp_sleep.h"
 
 #include "CTU_states.h"
-#include "airfuel_integration.h"
 #include "peer.h"
+#include "driver/rmt.h"
+#include "led_strip.h"
 
+//BLE
 #define N_CHAR_UUIDS                        5
 #define N_BYTES_IN_UUID                     16
 
@@ -67,7 +69,6 @@
 
 #define WPT_SVC_UUID16                      0xFFFE
 
-// XXX_CHAR_SIZE characteristic sizes.
 #define PRU_CONTROL_CHAR_SIZE                                  5
 
 

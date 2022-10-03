@@ -1234,7 +1234,6 @@ int peer_add(uint16_t conn_handle, bool CRU)
             NUM_CRU++;
         } else {
             NUM_AUX_CTU++;
-            //todo: use MAC address for setting the position
             //add position of the pad
             //check nobody else is in the same position before declaring it
          /*   for(int8_t i = 1; i < 5; i++)

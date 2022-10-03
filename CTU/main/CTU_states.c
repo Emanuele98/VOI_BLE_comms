@@ -97,12 +97,26 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
         {
             // Disable power interfaces
             struct peer *peer;
+            low_power_pads[0] = 0;
+            low_power_pads[1] = 0;
+            low_power_pads[2] = 0;
+            low_power_pads[3] = 0;
+            full_power_pads[0] = 0;
+            full_power_pads[1] = 0;
+            full_power_pads[2] = 0;
+            full_power_pads[3] = 0;
 
             SLIST_FOREACH(peer, &peers, next) {
-            if(!peer->CRU)
-            {
-                ble_central_update_control_enables(0, 1, 0, peer);
-            }
+                if(!peer->CRU)
+                {
+                    //set power interfaces to 0
+                    ble_central_update_control_enables(0, 1, 0, peer);
+                    ble_central_update_control_enables(0, 0, 0, peer);
+                } else {
+                    peer->localization_process = false;
+                    //coming from charge_complete
+                    //peer->position = 0;
+                }
             }
 
             m_CTU_task_param.state_fn = CTU_low_power_state;
@@ -129,7 +143,7 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
 
             ESP_LOGI(TAG,"Local Fault State");
         }
-        else if (p_state == CTU_remote_fault_state)
+        else if (p_state == CTU_REMOTE_FAULT_STATE)
         {
             struct peer *peer = (struct peer *)arg;
 
@@ -159,6 +173,7 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
 */
 static void CTU_configuration_state(void *arg)
 {
+    struct peer *peer;
     //set power interfaces to 0
     low_power_pads[0] = 0;
     low_power_pads[1] = 0;
@@ -168,6 +183,13 @@ static void CTU_configuration_state(void *arg)
     full_power_pads[1] = 0;
     full_power_pads[2] = 0;
     full_power_pads[3] = 0;
+
+    SLIST_FOREACH(peer, &peers, next) {
+        if(peer->CRU)
+        {
+            ble_central_kill_CRU(peer->task_handle, peer->sem_handle, peer->conn_handle);
+        }
+    }
 
 
     /* Enter low power state only when the A-CTUs are connected */
@@ -239,7 +261,7 @@ static void CTU_local_fault_state(void *arg)
     ble_central_kill_AUX_CTU(peer->task_handle, peer->sem_handle, peer->conn_handle);
 
     //if no A-CTU connected anymore --> reset BLE stack and go back to configuration state
-/*
+
     if (peer_get_NUM_AUX_CTU() == 0)
     {
         // Stop all tasks and all timers currently running
@@ -252,7 +274,7 @@ static void CTU_local_fault_state(void *arg)
         // Reset BLE stack
         ble_hs_sched_reset(BLE_HS_EAPP);
     }
-*/
+
 }
 
 /** 
@@ -292,7 +314,7 @@ static void CTU_remote_fault_state(void *arg)
         ble_central_kill_CRU(peer->task_handle, peer->sem_handle, peer->conn_handle);
 
         /* Wait for alert to resolve by itself */
-        vTaskDelay(pdMS_TO_TICKS(5000));
+        //vTaskDelay(pdMS_TO_TICKS(5000));
     }
 
     if (latching_fault_count == 3)

@@ -29,11 +29,14 @@
 #define PERIODIC_SCAN_TIMER_PERIOD    (pdMS_TO_TICKS(1000))
 #define PERIODIC_SWITCH_TIMER_PERIOD  (pdMS_TO_TICKS(3000))
 
-/* Voltage treshold during LOW-POWER mode */
+/* Voltage threshold during LOW-POWER mode */
 #define VOLTAGE_LOW_THRESH 30
 
-/*Voltage treshold during FULL-POWER mode */
+/*Voltage threshold during FULL-POWER mode */
 #define VOLTAGE_FULL_THRESH 80
+
+/*Voltage threshold for misalignment check */
+#define VOLTAGE_MIS_THRESH 110
 
 /* Type definition for state task parameters */
 typedef struct CTU_task_params_s CTU_task_params_t;
@@ -121,9 +124,6 @@ volatile CTU_task_params_t m_CTU_task_param;
 
 /* Semaphore used to protect against multiple switching of states simultaneously */
 SemaphoreHandle_t m_set_state_sem;
-/* Semaphore used to protect against I2C reading simultaneously */
-SemaphoreHandle_t i2c_sem;
-
 
 /* Global declaration of latching fault reason */
 CTU_fault_t latching_reason;

@@ -84,6 +84,7 @@ typedef union
 		uint8_t           overtemperature:1;    /**< [mandatory] Defines which optional fields are populated (1 byte). */
 		uint8_t           overcurrent:1;        /**< [mandatory] Defines which optional fields are populated (1 byte). */
 		uint8_t           overvoltage:1;        /**< [mandatory] Defines which optional fields are populated (1 byte). */
+   		uint8_t           FOD:1;        /**< [mandatory] Defines which optional fields are populated (1 byte). */
 	};
 	uint8_t internal;
 } alert_field_t;
@@ -136,6 +137,9 @@ struct peer {
     
     /* bool to detect if localization process is currently going */
     bool localization_process;
+
+    /* bool to check wheter the power is received correctly */
+    bool correct;
 
     /* bool to know whether the peer is a CRU (1) or A-CTU (0) */
     bool CRU;

@@ -229,3 +229,9 @@ void disable_OR_output(void)
     printf("---Time: %f sec\n", time_sec);
     ESP_LOGI(TAG, "DISABLE OR GATE");
 }
+
+void gpio_isr_handler(void* arg)
+{
+    uint32_t gpio_num = (uint32_t) arg;
+    xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
+}

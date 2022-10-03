@@ -7,15 +7,18 @@
 #include "driver/gpio.h"
 #include "esp_log.h"
 #include <sys/time.h>
+#include "freertos/queue.h"
+
 
 
 /* Arbitrary pin values */
 #define FULL_POWER_OUT_PIN           GPIO_NUM_26           /* GPIO26 */
 #define LOW_POWER_OUT_PIN            GPIO_NUM_25           /* GPIO25 */
-//#define OR_GATE                      GPIO_NUM_33           /* GPIO33 */
-#define OR_GATE                      GPIO_NUM_15           /* GPIO15 */
+#define OR_GATE                      GPIO_NUM_33           /* GPIO33 */
+#define GPIO_OUTPUT_PIN_SEL          ((1ULL<<FULL_POWER_OUT_PIN) | (1ULL<<LOW_POWER_OUT_PIN) | (1ULL<<OR_GATE))
 #define FOD_FPGA                     GPIO_NUM_27           /* GPIO27 */
-#define GPIO_OUTPUT_PIN_SEL  ((1ULL<<FULL_POWER_OUT_PIN) | (1ULL<<LOW_POWER_OUT_PIN) | (1ULL<<OR_GATE) | (1ULL<<FOD_FPGA))
+#define GPIO_INPUT_PIN_SEL           (1ULL<<FOD_FPGA)
+
 
 
 /* I2C */
@@ -56,6 +59,8 @@ uint8_t or_gate;
 
 /* Semaphore used to protect against I2C reading simultaneously */
 SemaphoreHandle_t i2c_sem;
+
+extern xQueueHandle gpio_evt_queue;
 
 float i2c_read_voltage_sensor(void);
 float i2c_read_current_sensor(void);
@@ -98,5 +103,12 @@ void enable_OR_output(void);
  * 
  */
 void disable_OR_output(void);
+
+
+/**
+ * @brief Interrupt Service handler
+ * @details Called when the input from the FPGA becomes high
+ * 
+ */void gpio_isr_handler(void* arg);
 
 #endif

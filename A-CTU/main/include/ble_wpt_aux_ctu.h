@@ -114,6 +114,7 @@ typedef union
 		uint8_t           overtemperature:1;    /**< [mandatory] Defines which optional fields are populated (1 byte). */
 		uint8_t           overcurrent:1;        /**< [mandatory] Defines which optional fields are populated (1 byte). */
 		uint8_t           overvoltage:1;        /**< [mandatory] Defines which optional fields are populated (1 byte). */
+		uint8_t           FOD:1;        /**< [mandatory] Defines which optional fields are populated (1 byte). */
 	};
 	uint8_t internal;
 } alert_field_t;

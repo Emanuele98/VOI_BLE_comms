@@ -29,6 +29,8 @@ static const char* TAG = "MAIN";
 
 static int counter = 0, Temp_counter = 0, Volt_counter = 0, Curr_counter = 0;
 
+// queue to handle gpio event from isr
+xQueueHandle gpio_evt_queue = NULL;
 
 
 //nimBLE
@@ -47,7 +49,19 @@ void switch_safely_off(void)
     enable_OR_output();
 }
 
-
+static void gpio_task(void* arg)
+{
+    uint32_t io_num;
+    for(;;) {
+        if(xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
+            if(gpio_get_level(io_num)) {
+                ESP_LOGE(TAG, "FOD!");
+                switch_safely_off();
+                alert_payload.alert_field.FOD = 1;
+            }
+        }
+    }
+}
 
 //read dynamic parameters from I2C sensors
 void dynamic_param_timeout_handler(void *arg)
@@ -388,12 +402,13 @@ void init_hw(void)
     err_code =  i2c_driver_install(i2c_master_port, conf.mode, I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE, 0);
     ESP_ERROR_CHECK(err_code);
 
+    //OUTPUT PINS
     gpio_config_t io_conf;
     //disable interrupt
     io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
     //set as output mode
     io_conf.mode = GPIO_MODE_OUTPUT;
-    //bit mask of the pins that you want to set
+    //bit mask of the pins
     io_conf.pin_bit_mask = GPIO_OUTPUT_PIN_SEL;
     //disable pull-down mode
     io_conf.pull_down_en = 0;
@@ -401,6 +416,28 @@ void init_hw(void)
     io_conf.pull_up_en = 0;
     //configure GPIO with the given settings
     gpio_config(&io_conf);
+
+    //INPUT PIN
+    //interrupt of rising edge
+    io_conf.intr_type = GPIO_INTR_POSEDGE;
+    //bit mask of the pins
+    io_conf.pin_bit_mask = GPIO_INPUT_PIN_SEL;
+    //set as input mode    
+    io_conf.mode = GPIO_MODE_INPUT;
+    //disable pull-up mode
+    io_conf.pull_up_en = 0;
+    //disable pull-down mode
+    io_conf.pull_down_en = 0;
+    gpio_config(&io_conf);
+
+    gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
+    //start gpio task
+    xTaskCreate(gpio_task, "gpio_task", 2048, NULL, 10, NULL);
+
+    //install gpio isr service
+    gpio_install_isr_service(0);
+    //hook isr handler for specific gpio pin
+    gpio_isr_handler_add(FOD_FPGA, gpio_isr_handler, (void*) FOD_FPGA);
 
     //todo: add FOD detection
 

@@ -11,6 +11,7 @@
 #include "ble_central.h"
 
 struct timeval tv_start;
+led_strip_t* strip;
 
 static const char* TAG = "MAIN";
 
@@ -148,8 +149,20 @@ void init_setup(void)
     /* Initialize state switch semaphore */
     m_set_state_sem = xSemaphoreCreateMutex();
     
-    /* Initialize I2C semaphore */
-    i2c_sem = xSemaphoreCreateMutex();
+    /* Initialize LED strip on PIN 15*/
+    rmt_config_t config = RMT_DEFAULT_CONFIG_TX(15, RMT_CHANNEL_0);
+    // set counter clock to 40MHz
+    config.clk_div = 2;
+    rmt_config(&config);
+    rmt_driver_install(config.channel, 0, 0);
+    //install ws2812 driver
+    led_strip_config_t strip_config = LED_STRIP_DEFAULT_CONFIG(STRIP_LED_NUMBER, (led_strip_dev_t)config.channel);
+    strip = led_strip_new_rmt_ws2812(&strip_config);
+    if (!strip) {
+        ESP_LOGE(TAG, "install WS2812 driver failed");
+    }
+    // Clear LED strip (turn off all LEDs)
+    strip->clear(strip, 10);
 }
 
 /** 
@@ -205,8 +218,6 @@ void app_main(void)
 
 
     //ESP_LOGE(TAG, "RAM 0 left %d", esp_get_minimum_free_heap_size());
-
-    led_strip_install();
 
     /* Runtime function for main context */
     //CTU_states_run();
