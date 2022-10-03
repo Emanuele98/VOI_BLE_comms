@@ -85,8 +85,6 @@ struct ble_hs_cfg;
 int ble_central_gap_event(struct ble_gap_event *event, void *arg);
 uint8_t peer_addr[6];
 
-uint8_t CTU_static_data[N_BYTES_IN_CTU_STATIC];
-
 struct peer;
 
 void ble_central_scan_start(uint32_t timeout, uint16_t scan_itvl, uint16_t scan_wind);
@@ -95,6 +93,5 @@ void ble_central_kill_all_CRU(void);
 void ble_central_kill_all_AUX_CTU(void);
 void ble_central_kill_CRU(TaskHandle_t task_handle, SemaphoreHandle_t sem_handle, uint16_t conn_handle);
 void ble_central_kill_AUX_CTU(TaskHandle_t task_handle, SemaphoreHandle_t sem_handle, uint16_t conn_handle);
-esp_err_t ble_central_get_CTU_static(void);
 
 #endif

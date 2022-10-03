@@ -123,7 +123,7 @@ struct peer {
     TaskHandle_t task_handle;
 	SemaphoreHandle_t sem_handle;
 
-    /** CRU payloads. */
+    /** Peripheral payloads. */
     wpt_alert_payload_t alert_payload;
     wpt_dynamic_payload_t dyn_payload;
     wpt_static_payload_t stat_payload;
@@ -137,6 +137,9 @@ struct peer {
     
     /* bool to detect if localization process is currently going */
     bool localization_process;
+
+    /* Counter variable */
+    int count;
 
     /* bool to check wheter the power is received correctly */
     bool correct;

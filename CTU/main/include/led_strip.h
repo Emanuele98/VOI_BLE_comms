@@ -8,10 +8,10 @@ extern "C" {
 
 // LED STRIP
 #define EXAMPLE_CHASE_SPEED_MS 10
-#define STRIP_LED_NUMBER 300
+#define STRIP_LED_NUMBER 150
 
 //leds
-uint32_t red, green, blue, hue, start_rgb;
+uint32_t red, green, blue;
 
 /**
 * @brief LED Strip Type
@@ -128,7 +128,7 @@ void led_strip_hsv2rgb(uint32_t h, uint32_t s, uint32_t v, uint32_t *r, uint32_t
  * 
  * @param hue
  */
-void set_led(uint32_t h);
+void set_led(uint32_t h1, uint32_t h2);
 
 
 

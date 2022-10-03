@@ -33,10 +33,10 @@
 #define VOLTAGE_LOW_THRESH 30
 
 /*Voltage threshold during FULL-POWER mode */
-#define VOLTAGE_FULL_THRESH 80
+#define VOLTAGE_FULL_THRESH 110
 
 /*Voltage threshold for misalignment check */
-#define VOLTAGE_MIS_THRESH 110
+#define VOLTAGE_MIS_THRESH 130
 
 /* Type definition for state task parameters */
 typedef struct CTU_task_params_s CTU_task_params_t;

@@ -206,16 +206,22 @@ err:
     return ret;
 }
 
-void set_led(uint32_t h)
+void set_led(uint32_t h1, uint32_t h2)
 {
-    hue = h;
-    for (int j = 1; j < STRIP_LED_NUMBER; j++) {
+    for (int j = 1; j < 75; j++) {
         // Build RGB values
-        hue = 10;
-        led_strip_hsv2rgb(hue, 100, 100, &red, &green, &blue);
+        led_strip_hsv2rgb(h1, 100, 100, &red, &green, &blue);
         // Write RGB values to strip driver
         strip->set_pixel(strip, j, red, green, blue);
     }
+
+    for (int j = 75; j < STRIP_LED_NUMBER; j++) {
+        // Build RGB values
+        led_strip_hsv2rgb(h2, 100, 100, &red, &green, &blue);
+        // Write RGB values to strip driver
+        strip->set_pixel(strip, j, red, green, blue);
+    }
+
     // Flush RGB values to LEDs
     strip->refresh(strip, 100);
 }

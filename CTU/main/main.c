@@ -1,21 +1,127 @@
-#include "nvs_flash.h"
-
 /* NimBLE */
 #include "host/ble_hs.h"
 #include "host/util/util.h"
 #include "services/gap/ble_svc_gap.h"
 #include "syscfg/syscfg.h"
+/* WiFI */
+#include "esp_wifi.h"
+#include "esp_event.h"
+#include "freertos/event_groups.h"
+#include "esp_sntp.h"
 
+#include "nvs_flash.h"
 #include "esp_err.h"
 
 #include "ble_central.h"
 
+#define WIFI_SSID      CONFIG_WIFI_SSID
+#define WIFI_PASS      CONFIG_WIFI_PASSWORD
+#define WIFI_MAXIMUM_RETRY 5
+
+/* The event group allows multiple bits for each event, but we only care about two events:
+ * - we are connected to the AP with an IP
+ * - we failed to connect after the maximum amount of retries */
+#define WIFI_CONNECTED_BIT BIT0
+#define WIFI_FAIL_BIT      BIT1
+
+/* FreeRTOS event group to signal when we are connected*/
+static EventGroupHandle_t s_wifi_event_group;
+
+static int s_retry_num = 0;
+
+
 struct timeval tv_start;
 led_strip_t* strip;
 
+time_t now;
+struct tm *info;
+char buffer[64];
+
 static const char* TAG = "MAIN";
 
-void ble_store_config_init(void);
+/**
+ * @brief Handler for WiFi and IP events
+ * 
+ */
+static void wifi_handler(void* arg, esp_event_base_t event_base,
+                                int32_t event_id, void* event_data)
+{
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+        esp_wifi_connect();
+    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        if (s_retry_num < WIFI_MAXIMUM_RETRY) {
+            esp_wifi_connect();
+            s_retry_num++;
+            ESP_LOGI(TAG, "retry to connect to the AP");
+        } else {
+            xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
+        }
+        ESP_LOGI(TAG,"connect to the AP fail");
+    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
+        ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
+        s_retry_num = 0;
+        xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+    }
+}
+
+/**
+ * @brief Initialize wifi module
+ * 
+ */
+static void wifi_init(void)
+{
+    s_wifi_event_group = xEventGroupCreate();
+
+    esp_netif_init();
+
+    esp_event_loop_create_default();
+    esp_netif_create_default_wifi_sta();
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    esp_wifi_init(&cfg);
+
+    esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_handler, NULL);
+    esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_handler, NULL);
+
+    wifi_config_t wifi_config = {
+        .sta = {
+            .ssid = WIFI_SSID,
+            .password = WIFI_PASS,
+            /* Setting a password implies station will connect to all security modes including WEP/WPA.
+             * However these modes are deprecated and not advisable to be used. Incase your Access point
+             * doesn't support WPA2, these mode can be enabled by commenting below line */
+	     .threshold.authmode = WIFI_AUTH_WPA2_PSK,
+        },
+    };
+    esp_wifi_set_mode(WIFI_MODE_STA);
+    esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config);
+    esp_wifi_start();
+
+    /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
+       number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above) */
+    EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
+            WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
+            pdFALSE,
+            pdFALSE,
+            portMAX_DELAY);
+
+    /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
+       happened. */
+    if (bits & WIFI_CONNECTED_BIT) {
+        ESP_LOGI(TAG, "connected to ap SSID:%s",
+                 WIFI_SSID);
+    } else if (bits & WIFI_FAIL_BIT) {
+        ESP_LOGI(TAG, "Failed to connect to SSID:%s",
+                 WIFI_SSID);
+    } else {
+        ESP_LOGE(TAG, "UNEXPECTED EVENT");
+    }
+
+    esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_handler);
+    esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_handler);
+    vEventGroupDelete(s_wifi_event_group);
+}
 
 /** 
  * @brief Task function used by the BLE host (NimBLE)
@@ -66,61 +172,6 @@ static void host_ctrl_on_sync(void)
     CTU_state_change(CTU_CONFIG_STATE, NULL);
 }
 
-void write_nvs_partition(void)
-{
-    esp_err_t err;
-    
-    /* Create new NVS handle */
-    nvs_handle_t nvs_handle;
-    err = nvs_open("storage", NVS_READWRITE, &nvs_handle);
-    if (err != ESP_OK)
-    {
-        printf("Error (%s) opening NVS handle!\n", esp_err_to_name(err));
-    }
-    else
-    {
-        /* Write all elements needed in NVS partition */
-        printf("Updating  in NVS ... ");
-
-        err = nvs_set_u8(nvs_handle, "optional fields", CONFIG_CTU_STATIC_OP_FIELDS);
-        printf((err != ESP_OK) ? "Failed writing optional fields!\n" : "Done\n");
-        err = nvs_set_u8(nvs_handle, "CTU power", CONFIG_CTU_STATIC_POWER);
-        printf((err != ESP_OK) ? "Failed writing CTU power!\n" : "Done\n");
-        err = nvs_set_u8(nvs_handle, "max impedance", CONFIG_CTU_STATIC_MAX_IMPEDANCE);
-        printf((err != ESP_OK) ? "Failed writing max impedance!\n" : "Done\n");
-        err = nvs_set_u8(nvs_handle, "max load", CONFIG_CTU_STATIC_MAX_LOAD);
-        printf((err != ESP_OK) ? "Failed writing max load!\n" : "Done\n");
-        err = nvs_set_u16(nvs_handle, "RFU 1", CONFIG_CTU_STATIC_RFU_1);
-        printf((err != ESP_OK) ? "Failed writing RFU 1!\n" : "Done\n");
-        err = nvs_set_u8(nvs_handle, "CTU class", CONFIG_CTU_STATIC_CTU_CLASS);
-        printf((err != ESP_OK) ? "Failed writing CTU class!\n" : "Done\n");
-        err = nvs_set_u8(nvs_handle, "HW revision", CONFIG_CTU_STATIC_HW_REVISION);
-        printf((err != ESP_OK) ? "Failed writing HW revision!\n" : "Done\n");
-        err = nvs_set_u8(nvs_handle, "FW revision", CONFIG_CTU_STATIC_FW_REVISION);
-        printf((err != ESP_OK) ? "Failed writing FW revision!\n" : "Done\n");
-        err = nvs_set_u8(nvs_handle, "Prot revision", CONFIG_CTU_STATIC_PROT_REVISION);
-        printf((err != ESP_OK) ? "Failed writing Prot revision!\n" : "Done\n");
-        err = nvs_set_u8(nvs_handle, "Max devices", CONFIG_CTU_STATIC_MAX_DEVICES);
-        printf((err != ESP_OK) ? "Failed writing Max devices!\n" : "Done\n");
-        err = nvs_set_u16(nvs_handle, "Company ID", CONFIG_CTU_STATIC_COMPANY_ID);
-        printf((err != ESP_OK) ? "Failed writing Max devices!\n" : "Done\n");
-        err = nvs_set_u32(nvs_handle, "RFU 2", CONFIG_CTU_STATIC_RFU_2);
-        printf((err != ESP_OK) ? "Failed writing RFU 2!\n" : "Done\n");
-
-        // Commit written value.
-        // After setting any values, nvs_commit() must be called to ensure changes are written
-        // to flash storage. Implementations may write to storage at other times,
-        // but this is not guaranteed.
-        printf("Committing updates in NVS ... ");
-        err = nvs_commit(nvs_handle);
-        printf((err != ESP_OK) ? "Failed!\n" : "Done\n");
-
-        // Close
-        nvs_close(nvs_handle);
-    }
-    esp_restart();
-}
-
 /** 
  * @brief Initialization function for software timers
  * @details This init function will setup all software timers needed for 
@@ -163,6 +214,12 @@ void init_setup(void)
     }
     // Clear LED strip (turn off all LEDs)
     strip->clear(strip, 10);
+
+    //todo: delete the strip when the CTU resets is done
+    //strip->del(strip);
+
+    //Initialize WiFi module
+    //wifi_init();
 }
 
 /** 
@@ -177,16 +234,8 @@ void app_main(void)
     esp_err_t esp_err_code = nvs_flash_init();
     if  (esp_err_code == ESP_ERR_NVS_NO_FREE_PAGES || esp_err_code == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        esp_err_code = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(esp_err_code);
-
-    /* Read NVS partition for constant data  */
-    if (ble_central_get_CTU_static() != ESP_OK)
-    {
-       /* Write NVS partition if no configurations can be found */
-       write_nvs_partition();
+        nvs_flash_erase();
+        nvs_flash_init();
     }
 
     /* Bind HCI and controller to NimBLE stack */
@@ -203,22 +252,32 @@ void app_main(void)
     /* Set the default device name. */
     ble_svc_gap_device_name_set("Airfuel CTU");
 
-    /* XXX Need to have template for store */
-    ble_store_config_init();
-
     /* Host management loop (Host context) */
     nimble_port_freertos_init(host_task);
 
     /* Initialize all elements of CTU */
+    //todo: wait until this is complete
     init_setup();
 
     gettimeofday(&tv_start, NULL);
 
-    //ESP_LOGI(TAG, "%d", MAC);
 
+    //sntp_restart();
+    //sntp_set_time_sync_notification_cb()
 
+/*
+    sntp_sync_time(&tv_start);
+    now = tv_start.tv_sec;
+    info = localtime(&now);
+    printf("%s",asctime (info));
+    strftime (buffer, sizeof buffer, "Today is %A, %B %d.\n", info);
+    printf("%s",buffer);
+    strftime (buffer, sizeof buffer, "The time is %I:%M %p.\n", info);
+    printf("%s",buffer);
+    vTaskDelay(5000);
+*/
     //ESP_LOGE(TAG, "RAM 0 left %d", esp_get_minimum_free_heap_size());
 
     /* Runtime function for main context */
-    //CTU_states_run();
+    CTU_states_run();
 }

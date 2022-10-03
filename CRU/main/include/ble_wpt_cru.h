@@ -52,10 +52,6 @@ wpt_static_payload_t _value2_name;
 #define WPT_ALERT_PAYLOAD_DEF(_value3_name)                                                         \
 wpt_alert_payload_t _value3_name;                  
 
-#define WPT_PTU_STATIC_PAYLOAD_DEF(_value4_name)                                                    \
-wpt_ptu_static_payload_t _value4_name;
-
-
 /* WPT SERVICE UUID */
 #define WPT_SERVICE_UUID                                       0xFFFE
 
@@ -129,28 +125,9 @@ typedef struct
 	alert_field_t     alert_field;
 } wpt_alert_payload_t;
 
-
-/**@brief PTU static characteristic structure. This contains elements necessary for PTU static payload. */
-typedef struct
-{
-	uint8_t           optional_fields;    /**< [mandatory] Defines which optional fields are populated (1 byte). */
-    uint8_t           ptu_power;          /**< [mandatory] Power output of PTU (1 bytes). */
-    uint8_t           max_impedance;      /**< [DEPRECATED] Unused (1 bytes). */
-	uint8_t		      max_load;           /**< [optional] Maximum load_resistance of PTU (1 bytes). */
-	uint16_t          RFU1;               /**< [N/A] Undefined (2 bytes). */
-    uint8_t           ptu_class;          /**< [mandatory] Hardware class of PTU (1 bytes). */
-	uint8_t           hard_rev;           /**< [mandatory] Hardware revision for PTU (1 bytes). */
-    uint8_t           firm_rev;           /**< [mandatory] Firmware revision for PTU (1 bytes). */
-    uint8_t           protocol_rev;       /**< [mandatory] Airfuel resonant supported revision (1 bytes). */
-    uint8_t           max_num_devices;    /**< [mandatory] Maximum number of connected devices the PTU can support (1 bytes). */
-	uint32_t	      company_id;	      /**< [mandatory] Company ID for PTU provider (4 byte). */
-	uint32_t	      RFU2;		          /**< [N/A] Reserved for future use (4 byte). */
-} wpt_ptu_static_payload_t;
-
 /* Instanciation of characteristic values available for Airfuel. */
 WPT_DYNAMIC_PAYLOAD_DEF(dyn_payload);
 WPT_STATIC_PAYLOAD_DEF(static_payload);
-WPT_PTU_STATIC_PAYLOAD_DEF(ptu_static_payload);
 WPT_ALERT_PAYLOAD_DEF(alert_payload);
 
 

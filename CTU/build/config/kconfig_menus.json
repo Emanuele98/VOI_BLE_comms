@@ -1593,122 +1593,22 @@
             {
                 "children": [],
                 "depends_on": null,
-                "help": "Enter the AFA specific optional fields for the\nCTU static characteristic. The default is 0.",
-                "id": "CTU_STATIC_OP_FIELDS",
-                "name": "CTU_STATIC_OP_FIELDS",
+                "help": null,
+                "id": "WIFI_SSID",
+                "name": "WIFI_SSID",
                 "range": null,
-                "title": "Optional fields",
-                "type": "hex"
+                "title": "WiFi name",
+                "type": "string"
             },
             {
                 "children": [],
                 "depends_on": null,
-                "help": "Enter the AFA specific maximal power output for the\nCTU static characteristic. The default is 50 Watts.",
-                "id": "CTU_STATIC_POWER",
-                "name": "CTU_STATIC_POWER",
+                "help": null,
+                "id": "WIFI_PASSWORD",
+                "name": "WIFI_PASSWORD",
                 "range": null,
-                "title": "Max power output",
-                "type": "int"
-            },
-            {
-                "children": [],
-                "depends_on": null,
-                "help": "Enter the AFA specific maximal impedance for the\nCTU static characteristic. The default is 0.",
-                "id": "CTU_STATIC_MAX_IMPEDANCE",
-                "name": "CTU_STATIC_MAX_IMPEDANCE",
-                "range": null,
-                "title": "Max impedance",
-                "type": "hex"
-            },
-            {
-                "children": [],
-                "depends_on": null,
-                "help": "Enter the AFA specific maximal load for the\nCTU static characteristic. The default is 0.",
-                "id": "CTU_STATIC_MAX_LOAD",
-                "name": "CTU_STATIC_MAX_LOAD",
-                "range": null,
-                "title": "Max load",
-                "type": "hex"
-            },
-            {
-                "children": [],
-                "depends_on": null,
-                "help": "Enter the AFA specific first RFU zone for the\nCTU static characteristic. The RFU is an abreviation \nfor \"Reserved for Future Use\". It is 0 by default.",
-                "id": "CTU_STATIC_RFU_1",
-                "name": "CTU_STATIC_RFU_1",
-                "range": null,
-                "title": "RFU 1",
-                "type": "hex"
-            },
-            {
-                "children": [],
-                "depends_on": null,
-                "help": "Enter the AFA specific CTU Classof device for the\nCTU static characteristic. Default is class 3.",
-                "id": "CTU_STATIC_CTU_CLASS",
-                "name": "CTU_STATIC_CTU_CLASS",
-                "range": null,
-                "title": "Class",
-                "type": "hex"
-            },
-            {
-                "children": [],
-                "depends_on": null,
-                "help": "Enter the AFA specific hardware revision for the\nCTU static characteristic. The default is 0.1 (4MSB.4LSB),\nex: rev 0x13 == 1.3",
-                "id": "CTU_STATIC_HW_REVISION",
-                "name": "CTU_STATIC_HW_REVISION",
-                "range": null,
-                "title": "Hardware revision",
-                "type": "hex"
-            },
-            {
-                "children": [],
-                "depends_on": null,
-                "help": "Enter the AFA specific software revision for the\nCTU static characteristic. The default is 1.2 (4MSB.4LSB),\nex: rev 0x12 == 1.2",
-                "id": "CTU_STATIC_FW_REVISION",
-                "name": "CTU_STATIC_FW_REVISION",
-                "range": null,
-                "title": "Firmware revision",
-                "type": "hex"
-            },
-            {
-                "children": [],
-                "depends_on": null,
-                "help": "Enter the AFA specific protocol revision for the\nCTU static characteristic. The default is 0.3 as per AFA \nSpecification on page 79 of BSS -A v1.00.",
-                "id": "CTU_STATIC_PROT_REVISION",
-                "name": "CTU_STATIC_PROT_REVISION",
-                "range": null,
-                "title": "Protocol revision",
-                "type": "hex"
-            },
-            {
-                "children": [],
-                "depends_on": null,
-                "help": "Enter the AFA specific maximal number of devices for the\nCTU static characteristic. The default number of peers is 1.",
-                "id": "CTU_STATIC_MAX_DEVICES",
-                "name": "CTU_STATIC_MAX_DEVICES",
-                "range": null,
-                "title": "Max number of devices",
-                "type": "hex"
-            },
-            {
-                "children": [],
-                "depends_on": null,
-                "help": "Enter the AFA specific company ID for the\nCTU static characteristic. The default is 0x0000.\nThe length for this value is 2 bytes.",
-                "id": "CTU_STATIC_COMPANY_ID",
-                "name": "CTU_STATIC_COMPANY_ID",
-                "range": null,
-                "title": "Company ID",
-                "type": "hex"
-            },
-            {
-                "children": [],
-                "depends_on": null,
-                "help": "Enter the AFA specific company ID for the CTU\nstatic characteristic. The default is 0x00000000.\nThe lenght for this value is 4 bytes.",
-                "id": "CTU_STATIC_RFU_2",
-                "name": "CTU_STATIC_RFU_2",
-                "range": null,
-                "title": "RFU 2",
-                "type": "hex"
+                "title": "WiFi password",
+                "type": "string"
             }
         ],
         "depends_on": null,

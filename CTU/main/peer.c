@@ -170,28 +170,6 @@ struct peer *Aux_CTU_find(uint16_t pos)
     return NULL;
 }
 
-/**
- * @brief Function that checks is a A-CTU position is already taken
- * @details This function searches through a linked list of peers
- *          and tries to match a Auxiliary CTU with the relative position.
- *          If the search is inconclusive, it returns 1.
- * 
- * @param pos The A-CTU pad position
- * @return 0 is position is already taken, 1 otherwise.
-*/
-static uint8_t AUX_CTU_position_empty(uint16_t pos)
-{
-    uint8_t empty = 1;
-    struct peer *peer;
-
-    SLIST_FOREACH(peer, &peers, next) {
-    if ((!peer->CRU) && (peer->position == pos)) {
-        empty = 0;
-        }
-    }
-
-    return empty;
-}
 
 /**
  * @brief Function that returns a peer structure with a conn_handle
@@ -1128,7 +1106,7 @@ int peer_disc_all(uint16_t conn_handle, peer_disc_fn *disc_cb, void *arg)
     //rc = ble_gattc_disc_all_svcs(conn_handle, peer_svc_disced, peer);
     rc = ble_gattc_disc_svc_by_uuid(conn_handle, wpt_svc_uuid, peer_svc_disced, peer);
     if (rc != 0) {
-        ESP_LOGE(TAG, "eìwups");
+        ESP_LOGE(TAG, "failed to discover services");
         return rc;
     }
 
@@ -1233,19 +1211,7 @@ int peer_add(uint16_t conn_handle, bool CRU)
         if(CRU) {
             NUM_CRU++;
         } else {
-            NUM_AUX_CTU++;
-            //add position of the pad
-            //check nobody else is in the same position before declaring it
-         /*   for(int8_t i = 1; i < 5; i++)
-            {
-                if(AUX_CTU_position_empty(i))
-                {
-                    peer->position = i;
-                    ESP_LOGI(TAG, "AUX-CTU POSITION = %d", peer->position);
-                    break;  
-                } 
-            }  
-           */           
+            NUM_AUX_CTU++;       
         }
         peer->conn_handle = conn_handle;
         peer->CRU = CRU;

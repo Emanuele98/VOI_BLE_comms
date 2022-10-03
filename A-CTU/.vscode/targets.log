@@ -6,12 +6,8 @@ make.exe all --print-data-base --no-builtin-variables --no-builtin-rules --quest
 # PARTICULAR PURPOSE.
 
 # This program built for i686-pc-msys
- 
-Makefile:8: /make/project.mk: No such file or directory
-make.exe: *** No rule to make target `/make/project.mk'.  Stop.
 
-
-# Make data base, printed on Mon Oct  3 09:33:37 2022
+# Make data base, printed on Mon Oct  3 15:37:53 2022
 
 # Variables
 
@@ -286,6 +282,9 @@ Makefile:
 # strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
 # strcache free: total = 4070 / max = 4070 / min = 4070 / avg = 4070
 
-# Finished Make data base on Mon Oct  3 09:33:37 2022
+# Finished Make data base on Mon Oct  3 15:37:53 2022
 
  
+Makefile:8: /make/project.mk: No such file or directory
+make.exe: *** No rule to make target `/make/project.mk'.  Stop.
+

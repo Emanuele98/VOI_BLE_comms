@@ -14,9 +14,6 @@ static const ble_uuid128_t WPT_SERVICE_UUID =
 static const ble_uuid128_t WPT_PEER_STAT_UUID =
     BLE_UUID128_INIT(0x67, 0x9A, 0x0C, 0x20, 0x00, 0x08, 0x96, 0x9E, 0xE2, 0x11, 0x46, 0xA1, 0x73, 0xE6, 0x55, 0x64);
 
-static const ble_uuid128_t WPT_PTU_STAT_UUID =
-    BLE_UUID128_INIT(0x67, 0x9A, 0x0C, 0x20, 0x00, 0x08, 0x96, 0x9E, 0xE2, 0x11, 0x46, 0xA1, 0x71, 0xE6, 0x55, 0x64);
-
 static const ble_uuid128_t WPT_DYN_UUID = 
     BLE_UUID128_INIT(0x67, 0x9A, 0x0C, 0x20, 0x00, 0x08, 0x96, 0x9E, 0xE2, 0x11, 0x46, 0xA1, 0x74, 0xE6, 0x55, 0x64);
 
@@ -29,10 +26,6 @@ static const ble_uuid128_t WPT_ALERT_UUID =
 
 //*CHR CALLBACK FUNCTIONS
 static int gatt_svr_chr_read_peer_static(uint16_t conn_handle, uint16_t attr_handle,
-                             struct ble_gatt_access_ctxt *ctxt,
-                             void *arg);
-
-static int gatt_svr_chr_write_ptu_static(uint16_t conn_handle, uint16_t attr_handle,
                              struct ble_gatt_access_ctxt *ctxt,
                              void *arg);
     
@@ -59,12 +52,6 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
                 .uuid = &WPT_PEER_STAT_UUID.u,
                 .access_cb = gatt_svr_chr_read_peer_static,
                 .flags = BLE_GATT_CHR_F_READ,
-            },
-            {
-                // Characteristic: ctu static payload.
-                .uuid = &WPT_PTU_STAT_UUID.u,
-                .access_cb = gatt_svr_chr_write_ptu_static,
-                .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE,
             },
             {
                 // Characteristic: a-ctu dynamic payload.
@@ -117,53 +104,6 @@ gatt_svr_chr_write(struct os_mbuf *om, uint16_t min_len, uint16_t max_len,
     return 0;
 }
 
-static int gatt_svr_chr_write_ptu_static(uint16_t conn_handle, uint16_t attr_handle,
-                             struct ble_gatt_access_ctxt *ctxt,
-                             void *arg)
-{
-    ESP_LOGE(TAG, "WRITE PTU STATIC CALLBACK");
-
-    int err_code ;
-
-    uint8_t data[PTU_STATIC_CHAR_SIZE];
-
-    err_code = gatt_svr_chr_write(ctxt->om,
-                            sizeof data,
-                            sizeof data,
-                            &data, NULL);
-    
-    ptu_static_payload.optional_fields = data[0];
-    ptu_static_payload.ptu_power = data[1];
-	ptu_static_payload.max_impedance = data[2];
-	ptu_static_payload.max_load = data[3];
-	ptu_static_payload.RFU1 = ((uint16_t)data[4]<<8)|data[5];
-	ptu_static_payload.ptu_class = data[6];
-	ptu_static_payload.hard_rev = data[7];
-	ptu_static_payload.firm_rev = data[8];
-	ptu_static_payload.protocol_rev = data[9];
-	ptu_static_payload.max_num_devices = data[10];
-	ptu_static_payload.company_id = (((uint16_t)data[11])<<8)|data[12];
-	ptu_static_payload.RFU2 = (((uint32_t)data[13])<<24)|
-							(((uint32_t)data[13])<<16)|
-							(((uint32_t)data[13])<<8)|
-							data[13];  // 17bites of data
-
-    //Start app timers
-    xTimerStart(dynamic_t_handle, 0);
-    xTimerStart(alert_t_handle, 0);
-
-    //set alert values to initial state 0
-    alert_payload.alert_field.overtemperature = 0; 
-    alert_payload.alert_field.overvoltage = 0;
-    alert_payload.alert_field.overcurrent = 0;
-    alert_payload.alert_field.FOD = 0;
-    alert_payload.alert_field.charge_complete = 0;
-
-    return err_code;
-
-}
-
-
 static int gatt_svr_chr_read_peer_static(uint16_t conn_handle, uint16_t attr_handle,
                              struct ble_gatt_access_ctxt *ctxt,
                              void *arg)
@@ -194,6 +134,18 @@ static int gatt_svr_chr_read_peer_static(uint16_t conn_handle, uint16_t attr_han
                                                 
     err_code = os_mbuf_append(ctxt->om, &data,
                         sizeof data);
+
+    //Start app timers
+    xTimerStart(dynamic_t_handle, 0);
+    xTimerStart(alert_t_handle, 0);
+
+    //set alert values to initial state 0
+    alert_payload.alert_field.overtemperature = 0; 
+    alert_payload.alert_field.overvoltage = 0;
+    alert_payload.alert_field.overcurrent = 0;
+    alert_payload.alert_field.FOD = 0;
+    alert_payload.alert_field.charge_complete = 0;
+
     return err_code;
 }
 

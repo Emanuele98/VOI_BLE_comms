@@ -87,9 +87,7 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
             m_CTU_task_param.state = CTU_CONFIG_STATE;
             m_CTU_task_param.itvl = CONFIG_MAIN_ITVL;
 
-            //scan other CRUs
-            ble_central_scan_start(BLE_HS_FOREVER, BLE_PERIODIC_SCAN_ITVL, BLE_PERIODIC_SCAN_WIND);
-            xTimerStart(periodic_scan_t_handle, pdMS_TO_TICKS(1000));
+            xTimerStart(periodic_scan_t_handle, 0);
 
             ESP_LOGI(TAG,"Configuration State");
         }
@@ -194,7 +192,7 @@ static void CTU_configuration_state(void *arg)
 
     /* Enter low power state only when the A-CTUs are connected */
 
-    if(peer_get_NUM_AUX_CTU() == 3) {
+    if(peer_get_NUM_AUX_CTU() == 4) {
         CTU_state_change(CTU_LOW_POWER_STATE, NULL);
     }
 
@@ -257,8 +255,9 @@ static void CTU_local_fault_state(void *arg)
     }       
 
     //disconnect from the Auxiliary CTU
-    peer->error = 5;
-    ble_central_kill_AUX_CTU(peer->task_handle, peer->sem_handle, peer->conn_handle);
+    //todo: stay connected
+    //peer->error = 5;
+    //ble_central_kill_AUX_CTU(peer->task_handle, peer->sem_handle, peer->conn_handle);
 
     //if no A-CTU connected anymore --> reset BLE stack and go back to configuration state
 
@@ -346,7 +345,7 @@ static void CTU_remote_fault_state(void *arg)
 void CTU_periodic_scan_timeout(void *arg)
 {
     
-    if ((peer_get_NUM_CRU() + peer_get_NUM_AUX_CTU()) < MYNEWT_VAL(BLE_MAX_CONNECTIONS))
+    if ((peer_get_NUM_CRU() + peer_get_NUM_AUX_CTU()) < 10)
     {
         ble_gap_disc_cancel();
         ble_central_scan_start(BLE_HS_FOREVER, BLE_FIRST_SCAN_ITVL, BLE_FIRST_SCAN_WIND);
