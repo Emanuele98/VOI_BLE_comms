@@ -27,16 +27,19 @@
 
 /* Software timers duration */
 #define PERIODIC_SCAN_TIMER_PERIOD    (pdMS_TO_TICKS(1000))
-#define PERIODIC_SWITCH_TIMER_PERIOD  (pdMS_TO_TICKS(3000))
+#define PERIODIC_SWITCH_TIMER_PERIOD  (pdMS_TO_TICKS(500))
 
 /* Voltage threshold during LOW-POWER mode */
 #define VOLTAGE_LOW_THRESH 30
 
-/*Voltage threshold during FULL-POWER mode */
-#define VOLTAGE_FULL_THRESH 110
+/* Voltage threshold during FULL-POWER mode */
+#define VOLTAGE_FULL_THRESH 100
 
-/*Voltage threshold for misalignment check */
-#define VOLTAGE_MIS_THRESH 130
+/* Voltage threshold for misalignment check */
+#define VOLTAGE_MIS_THRESH 120
+
+/* Time within the battery should pick the voltage */
+#define BATTERY_REACTION_TIME 10
 
 /* Type definition for state task parameters */
 typedef struct CTU_task_params_s CTU_task_params_t;

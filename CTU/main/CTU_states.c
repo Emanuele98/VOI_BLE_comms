@@ -41,11 +41,7 @@ void CTU_states_run(void)
     //                                                                xTaskGetAffinity(xTaskGetCurrentTaskHandle()));
 
     /* IMPORTANT: Must wait for host synchronisation to end before starting runtime */
-    while (m_CTU_task_param.state != CTU_CONFIG_STATE)
-    {
-        ESP_LOGI(TAG, "Waiting on sync...");
-        vTaskDelay(pdMS_TO_TICKS(100));
-    }
+    while (m_CTU_task_param.state != CTU_CONFIG_STATE) {}
 
     /* State management loop (Main context) */
     /* Needs to feed watchdog as well */
@@ -246,18 +242,13 @@ static void CTU_power_transfer_state(void *arg)
 static void CTU_local_fault_state(void *arg)
 {
     //todo: check again
-    //disable power interface
-    struct peer *peer = (struct peer *)arg;
-    if(peer != NULL) {
-        ble_central_update_control_enables(0, 0, 0, peer);
-        low_power_pads[peer->position-1] = 0;
-        full_power_pads[peer->position-1] = 0;
-    }       
 
-    //disconnect from the Auxiliary CTU
-    //todo: stay connected
-    //peer->error = 5;
-    //ble_central_kill_AUX_CTU(peer->task_handle, peer->sem_handle, peer->conn_handle);
+    struct peer *peer = (struct peer *)arg;
+    if(peer)
+    {
+        //disconnect from the Auxiliary CTU
+        ble_central_kill_AUX_CTU(peer->task_handle, peer->sem_handle, peer->conn_handle);
+    }
 
     //if no A-CTU connected anymore --> reset BLE stack and go back to configuration state
 
@@ -309,7 +300,6 @@ static void CTU_remote_fault_state(void *arg)
         peer->alert_payload.alert_field.overtemperature +
         peer->alert_payload.alert_field.charge_complete > 0)
     {
-        peer->error = 5;
         ble_central_kill_CRU(peer->task_handle, peer->sem_handle, peer->conn_handle);
 
         /* Wait for alert to resolve by itself */
@@ -345,10 +335,10 @@ static void CTU_remote_fault_state(void *arg)
 void CTU_periodic_scan_timeout(void *arg)
 {
     
-    if ((peer_get_NUM_CRU() + peer_get_NUM_AUX_CTU()) < 10)
+    if ((peer_get_NUM_CRU() + peer_get_NUM_AUX_CTU()) < 9)
     {
         ble_gap_disc_cancel();
-        ble_central_scan_start(BLE_HS_FOREVER, BLE_FIRST_SCAN_ITVL, BLE_FIRST_SCAN_WIND);
+        ble_central_scan_start(PERIODIC_SCAN_TIMER_PERIOD, BLE_FIRST_SCAN_ITVL, BLE_FIRST_SCAN_WIND);
     }
     else
     {

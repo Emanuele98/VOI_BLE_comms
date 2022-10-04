@@ -87,7 +87,7 @@ bool current_localization_process(void)
     bool loc = 0;
 
     SLIST_FOREACH(peer, &peers, next) {
-        if (peer->localization_process == 1) {
+        if ((peer->CRU) &&  (peer->localization_process)) {
             loc = 1;
         }
     }

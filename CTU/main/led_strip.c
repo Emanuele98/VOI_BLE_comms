@@ -38,6 +38,8 @@ typedef struct {
     uint8_t buffer[0];
 } ws2812_t;
 
+//todo: remove this function and use directly the rgb values
+
 void led_strip_hsv2rgb(uint32_t h, uint32_t s, uint32_t v, uint32_t *r, uint32_t *g, uint32_t *b)
 {
     h %= 360; // h -> [0,360]

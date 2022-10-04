@@ -32,9 +32,11 @@
 #include "nimble/nimble_port.h"
 #include "nimble/nimble_port_freertos.h"
 #include "host/util/util.h"
+#include "esp_bt.h"
 
 #include "aux_ctu_hw.h"
 
+#define OR_TIME_GAP pdMS_TO_TICKS(200)
 
 //timers
 TimerHandle_t dynamic_t_handle, alert_t_handle;

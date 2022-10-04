@@ -3,6 +3,7 @@
 #include "host/util/util.h"
 #include "services/gap/ble_svc_gap.h"
 #include "syscfg/syscfg.h"
+
 /* WiFI */
 #include "esp_wifi.h"
 #include "esp_event.h"
@@ -26,7 +27,6 @@
 
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
-
 static int s_retry_num = 0;
 
 
@@ -34,10 +34,16 @@ struct timeval tv_start;
 led_strip_t* strip;
 
 time_t now;
-struct tm *info;
+struct tm info;
 char buffer[64];
+bool update = false;
 
 static const char* TAG = "MAIN";
+
+void sntp_callback(struct timeval *tv)
+{
+    update = true;
+}
 
 /**
  * @brief Handler for WiFi and IP events
@@ -118,6 +124,7 @@ static void wifi_init(void)
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
     }
 
+    //todo: keep them to allow reconnection?
     esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_handler);
     esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_handler);
     vEventGroupDelete(s_wifi_event_group);
@@ -214,13 +221,37 @@ void init_setup(void)
     }
     // Clear LED strip (turn off all LEDs)
     strip->clear(strip, 10);
-
-    //todo: delete the strip when the CTU resets is done
-    //strip->del(strip);
-
-    //Initialize WiFi module
-    //wifi_init();
 }
+
+/**
+ * @brief Initialize Wifi Module and Real Time Clock
+ * 
+ */
+void connectivity_setup(void)
+{
+    //Initialize WiFi module
+    wifi_init();
+
+    //Simple Network Time Protocol
+    sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    sntp_setservername(0, "pool.ntp.org");
+    sntp_init();
+    sntp_set_time_sync_notification_cb(sntp_callback);
+
+    while(!update){}
+
+    time(&now);
+    // Set timezone to Eastern Standard Time and print local time
+    setenv("TZ", "GMTGMT-1,M3.4.0/01,M10.4.0/02", 1);
+    tzset();
+    localtime_r(&now, &info);
+    strftime(buffer, sizeof(buffer), "%c", &info);
+    ESP_LOGW(TAG, "The current date/time in London is: %s", buffer);
+
+    return;
+}
+
+//todo: ATTACH TIMESTAMPS LOCALLY
 
 /** 
  * @brief Main function
@@ -228,6 +259,8 @@ void init_setup(void)
  *          both the BLE host core (CPU0) and the main core (CPU1) start with their respective
  *          tasks and configurations.
 */
+
+//todo: use ESP_ERROR_CHECK_WITHOUT_ABORT() everywhere
 void app_main(void)
 {
     /* Initialize NVS partition */
@@ -238,8 +271,12 @@ void app_main(void)
         nvs_flash_init();
     }
 
+    /* Initialize all elements of CTU */
+    init_setup();
+    connectivity_setup();
+
     /* Bind HCI and controller to NimBLE stack */
-    ESP_ERROR_CHECK(esp_nimble_hci_and_controller_init());
+    esp_nimble_hci_and_controller_init();
     nimble_port_init();
 
     /* Configure the host. */
@@ -255,28 +292,13 @@ void app_main(void)
     /* Host management loop (Host context) */
     nimble_port_freertos_init(host_task);
 
-    /* Initialize all elements of CTU */
-    //todo: wait until this is complete
-    init_setup();
+    //SET MAX TX POWER
+    esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_SCAN, ESP_PWR_LVL_P9); 
 
-    gettimeofday(&tv_start, NULL);
+    //ESP_LOGI(TAG, "status %d", esp_bt_controller_get_status());
 
-
-    //sntp_restart();
-    //sntp_set_time_sync_notification_cb()
-
-/*
-    sntp_sync_time(&tv_start);
-    now = tv_start.tv_sec;
-    info = localtime(&now);
-    printf("%s",asctime (info));
-    strftime (buffer, sizeof buffer, "Today is %A, %B %d.\n", info);
-    printf("%s",buffer);
-    strftime (buffer, sizeof buffer, "The time is %I:%M %p.\n", info);
-    printf("%s",buffer);
-    vTaskDelay(5000);
-*/
-    //ESP_LOGE(TAG, "RAM 0 left %d", esp_get_minimum_free_heap_size());
+    //TODO:
+    //check esp_bt_sleep_enable()
 
     /* Runtime function for main context */
     CTU_states_run();

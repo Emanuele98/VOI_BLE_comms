@@ -181,6 +181,8 @@ static int gatt_svr_chr_read_dynamic(uint16_t conn_handle, uint16_t attr_handle,
     //ESP_LOGW(TAG, "- DYN CHR - rx temperature = %.02f", dyn_payload.temp1.f);
     //ESP_LOGW(TAG, "- DYN CHR - rx temperature = %.02f", dyn_payload.temp2.f);
 
+    //ESP_LOGE(TAG, "power: %d",esp_ble_tx_power_get(ESP_BLE_PWR_TYPE_CONN_HDL0));
+
     err_code = os_mbuf_append(ctxt->om, &data,
                         sizeof data);
     return err_code;
@@ -212,7 +214,7 @@ static int gatt_svr_chr_write_control(uint16_t conn_handle, uint16_t attr_handle
     if(control_payload.critical)
     {
         disable_low_power_output();
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        vTaskDelay(OR_TIME_GAP / portTICK_PERIOD_MS);
         enable_full_power_output();
         } else
             {
@@ -221,7 +223,7 @@ static int gatt_svr_chr_write_control(uint16_t conn_handle, uint16_t attr_handle
                 //disable OR gate
                 disable_OR_output();
                 //wait 
-                vTaskDelay(500 / portTICK_PERIOD_MS);
+                vTaskDelay(OR_TIME_GAP / portTICK_PERIOD_MS);
                 //enable power
                 if(control_payload.full_power) {
                 enable_full_power_output();
@@ -236,7 +238,7 @@ static int gatt_svr_chr_write_control(uint16_t conn_handle, uint16_t attr_handle
                     disable_low_power_output();
                     }
                     //wait
-                    vTaskDelay(500 / portTICK_PERIOD_MS);
+                    vTaskDelay(OR_TIME_GAP / portTICK_PERIOD_MS);
                     //enable OR gate
                     enable_OR_output();
                 }

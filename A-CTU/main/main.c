@@ -3,12 +3,13 @@
 // The host resides on the PRO_CPU (Core 0).
 
 #include "esp_err.h"
-
 #include "ble_wpt_aux_ctu.h"
 
 #include "include/aux_ctu_hw.h"
 
+
 struct timeval tv_start;
+
 
 
 /*******************************************************************/
@@ -20,7 +21,7 @@ struct timeval tv_start;
 #define APP_ADV_INTERVAL                32                                     /**< The advertising interval (in units of 0.625 ms. This value corresponds to 20 ms). */
 
 #define DYNAMIC_PARAM_TIMER_INTERVAL    pdMS_TO_TICKS(10)                      /**< Timer synced to Dynamic parameter characteristic (10 ms). */
-#define ALERT_PARAM_TIMER_INTERVAL      pdMS_TO_TICKS(10)				       /**< Timer synced to Alert parameter characteristic (10 ms). */
+#define ALERT_PARAM_TIMER_INTERVAL      pdMS_TO_TICKS(40)				       /**< Timer synced to Alert parameter characteristic (10 ms). */
 
 /* WPT SERVICE BEING ADVERTISED */
 #define WPT_SVC_UUID16                  0xFFFE
@@ -44,7 +45,7 @@ void switch_safely_off(void)
     disable_full_power_output();
     disable_low_power_output();
     //wait
-    vTaskDelay(500 / portTICK_PERIOD_MS);
+    vTaskDelay(OR_TIME_GAP / portTICK_PERIOD_MS);
     //enable OR gate
     enable_OR_output();
 }
@@ -237,20 +238,18 @@ static void bleprph_advertise(void)
 static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
 {
     struct ble_gap_conn_desc desc;
-    int rc;
 
     switch (event->type) {
     case BLE_GAP_EVENT_CONNECT:
         /* A new connection was established or a connection attempt failed. */
-        ESP_LOGI(TAG, "connection %s; status=%d ",
+        ESP_LOGI(TAG, "connection %s; status=%d; handle= %d",
                     event->connect.status == 0 ? "established" : "failed",
-                    event->connect.status);
+                    event->connect.status, event->connect.conn_handle);
         if (event->connect.status == 0) {
-            rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
-            
-        }
-
-        if (event->connect.status != 0) {
+            ble_gap_conn_find(event->connect.conn_handle, &desc);
+            //SET MAX TX POWER
+            esp_ble_tx_power_set(event->connect.conn_handle, ESP_PWR_LVL_P9); 
+        } else {
             /* Connection failed; resume advertising. */
             bleprph_advertise();
         }
@@ -283,8 +282,7 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
         /* The central has updated the connection parameters. */
         ESP_LOGI(TAG, "connection updated; status=%d ",
                     event->conn_update.status);
-        rc = ble_gap_conn_find(event->conn_update.conn_handle, &desc);
-        assert(rc == 0);
+        ble_gap_conn_find(event->conn_update.conn_handle, &desc);
         return 0;
 
     case BLE_GAP_EVENT_ADV_COMPLETE:
@@ -439,8 +437,6 @@ void init_hw(void)
     //hook isr handler for specific gpio pin
     gpio_isr_handler_add(FOD_FPGA, gpio_isr_handler, (void*) FOD_FPGA);
 
-    //todo: add FOD detection
-
     switch_safely_off();
 }
 
@@ -480,13 +476,12 @@ void app_main(void)
     esp_err_t esp_err_code = nvs_flash_init();
     if  (esp_err_code == ESP_ERR_NVS_NO_FREE_PAGES || esp_err_code == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        esp_err_code = nvs_flash_init();
+        nvs_flash_erase();
+        nvs_flash_init();
     }
-    ESP_ERROR_CHECK(esp_err_code);
 
     /* Bind HCI and controller to NimBLE stack */
-    ESP_ERROR_CHECK(esp_nimble_hci_and_controller_init());
+    esp_nimble_hci_and_controller_init();
     nimble_port_init();
 
     /* Initialize the NimBLE host configuration. */
@@ -511,6 +506,12 @@ void app_main(void)
     init_setup();
 
     gettimeofday(&tv_start, NULL);
+
+    //ESP_LOGI(TAG, "%d", esp_ble_tx_power_get(ESP_BLE_PWR_TYPE_ADV));
+
+    //SET MAX TX POWER
+    esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_ADV, ESP_PWR_LVL_P9);
+
 
     /*uncomment to test the I2C without the need of being connected to the central unit */
     //xTimerStart(dynamic_t_handle, 0);

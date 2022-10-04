@@ -230,7 +230,7 @@ IDF_PATH:UNINITIALIZED=C:/esp/esp-idf
 IDF_TARGET:STRING=esp32
 
 //No help, variable specified on the command line.
-LEGACY_INCLUDE_COMMON_HEADERS:UNINITIALIZED=
+LEGACY_INCLUDE_COMMON_HEADERS:UNINITIALIZED=y
 
 //No help, variable specified on the command line.
 PYTHON:UNINITIALIZED=C:\Espressif\python_env\idf4.1_py3.9_env\Scripts\python.exe
@@ -242,22 +242,25 @@ PYTHON_DEPS_CHECKED:UNINITIALIZED=1
 SDKCONFIG:UNINITIALIZED=C:/Users/degan/OneDrive/Desktop/VOI_comms_BLE/CTU/sdkconfig
 
 //Dependencies for the target
-__idf_bootloader_support_LIB_DEPENDS:STATIC=general;__idf_log;
+__idf_bootloader_support_LIB_DEPENDS:STATIC=general;__idf_log;general;__idf_soc;
 
 //Dependencies for the target
-__idf_efuse_LIB_DEPENDS:STATIC=general;__idf_log;
+__idf_efuse_LIB_DEPENDS:STATIC=general;__idf_log;general;__idf_soc;
 
 //Dependencies for the target
-__idf_main_LIB_DEPENDS:STATIC=general;__idf_log;
+__idf_log_LIB_DEPENDS:STATIC=general;__idf_soc;
 
 //Dependencies for the target
-__idf_micro-ecc_LIB_DEPENDS:STATIC=general;__idf_log;
+__idf_main_LIB_DEPENDS:STATIC=general;__idf_log;general;__idf_soc;
+
+//Dependencies for the target
+__idf_micro-ecc_LIB_DEPENDS:STATIC=general;__idf_log;general;__idf_soc;
 
 //Dependencies for the target
 __idf_soc_LIB_DEPENDS:STATIC=general;__idf_log;general;__idf_esp_rom;general;__idf_esp_common;general;__idf_xtensa;
 
 //Dependencies for the target
-__idf_spi_flash_LIB_DEPENDS:STATIC=general;__idf_log;
+__idf_spi_flash_LIB_DEPENDS:STATIC=general;__idf_log;general;__idf_soc;
 
 //Value Computed by CMake
 bootloader_BINARY_DIR:STATIC=C:/Users/degan/OneDrive/Desktop/VOI_comms_BLE/CTU/build/bootloader

@@ -28,6 +28,7 @@
 #include "host/ble_uuid.h"
 #include "host/ble_gatt.h"
 #include "host/ble_gap.h"
+#include "esp_bt.h"
 
 #include <assert.h>
 #include "freertos/FreeRTOS.h"
@@ -50,7 +51,7 @@
 #define BLE_WPT_INITIAL_CONN_ITVL_MIN       (8 * 1000 / BLE_HCI_CONN_ITVL)
 #define BLE_WPT_INITIAL_CONN_ITVL_MAX       (9 * 1000 / BLE_HCI_CONN_ITVL)
 
-#define DYNAMIC_TIMER_PERIOD               	(pdMS_TO_TICKS(100))
+#define DYNAMIC_TIMER_PERIOD               	(pdMS_TO_TICKS(200))
 
 #define BLE_PERIODIC_SCAN_ITVL				100	
 #define BLE_PERIODIC_SCAN_WIND				100
@@ -65,7 +66,7 @@
 
 #define N_BYTES_IN_CTU_STATIC               17
 
-#define MINIMUM_ADV_RSSI                    -100
+#define MINIMUM_ADV_RSSI                    -80
 
 #define WPT_SVC_UUID16                      0xFFFE
 
@@ -88,7 +89,7 @@ uint8_t peer_addr[6];
 struct peer;
 
 void ble_central_scan_start(uint32_t timeout, uint16_t scan_itvl, uint16_t scan_wind);
-void ble_central_update_control_enables(uint8_t enable, uint8_t full_power, uint8_t critical, struct peer *peer);
+uint8_t ble_central_update_control_enables(uint8_t enable, uint8_t full_power, uint8_t critical, struct peer *peer);
 void ble_central_kill_all_CRU(void);
 void ble_central_kill_all_AUX_CTU(void);
 void ble_central_kill_CRU(TaskHandle_t task_handle, SemaphoreHandle_t sem_handle, uint16_t conn_handle);
