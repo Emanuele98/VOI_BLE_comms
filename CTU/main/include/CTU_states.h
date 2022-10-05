@@ -25,9 +25,11 @@
 #include "ble_central.h"
 #include "peer.h"
 
-/* Software timers duration */
-#define PERIODIC_SCAN_TIMER_PERIOD    (pdMS_TO_TICKS(1000))
-#define PERIODIC_SWITCH_TIMER_PERIOD  (pdMS_TO_TICKS(500))
+/* Scan timer duration */
+#define PERIODIC_SCAN_TIMER_PERIOD    1000
+
+/* Switching timer duration */
+#define PERIODIC_SWITCH_TIMER_PERIOD  500
 
 /* Voltage threshold during LOW-POWER mode */
 #define VOLTAGE_LOW_THRESH 30
@@ -110,7 +112,7 @@ void CTU_states_run(void);
 /* State setter (Semaphore protected) */
 BaseType_t CTU_state_change(CTU_state_t p_state, void *arg);
 
-/* Periodic scan timer used when CTU has more than 1 connexion simultaneously */
+/* Function used by the timer to repeatedly start scanning */
 void CTU_periodic_scan_timeout(void *arg);
 
 /* Timer to switch on/off pads in low power mode during localization process */
@@ -118,9 +120,6 @@ void CTU_periodic_pad_switch(void *arg);
 
 /* Boolean function to check if peer is charging */
 bool CTU_is_peer_charging(struct peer *peer);
-
-/* Function used to stop any CTU_states specific timers */
-void CTU_states_stop_timers(void);
 
 /* Main global states structure accessible mostly read-only for some CTU modules */
 volatile CTU_task_params_t m_CTU_task_param;

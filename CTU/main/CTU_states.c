@@ -1,11 +1,11 @@
 #include "include/CTU_states.h"
 
 /* State duration constants (in ticks) */
-#define CONFIG_MAIN_ITVL         (pdMS_TO_TICKS(100))
-#define LOW_POWER_MAIN_ITVL      (pdMS_TO_TICKS(100))
-#define POWER_TRANSFER_MAIN_ITVL (pdMS_TO_TICKS(100))
-#define LATCHING_FAULT_MAIN_ITVL (pdMS_TO_TICKS(100))
-#define LOCAL_FAULT_MAIN_ITVL    (pdMS_TO_TICKS(100))
+#define CONFIG_MAIN_ITVL         (100)
+#define LOW_POWER_MAIN_ITVL      (100)
+#define POWER_TRANSFER_MAIN_ITVL (100)
+#define LATCHING_FAULT_MAIN_ITVL (100)
+#define LOCAL_FAULT_MAIN_ITVL    (100)
 
 static const char* TAG = "STATES";
 static uint8_t latching_fault_count;
@@ -82,6 +82,7 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
             m_CTU_task_param.state_fn = CTU_configuration_state;
             m_CTU_task_param.state = CTU_CONFIG_STATE;
             m_CTU_task_param.itvl = CONFIG_MAIN_ITVL;
+
 
             xTimerStart(periodic_scan_t_handle, 0);
 
@@ -250,12 +251,14 @@ static void CTU_local_fault_state(void *arg)
         ble_central_kill_AUX_CTU(peer->task_handle, peer->sem_handle, peer->conn_handle);
     }
 
-    //if no A-CTU connected anymore --> reset BLE stack and go back to configuration state
+    //todo: if no A-CTU connected anymore --> reset BLE stack and go back to configuration state
 
+/*
     if (peer_get_NUM_AUX_CTU() == 0)
     {
         // Stop all tasks and all timers currently running
         ble_central_kill_all_AUX_CTU();
+        //todo: this function is deprecated
         CTU_states_stop_timers();
 
         // Idle until BLE stack resets
@@ -264,7 +267,7 @@ static void CTU_local_fault_state(void *arg)
         // Reset BLE stack
         ble_hs_sched_reset(BLE_HS_EAPP);
     }
-
+*/
 }
 
 /** 
@@ -286,25 +289,11 @@ static void CTU_remote_fault_state(void *arg)
     if(peer->position) {
         low_power_pads[peer->position-1] = 0;
         full_power_pads[peer->position-1] = 0;
-        struct peer *Aux_CTU = Aux_CTU_find(peer->position);
-        if(Aux_CTU != NULL) {
-            ble_central_update_control_enables(0, 0, 0, Aux_CTU);    
-        }
     }
 
-    //todo: use identification 
+    //todo: use identification and add the time to wait before reconnection
+    ble_central_kill_CRU(peer->task_handle, peer->sem_handle, peer->conn_handle);
 
-    latching_fault_count++;
-    if (peer->alert_payload.alert_field.overcurrent +
-        peer->alert_payload.alert_field.overvoltage +
-        peer->alert_payload.alert_field.overtemperature +
-        peer->alert_payload.alert_field.charge_complete > 0)
-    {
-        ble_central_kill_CRU(peer->task_handle, peer->sem_handle, peer->conn_handle);
-
-        /* Wait for alert to resolve by itself */
-        //vTaskDelay(pdMS_TO_TICKS(5000));
-    }
 
     if (latching_fault_count == 3)
     {
@@ -372,14 +361,14 @@ void CTU_periodic_pad_switch(void *arg)
             {
                 counter++;
             } 
-            if (!full_power_pads[0] && !low_power_pads[0])
+            if (!full_power_pads[0] && !switch_loc_pads[0])
             {
-                low_power_pads[0] = 1;
+                switch_loc_pads[0] = 1;
                 for (uint8_t i=0; i<4; i++)
                 {
                     if((i!=0) && (!full_power_pads[i]))
                     {
-                        low_power_pads[i] = 0;
+                        switch_loc_pads[i] = 0;
                     }
                 }
                 ESP_LOGI(TAG, "Switch on first pad");
@@ -397,14 +386,14 @@ void CTU_periodic_pad_switch(void *arg)
                 {
                     counter = 0;
                 }
-            if(!full_power_pads[1] && !low_power_pads[1])
+            if(!full_power_pads[1] && !switch_loc_pads[1])
             {
-                low_power_pads[1] = 1;
+                switch_loc_pads[1] = 1;
                 for (uint8_t i=0; i<4; i++)
                 {
                     if((i!=1) && (!full_power_pads[i]))
                     {
-                        low_power_pads[i] = 0;
+                        switch_loc_pads[i] = 0;
                     }
                 }                   
                 ESP_LOGI(TAG, "Switch on second pad");
@@ -419,14 +408,14 @@ void CTU_periodic_pad_switch(void *arg)
                 {
                     counter = 0;
                 }
-            if(!full_power_pads[2] && !low_power_pads[2])
+            if(!full_power_pads[2] && !switch_loc_pads[2])
             {
-                low_power_pads[2] = 1;
+                switch_loc_pads[2] = 1;
                 for (uint8_t i=0; i<4; i++)
                 {
                     if((i!=2) && (!full_power_pads[i]))
                     {
-                        low_power_pads[i] = 0;
+                        switch_loc_pads[i] = 0;
                     }
                 } 
                 ESP_LOGI(TAG, "Switch on third pad");
@@ -435,14 +424,14 @@ void CTU_periodic_pad_switch(void *arg)
 
         case 3:
             counter = 0;
-            if(!full_power_pads[3] && !low_power_pads[3])
+            if(!full_power_pads[3] && !switch_loc_pads[3])
             {
-                low_power_pads[3] = 1;
+                switch_loc_pads[3] = 1;
                 for (uint8_t i=0; i<4; i++)
                 {
                     if((i!=3) && (!full_power_pads[i]))
                     {
-                        low_power_pads[i] = 0;
+                        switch_loc_pads[i] = 0;
                     }
                 }
                 ESP_LOGI(TAG, "Switch on fourth pad");
@@ -453,25 +442,6 @@ void CTU_periodic_pad_switch(void *arg)
             break;
     }   
     
-    //ESP_LOGI(TAG,  "%d - %d - %d - %d", low_power_pads[0], low_power_pads[1], low_power_pads[2], low_power_pads[3]);
+    //ESP_LOGI(TAG,  "%d - %d - %d - %d", switch_loc_pads[0], switch_loc_pads[1], switch_loc_pads[2], switch_loc_pads[3]);
                                                                                                                  
-}
-
-/** 
- * @brief Periodic timer function to scan other CRUs
- * @details This handle function whill scan periodically for other CRUs in the charging
- *          area. As long as the total number of peers does not exceed BLE_MAX_CONNECTIONS,
- *          and as long as there is at least one peer on the charging area, the timer will
- *          be in effect.
- */
-void CTU_states_stop_timers(void)
-{
-    if (xTimerIsTimerActive(localization_switch_pads_t_handle) == pdTRUE)
-    {
-        xTimerStop(localization_switch_pads_t_handle, 10);
-    }
-    if (xTimerIsTimerActive(periodic_scan_t_handle) == pdTRUE)
-    {
-        xTimerStop(periodic_scan_t_handle, 10);
-    }
 }

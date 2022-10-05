@@ -6,7 +6,7 @@
 #include "led_strip.h"
 #include "driver/rmt.h"
 
-extern led_strip_t* strip;
+extern led_strip_t* strip1, strip2, strip3, strip4;
 
 static const char *TAG = "LED STRIP";
 #define STRIP_CHECK(a, str, goto_tag, ret_value, ...)                             \
@@ -152,7 +152,7 @@ static esp_err_t ws2812_refresh(led_strip_t *strip, uint32_t timeout_ms)
     ws2812_t *ws2812 = __containerof(strip, ws2812_t, parent);
     STRIP_CHECK(rmt_write_sample(ws2812->rmt_channel, ws2812->buffer, ws2812->strip_len * 3, true) == ESP_OK,
                 "transmit RMT samples failed", err, ESP_FAIL);
-    return rmt_wait_tx_done(ws2812->rmt_channel, pdMS_TO_TICKS(timeout_ms));
+    return rmt_wait_tx_done(ws2812->rmt_channel, timeout_ms);
 err:
     return ret;
 }
@@ -210,43 +210,21 @@ err:
 
 void set_led(uint32_t h1, uint32_t h2)
 {
+    /*
     for (int j = 1; j < 75; j++) {
         // Build RGB values
         led_strip_hsv2rgb(h1, 100, 100, &red, &green, &blue);
         // Write RGB values to strip driver
         strip->set_pixel(strip, j, red, green, blue);
     }
-
-    for (int j = 75; j < STRIP_LED_NUMBER; j++) {
+*/
+    for (int j = 1; j < STRIP_LED_NUMBER; j++) {
         // Build RGB values
         led_strip_hsv2rgb(h2, 100, 100, &red, &green, &blue);
         // Write RGB values to strip driver
-        strip->set_pixel(strip, j, red, green, blue);
+        strip1->set_pixel(strip1, j, red, green, blue);
     }
 
     // Flush RGB values to LEDs
-    strip->refresh(strip, 100);
+    strip1->refresh(strip1, 100);
 }
-
-//todo: RAINBOW to be made with a timer
-/*
-    // Show simple rainbow chasing pattern
-    ESP_LOGI(TAG, "LED Rainbow Chase Start");
-    while (connected) {
-        for (int i = 0; i < 3; i++) {
-            for (int j = i; j < STRIP_LED_NUMBER; j += 3) {
-                // Build RGB values
-                hue = j * 360 / STRIP_LED_NUMBER + start_rgb;
-                led_strip_hsv2rgb(hue, 100, 100, &red, &green, &blue);
-                // Write RGB values to strip driver
-                ESP_ERROR_CHECK(strip->set_pixel(strip, j, red, green, blue));
-    }
-    // Flush RGB values to LEDs
-    ESP_ERROR_CHECK(strip->refresh(strip, 100));
-    vTaskDelay(pdMS_TO_TICKS(EXAMPLE_CHASE_SPEED_MS));
-    strip->clear(strip, 50);
-    vTaskDelay(pdMS_TO_TICKS(EXAMPLE_CHASE_SPEED_MS));
-        }
-    start_rgb += 60;
-    }
-*/

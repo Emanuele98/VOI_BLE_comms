@@ -21,7 +21,6 @@
 
 #include "esp_system.h"
 #include "esp_log.h"
-#include "esp_bt.h"
 
 #include "host/ble_hs.h"
 #include "host/ble_uuid.h"
@@ -70,6 +69,7 @@ wpt_control_payload_t _value4_name;
 /**                   LOCAL PTU CONFIGURATIONS                    **/
 /*******************************************************************/
 
+#define FOD_THRESH                      45
 #define OVER_CURRENT                    2.5									   /**< Maximum current tolerated for I2C measurements. Flow will change in the future to handle such alert. */
 #define OVER_VOLTAGE                    70 	    	                           /**< Maximum voltage tolerated for I2C measurements. Flow will change in the future to handle such alert. */
 #define OVER_TEMPERATURE                60									   /**< Maximum temperature tolerated for I2C measurements. */

@@ -252,6 +252,8 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
         if (event->connect.status == 0) {
             rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
             assert(rc == 0);
+            //SET MAX TX POWER
+            esp_ble_tx_power_set(event->connect.conn_handle, ESP_PWR_LVL_P9); 
         }
 
         if (event->connect.status != 0) {
@@ -430,6 +432,9 @@ void app_main(void)
 
     /* Host management loop (Host context) */
     nimble_port_freertos_init(host_task);
+
+    //SET MAX TX POWER
+    esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_ADV, ESP_PWR_LVL_P9);
 
     /* Initialize all elements of CRU (timers and I2C)*/
     init_setup();   

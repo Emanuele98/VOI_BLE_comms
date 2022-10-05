@@ -7,11 +7,15 @@ extern "C" {
 #include "esp_err.h"
 
 // LED STRIP
-#define EXAMPLE_CHASE_SPEED_MS 10
-#define STRIP_LED_NUMBER 150
+#define EXAMPLE_CHASE_SPEED_MS  30
+#define STRIP_LED_NUMBER        36
+#define STRIP_1_PIN             14
+#define STRIP_2_PIN             33
+#define STRIP_3_PIN             32
+#define STRIP_4_PIN             21
 
 //leds
-uint32_t red, green, blue;
+uint32_t hue, red, green, blue, start_rgb;
 
 /**
 * @brief LED Strip Type

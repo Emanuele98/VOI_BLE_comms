@@ -31,7 +31,7 @@ static int s_retry_num = 0;
 
 
 struct timeval tv_start;
-led_strip_t* strip;
+led_strip_t *strip1, *strip2, *strip3, *strip4;
 
 time_t now;
 struct tm info;
@@ -161,6 +161,7 @@ static void host_ctrl_on_reset(int reason)
     CTU_state_change(CTU_CONFIG_STATE, NULL);
 
     ESP_LOGW(TAG, "Resetting state; reason=%d\n", reason);
+    //todo: reset happens here (guru meditation error)
 }
 
 /** 
@@ -181,8 +182,7 @@ static void host_ctrl_on_sync(void)
 
 /** 
  * @brief Initialization function for software timers
- * @details This init function will setup all software timers needed for 
- *          checking any local error as well as registering a new device.
+ * 
 */
 void init_sw_timers(void)
 {
@@ -191,6 +191,58 @@ void init_sw_timers(void)
 
     /* Software timer for periodic scanning once 1 CRU is connected */
     periodic_scan_t_handle = xTimerCreate("scan", PERIODIC_SCAN_TIMER_PERIOD, pdTRUE, NULL, CTU_periodic_scan_timeout);
+}
+
+/**
+ * @brief Construct a new install strip object
+ * 
+ * @param pin assigned GPIO pin
+ */
+void install_strip(uint8_t pin, led_strip_t* strip, uint8_t channel_n)
+{
+    /* Initialize LED strip on PIN */ 
+    rmt_config_t config = RMT_DEFAULT_CONFIG_TX(pin, channel_n);
+    // set counter clock to 40MHz
+    config.clk_div = 2;
+    rmt_config(&config);
+    rmt_driver_install(config.channel, 0, 0);
+    //install ws2812 driver
+    led_strip_config_t strip_config = LED_STRIP_DEFAULT_CONFIG(STRIP_LED_NUMBER, (led_strip_dev_t)config.channel);
+    strip = led_strip_new_rmt_ws2812(&strip_config);
+    if (!strip) {
+        ESP_LOGE(TAG, "install STRIP failed");
+    }
+
+    //todo: RAINBOW to be made with a timer
+    /*
+    while (1) {
+        for (int i = 0; i < 3; i++) {
+            for (int j = i; j < STRIP_LED_NUMBER; j += 3) {
+                // Build RGB values
+                hue = j * 360 / STRIP_LED_NUMBER + start_rgb;
+                led_strip_hsv2rgb(hue, 100, 100, &red, &green, &blue);
+                // Write RGB values to strip driver
+                strip->set_pixel(strip, j, red, green, blue);
+    }
+    // Flush RGB values to LEDs
+    strip->refresh(strip, 100);
+    vTaskDelay(pdMS_TO_TICKS(EXAMPLE_CHASE_SPEED_MS));
+    strip->clear(strip, 50);
+    vTaskDelay(pdMS_TO_TICKS(EXAMPLE_CHASE_SPEED_MS));
+        }
+    start_rgb += 60;
+    }
+    */
+
+//todo: create a function for this
+
+    for (int j = 1; j < STRIP_LED_NUMBER; j++) {
+        // Write RGB values to strip driver
+        strip->set_pixel(strip, j, 0, 255, 0);
+    }
+    // Flush RGB values to LEDs
+    strip->refresh(strip, 100);
+
 }
 
 /** 
@@ -207,20 +259,12 @@ void init_setup(void)
     /* Initialize state switch semaphore */
     m_set_state_sem = xSemaphoreCreateMutex();
     
-    /* Initialize LED strip on PIN 15*/
-    rmt_config_t config = RMT_DEFAULT_CONFIG_TX(15, RMT_CHANNEL_0);
-    // set counter clock to 40MHz
-    config.clk_div = 2;
-    rmt_config(&config);
-    rmt_driver_install(config.channel, 0, 0);
-    //install ws2812 driver
-    led_strip_config_t strip_config = LED_STRIP_DEFAULT_CONFIG(STRIP_LED_NUMBER, (led_strip_dev_t)config.channel);
-    strip = led_strip_new_rmt_ws2812(&strip_config);
-    if (!strip) {
-        ESP_LOGE(TAG, "install WS2812 driver failed");
-    }
-    // Clear LED strip (turn off all LEDs)
-    strip->clear(strip, 10);
+    install_strip(STRIP_1_PIN, strip1, 0);
+    install_strip(STRIP_2_PIN, strip2, 1);
+    install_strip(STRIP_3_PIN, strip3, 2);
+    install_strip(STRIP_4_PIN, strip4, 3);
+
+    //FUNCTION TO MAKE THEM RAINBOW
 }
 
 /**
@@ -261,6 +305,7 @@ void connectivity_setup(void)
 */
 
 //todo: use ESP_ERROR_CHECK_WITHOUT_ABORT() everywhere
+
 void app_main(void)
 {
     /* Initialize NVS partition */
@@ -273,7 +318,7 @@ void app_main(void)
 
     /* Initialize all elements of CTU */
     init_setup();
-    connectivity_setup();
+    //connectivity_setup();
 
     /* Bind HCI and controller to NimBLE stack */
     esp_nimble_hci_and_controller_init();
@@ -299,6 +344,7 @@ void app_main(void)
 
     //TODO:
     //check esp_bt_sleep_enable()
+
 
     /* Runtime function for main context */
     CTU_states_run();

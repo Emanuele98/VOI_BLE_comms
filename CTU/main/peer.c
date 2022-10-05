@@ -106,18 +106,32 @@ bool is_peer_alone(void)
     return NUM_CRU == 1;
 }
 
-uint8_t low_power_find(void)
+uint8_t loc_pad_find(void)
 {
     uint8_t n;
     for(n=0; n<4; n++)
     {
-        if(low_power_pads[n])
+        if(switch_loc_pads[n])
         {
             break;
         }
     }
     return n;
 }
+/**
+ * @brief 
+ * 
+ * @return true if no pad is currently in low power mode
+ * @return false if one it is
+ */
+bool all_low_power_off(void)
+{
+    if (low_power_pads[0] || low_power_pads[1] || low_power_pads[2] || low_power_pads[3])
+        return 0;
+    else
+        return 1;
+}
+
 
 /**
  * @brief Boolean function for charging state
@@ -1142,12 +1156,10 @@ int peer_delete(uint16_t conn_handle)
         NUM_AUX_CTU--;
     }
 
-    ESP_LOGW(TAG, "Deleting peer with conn_handle=%d; %d peers remaining", 
-                    conn_handle, NUM_CRU + NUM_AUX_CTU);
-
     if (peer == NULL) {
         return BLE_HS_ENOTCONN;
     }  
+    ESP_LOGW(TAG, "Deleting peer with conn_handle=%d; %d peers remaining", conn_handle, NUM_CRU + NUM_AUX_CTU);
 
     if (peer->sem_handle != NULL)
     {
@@ -1191,6 +1203,7 @@ int peer_delete(uint16_t conn_handle)
 int peer_add(uint16_t conn_handle, bool CRU)
 {
     struct peer *peer;
+    //todo: reset fields?
 
     if ((MYNEWT_VAL(BLE_MAX_CONNECTIONS) > NUM_CRU + NUM_AUX_CTU))
     {

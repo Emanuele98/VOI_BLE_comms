@@ -170,7 +170,8 @@ uint8_t peer_get_NUM_AUX_CTU(void);
 bool is_peer_alone(void);
 bool CTU_is_peer_charging(struct peer *peer);
 bool CTU_is_charging(void);
-uint8_t low_power_find(void);
+uint8_t loc_pad_find(void);
+bool all_low_power_off(void);
 
 // find the aux CTU
 struct peer *Aux_CTU_find(uint16_t pos);

@@ -16,7 +16,7 @@ uint8_t last_pad1, last_pad2, last_pad3, last_pad4;
 
 //defined in main.c 
 extern struct timeval tv_start;
-extern led_strip_t* strip;
+extern led_strip_t* strip1, strip2, strip3, strip4;
 
 //timer
 struct timeval tv_loc;
@@ -143,9 +143,6 @@ void ble_central_kill_AUX_CTU(TaskHandle_t task_handle, SemaphoreHandle_t sem_ha
 
     ESP_LOGW(TAG, "Killing AUX CTU");
 
-    esp_task_wdt_reset();
-    esp_task_wdt_delete(NULL);
-
     //disable realtive interface
     if(Aux_CTU != NULL) {
         ble_central_update_control_enables(0, 1, 0, Aux_CTU);         
@@ -170,15 +167,13 @@ void ble_central_kill_CRU(TaskHandle_t task_handle, SemaphoreHandle_t sem_handle
 
     ESP_LOGW(TAG, "Killing CRU");
     
-    esp_task_wdt_reset();
-    esp_task_wdt_delete(NULL);
-
     if (peer!=NULL)
     {
         //IF WAS DOING THE LOCALIZATION PROCESS
         if(peer->localization_process)
         {
-            uint8_t n = low_power_find();
+            uint8_t n = loc_pad_find();
+            switch_loc_pads[n] = 0;
             low_power_pads[n] = 0;
             struct peer *Aux_CTU = Aux_CTU_find(n+1);
             if(Aux_CTU != NULL) {
@@ -279,19 +274,16 @@ static int ble_central_on_localization_process(uint16_t conn_handle,
 
 
     // is Vrect value above the Treshold?
-    if( peer->dyn_payload.vrect.f > VOLTAGE_LOW_THRESH )
+    if ((peer->dyn_payload.vrect.f > VOLTAGE_LOW_THRESH ) && (current_low_power))
     {
-        ESP_LOGE(TAG, " VOLTAGE TRESHOLD PASSED!");
+        //SET RX POSITION
+
+        peer->position = current_low_power;
 
         //stop timer
         xTimerStop(localization_switch_pads_t_handle, 10);
-
-        //waits current_low_power is not 0 (there is a small timegap when it happens)
-        while(!current_low_power) {}
-
-        //SET RX POSITION
-        peer->position = current_low_power;
-        
+  
+        ESP_LOGE(TAG, " VOLTAGE TRESHOLD PASSED!");        
         ESP_LOGI(TAG, " CRU is in position %d", peer->position );
         
         //CONTROL ENABLE
@@ -303,7 +295,7 @@ static int ble_central_on_localization_process(uint16_t conn_handle,
         }
 
         //!CRITICAL
-        low_power_pads[3] = low_power_pads[2] = low_power_pads[1] = low_power_pads[0] = 0;
+        switch_loc_pads[3] = switch_loc_pads[2] = switch_loc_pads[1] = switch_loc_pads[0] = 0;
         full_power_pads[Aux_CTU->position-1] = 1;
         rc = ble_central_update_control_enables(1, 1, 1, Aux_CTU);
 
@@ -326,7 +318,7 @@ static int ble_central_on_localization_process(uint16_t conn_handle,
  * @brief Dynamic read callback function for Auxiliary CTU 
  * @details Application callback.  Called when the read of the CRU Dynamic
  *          Parameter characteristic has completed.
- *          This reads the I2C measurements and switches on/off the pads when low_power_pads[] changes writing the Control characteristic.
+ *          This reads the I2C measurements and switches on/off the pads when switch_loc_pads[] changes writing the Control characteristic.
  * 
  * @param conn_handle  Connection handle of the peer that is being read
  * @param error        Error structure containing return codes and status
@@ -358,7 +350,7 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
     ble_central_unpack_dynamic_param(attr, conn_handle);
 
 
-    //SEND SWITCH COMMAND THROUGH CONTROL CHR WHEN low_power_pads[pad position] changes
+    //SEND SWITCH COMMAND THROUGH CONTROL CHR WHEN switch_loc_pads[pad position] changes
     //LOW POWER mode
     //double check if full_power is on
     //off check to make sure first it switches off and then on
@@ -366,91 +358,92 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
     switch(peer->position)
     {
         case 1:
-            //ESP_LOGW(TAG, "first pad - %d - %d" , last_pad1, low_power_pads[0]);
-            if(last_pad1 != low_power_pads[0])
+            //ESP_LOGW(TAG, "first pad - %d - %d" , last_pad1, switch_loc_pads[0]);
+            if(last_pad1 != switch_loc_pads[0])
             {
                 if (!full_power_pads[0])
                 {
-                    if (low_power_pads[0])
+                    if (switch_loc_pads[0])
                     {
-                        if (!current_low_power)
+                        // check whether all the pads are off
+                        if (all_low_power_off())
                         {
                             rc = ble_central_update_control_enables(1, 0, 0, peer);
-                            current_low_power = 1;
+                            if (!rc)  
+                                current_low_power = 1;
                         }
                     } else 
                     {
                         rc = ble_central_update_control_enables(0, 0, 0, peer);
-                        current_low_power = 0;
                     }
                 }
-                last_pad1 = low_power_pads[0];
+                last_pad1 = switch_loc_pads[0];
             }
             break;
         case 2:
-            //ESP_LOGW(TAG, "second pad - %d - %d" , last_pad2, low_power_pads[1]);
-            if(last_pad2 != low_power_pads[1])
+            //ESP_LOGW(TAG, "second pad - %d - %d" , last_pad2, switch_loc_pads[1]);
+            if(last_pad2 != switch_loc_pads[1])
             {
                 if (!full_power_pads[1])
                 {
-                    if (low_power_pads[1])
+                    if (switch_loc_pads[1])
                     {   
-                        if (!current_low_power)
+                        if (all_low_power_off())
                         {
                             rc = ble_central_update_control_enables(1, 0, 0, peer);
-                            current_low_power = 2;
+                            if (!rc)  
+                                current_low_power = 2;
                         }
                     } else 
                     {
                         rc = ble_central_update_control_enables(0, 0, 0, peer);
-                        current_low_power = 0;
                     }
                 }
-                last_pad2 = low_power_pads[1];
+                last_pad2 = switch_loc_pads[1];
             }
             break;
         case 3:
-            //ESP_LOGW(TAG, "third pad - %d - %d" , last_pad3, low_power_pads[2]);
-            if(last_pad3 != low_power_pads[2])
+            //ESP_LOGW(TAG, "third pad - %d - %d" , last_pad3, switch_loc_pads[2]);
+            if(last_pad3 != switch_loc_pads[2])
             {
                 if(!full_power_pads[2])
                 {
-                    if (low_power_pads[2])
+                    if (switch_loc_pads[2])
                     {
-                        if (!current_low_power)
+                        if (all_low_power_off())
                         {
                             rc = ble_central_update_control_enables(1, 0, 0, peer);
-                            current_low_power = 3;
+                            if (!rc)  
+                                current_low_power = 3;
                         }
                     } else 
                     {
                         rc = ble_central_update_control_enables(0, 0, 0, peer);
-                        current_low_power = 0;
                     }
                 }
-                last_pad3 = low_power_pads[2];
+                last_pad3 = switch_loc_pads[2];
             }
             break;
         case 4:
-            //ESP_LOGW(TAG, "fourth pad - %d - %d - %d" , last_pad4, low_power_pads[3], full_power_pads[3]);
-            if(last_pad4 != low_power_pads[3])
+            //ESP_LOGW(TAG, "fourth pad - %d - %d - %d" , last_pad4, switch_loc_pads[3], full_power_pads[3]);
+            if(last_pad4 != switch_loc_pads[3])
             {
                 if (!full_power_pads[3])
                 {
-                    if (low_power_pads[3])
+                    if (switch_loc_pads[3])
                     {
-                        if (!current_low_power)
+                        if (all_low_power_off())
                         {
                             rc = ble_central_update_control_enables(1, 0, 0, peer);
-                            current_low_power = 4;
+                            if (!rc)  
+                                current_low_power = 4;
                         }
                     } else 
                     {
                         rc = ble_central_update_control_enables(0, 0, 0, peer);
-                        current_low_power = 0;
                     }
                 }
-                last_pad4 = low_power_pads[3];
+                last_pad4 = switch_loc_pads[3];
             }
             break;
     }
@@ -579,6 +572,8 @@ static int ble_central_on_alert_read(uint16_t conn_handle,
                 void *arg)
 {
     struct peer *peer = (struct peer *) arg;
+
+    ESP_LOGE(TAG, "ALERT!");
     
     // Give the semaphore immediately 
     xSemaphoreGive(peer->sem_handle);
@@ -599,7 +594,7 @@ static int ble_central_on_alert_read(uint16_t conn_handle,
  *          the Dynamic characteristic (containing I2C measurements) while also making sure the CRU is still
  *          connected. If the CRU disconnects or encounters any issues the task will
  *          end, the semaphore will be deleted and the connection will be ended.
- *          Additionally, it will switch on/off the pads when low_power_pads[] changes writing the Control characteristic.
+ *          Additionally, it will switch on/off the pads when switch_loc_pads[] changes writing the Control characteristic.
  * 
  * @param arg A void pointer which contains the peer structure
  */
@@ -613,6 +608,7 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
     //enable for testing (start the switching even when no CRU connected)
     //xTimerStart(localization_switch_pads_t_handle, 0);
 
+//TODO: CREATE A FLEXIBLE VARIABLE FOR THE TASK AND SEMAPHORE TIMING
 
     struct peer *peer = (struct peer *) arg;
 
@@ -653,44 +649,50 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
         //check alert is fine
         if (peer->dyn_payload.alert == 0)
         {
-            {   
-                if (xSemaphoreTake(peer->sem_handle, DYNAMIC_TIMER_PERIOD) == pdTRUE)
-                {
-                    /* Initiate Read procedure */        
-                    rc = ble_gattc_read(peer->conn_handle, dynamic_chr->chr.val_handle,
-                                    ble_central_on_AUX_CTU_dyn_read, (void *)peer);
-                }
+            if (xSemaphoreTake(peer->sem_handle, LOC_CTU_TIMER_PERIOD) == pdTRUE)
+            {
+                /* Initiate Read procedure */        
+                rc = ble_gattc_read(peer->conn_handle, dynamic_chr->chr.val_handle,
+                                ble_central_on_AUX_CTU_dyn_read, (void *)peer);
+                if(rc)
+                    ESP_LOGE(TAG, "error");
             }
         } else 
             {
-                if (xSemaphoreTake(peer->sem_handle, DYNAMIC_TIMER_PERIOD) == pdTRUE)
+                if (xSemaphoreTake(peer->sem_handle, LOC_CTU_TIMER_PERIOD) == pdTRUE)
                 {
                     rc = ble_gattc_read(peer->conn_handle, alert_chr->chr.val_handle,
                                     ble_central_on_alert_read, (void *)peer);
                 }
             }
+        
         if (rc != ESP_OK)
         {
-            if (peer->error < 10)
+            if (peer->error < COMMS_ERROR_LIMIT)
             {
                 peer->error++;
                 /* Restart the task for 10 times --> then */
-                ESP_LOGW(TAG, "AUX CTU %d task error but loop anyway rc=%d", peer->error, rc);
+                ESP_LOGW(TAG, "AUX CTU in position %d, task error number %d, error code rc=%d", peer->position, peer->error, rc);
                 //RC = https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/esp_err.html#_CPPv49esp_err_t
+                // Give the semaphore immediately 
+                xSemaphoreGive(peer->sem_handle);
                 rc = 0;
             } else {
                 ESP_LOGW(TAG, "AUX CTU 10th task error - disconnect");
+                /* Delete watchdog */
+                esp_task_wdt_delete(NULL);
                 ble_central_kill_AUX_CTU(peer->task_handle, peer->sem_handle, peer->conn_handle);         
             }
-            }
+        }
 
         /* Feed watchdog */
         esp_task_wdt_reset();
+
         if (current_localization_process())
         {
-            vTaskDelay(pdMS_TO_TICKS(250));
+            vTaskDelay(LOC_CTU_TIMER_PERIOD);
         } else {
-            vTaskDelay(pdMS_TO_TICKS(1000));
+            vTaskDelay(1000);
         }
     }
 }
@@ -739,6 +741,7 @@ static void ble_central_CRU_task_handle(void *arg)
         return;
     }
 
+    //todo: consider removing watchdog
     err_code = esp_task_wdt_add(peer->task_handle);
     if(err_code)
     {
@@ -761,6 +764,7 @@ static void ble_central_CRU_task_handle(void *arg)
     peer->correct = false;
     peer->count = 0;
     peer->error = 0;
+    switch_loc_pads[0] = switch_loc_pads[1] = switch_loc_pads[2] = switch_loc_pads[3] = 0;
     
     /* WPT task loop */
     while (1)
@@ -783,6 +787,7 @@ static void ble_central_CRU_task_handle(void *arg)
                         break;
                     
                     //TIMEOUT FOR DETECTING LOCALIZATION (1000*200ms) -- 20s 
+                    //todo:check this again
                     case 1000:
                         ESP_LOGE(TAG, "Localization timer expires! Disconnecting");
                         ble_central_kill_CRU(peer->task_handle, peer->sem_handle, peer->conn_handle);
@@ -790,7 +795,7 @@ static void ble_central_CRU_task_handle(void *arg)
 
                     // read dyn chr
                     default:
-                        if (xSemaphoreTake(peer->sem_handle, DYNAMIC_TIMER_PERIOD) == pdTRUE)
+                        if (xSemaphoreTake(peer->sem_handle, LOC_CRU_TIMER_PERIOD) == pdTRUE)
                         {
                             peer->count++;
                             rc = ble_gattc_read(peer->conn_handle, dynamic_chr->chr.val_handle,
@@ -801,7 +806,7 @@ static void ble_central_CRU_task_handle(void *arg)
             } else if (peer->position)
             {   
                 //* POWER TRANSFER PROCESS (keep reading dyn chr)
-                if (xSemaphoreTake(peer->sem_handle, DYNAMIC_TIMER_PERIOD) == pdTRUE)
+                if (xSemaphoreTake(peer->sem_handle, LOC_CRU_TIMER_PERIOD) == pdTRUE)
                 {
                     /* Initiate Read procedure */        
                     rc = ble_gattc_read(peer->conn_handle, dynamic_chr->chr.val_handle,
@@ -810,34 +815,39 @@ static void ble_central_CRU_task_handle(void *arg)
             }
         } else 
             {
-                if (xSemaphoreTake(peer->sem_handle, DYNAMIC_TIMER_PERIOD) == pdTRUE)
+                if (xSemaphoreTake(peer->sem_handle, LOC_CRU_TIMER_PERIOD) == pdTRUE)
                 {
                     rc = ble_gattc_read(peer->conn_handle, alert_chr->chr.val_handle,
                                     ble_central_on_alert_read, (void *)peer);
                 }
             }
+        
         if (rc != ESP_OK)
         {
-            if (peer->error <10)
+            if (peer->error < COMMS_ERROR_LIMIT)
             {
                 peer->error++;
                 /* Restart the task for 10 times --> then */
                 ESP_LOGW(TAG, "CRU %d task error but loop anyway rc=%d", peer->error, rc);
                 //RC = https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/esp_err.html#_CPPv49esp_err_t
+                xSemaphoreGive(peer->sem_handle);
                 rc = 0;
             } else {
                 ESP_LOGW(TAG, "CRU 10th task error - disconnect");
+                /* Delete watchdog */
+                esp_task_wdt_delete(NULL);
                 ble_central_kill_CRU(peer->task_handle, peer->sem_handle, peer->conn_handle);         
             }
         }
 
         /* Feed watchdog */
         esp_task_wdt_reset();
+
         if (current_localization_process())
         {
-            vTaskDelay(pdMS_TO_TICKS(250));
+            vTaskDelay(LOC_CRU_TIMER_PERIOD);
         } else {
-            vTaskDelay(pdMS_TO_TICKS(1000));
+            vTaskDelay(1000);
         }
     }
 }
@@ -1445,6 +1455,7 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
         }
 
     case BLE_GAP_EVENT_DISCONNECT:
+        
         //gettimeofday(&tv_stop, NULL);
        //time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
         //printf("---Time: %f sec\n", time_sec);
@@ -1459,7 +1470,7 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
         {
             ESP_LOGE(TAG, "CRU");
             ble_central_kill_CRU(peer->task_handle, peer->sem_handle, event->disconnect.conn.conn_handle);
-            strip->clear(strip, 10);
+            strip1->clear(strip1, 10);
         } else {
             ESP_LOGE(TAG, "A-CTU in position: %d", peer->position);
         }
@@ -1485,7 +1496,7 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
         break;
 
     case BLE_GAP_EVENT_DISC_COMPLETE:
-        ESP_LOGI(TAG, "Discovery complete EVT; reason=%d", event->disc_complete.reason);
+        //ESP_LOGI(TAG, "Discovery complete EVT; reason=%d", event->disc_complete.reason);
         break;
     
     case BLE_GAP_EVENT_L2CAP_UPDATE_REQ:
@@ -1530,6 +1541,7 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
 /**********************************************************************************/
 /**                       Payload function definitions                           **/
 /**********************************************************************************/
+//todo: fault state: tv_fault --> save on each peer the time to wait before reconnection (it should be kept in memory even after disconnection)
 static void ble_central_unpack_AUX_CTU_alert_param(struct os_mbuf* om, uint16_t conn_handle)
 {
     gettimeofday(&tv_stop, NULL);
@@ -1540,28 +1552,34 @@ static void ble_central_unpack_AUX_CTU_alert_param(struct os_mbuf* om, uint16_t 
 
     if (peer!=NULL)
     {
+        //reset the alert field in the dynamic payload
+        peer->dyn_payload.alert = 0;
+        //read the alert payload
         peer->alert_payload.alert_field.internal = om->om_data[0];
 
         if(peer->alert_payload.alert_field.overvoltage)
         {
-            ESP_LOGW(TAG, "ALERT -- OVERVOLTAGE -- aux ctu position %d", peer->position);
+            ESP_LOGE(TAG, "ALERT -- OVERVOLTAGE -- aux ctu position %d", peer->position);
+            peer->alert_payload.alert_field.overvoltage = 0;
             CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
         } else if(peer->alert_payload.alert_field.overcurrent)
             {
-                ESP_LOGW(TAG, "ALERT -- OVERCURRENT -- aux ctu position %d", peer->position);
+                ESP_LOGE(TAG, "ALERT -- OVERCURRENT -- aux ctu position %d", peer->position);
+                peer->alert_payload.alert_field.overcurrent = 0;
                 CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
             } else if(peer->alert_payload.alert_field.overtemperature)
                 {
-                    ESP_LOGW(TAG, "ALERT -- OVERTEMPERATURE -- aux ctu position %d", peer->position);
+                    ESP_LOGE(TAG, "ALERT -- OVERTEMPERATURE -- aux ctu position %d", peer->position);
+                    peer->alert_payload.alert_field.overtemperature = 0;
                     CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
                 } else if(peer->alert_payload.alert_field.FOD)
                 {
-                    ESP_LOGW(TAG, "ALERT -- FOD -- aux ctu position %d", peer->position);
+                    ESP_LOGE(TAG, "ALERT -- FOD -- aux ctu position %d", peer->position);
+                    peer->alert_payload.alert_field.FOD = 0;
                     CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
                 } 
     }
 }
-
 
 static void ble_central_unpack_CRU_alert_param(struct os_mbuf* om, uint16_t conn_handle)
 {
@@ -1573,21 +1591,22 @@ static void ble_central_unpack_CRU_alert_param(struct os_mbuf* om, uint16_t conn
 
     if (peer!=NULL)
     {
+        //reset the alert field in the dynamic payload
+        peer->dyn_payload.alert = 0;
+        //read the alert payload
         peer->alert_payload.alert_field.internal = om->om_data[0];
 
         if(peer->alert_payload.alert_field.overvoltage)
         {
-            ESP_LOGW(TAG, "ALERT -- OVERVOLTAGE -- cru");
+            ESP_LOGE(TAG, "ALERT -- OVERVOLTAGE -- cru");
             CTU_state_change(CTU_REMOTE_FAULT_STATE, (void *)peer);
         } else if(peer->alert_payload.alert_field.overcurrent)
             {
-                ESP_LOGW(TAG, "ALERT -- OVERCURRENT -- cru");
+                ESP_LOGE(TAG, "ALERT -- OVERCURRENT -- cru");
                 CTU_state_change(CTU_REMOTE_FAULT_STATE, (void *)peer);
             } else if(peer->alert_payload.alert_field.overtemperature)
                 {
-                    ESP_LOGW(TAG, "ALERT -- OVERTEMPERATURE -- cru");
-                    //use queues instead? check times and use identification
-                    //vTaskDelay(1000*120); //wait 2 additional minute
+                    ESP_LOGE(TAG, "ALERT -- OVERTEMPERATURE -- cru");
                     CTU_state_change(CTU_REMOTE_FAULT_STATE, (void *)peer);
                 }  else if (peer->alert_payload.alert_field.charge_complete)
                     {
@@ -1732,6 +1751,9 @@ uint8_t ble_central_update_control_enables(uint8_t enable, uint8_t full_power, u
     rc = ble_gattc_write_no_rsp_flat(peer->conn_handle, control_chr->chr.val_handle,
                               (void *)value, sizeof value);
 
+    if (rc)
+        ESP_LOGE(TAG, "switch command problem");
+
     gettimeofday(&tv_stop, NULL);
     time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
     printf("---Time: %f sec\n", time_sec);
@@ -1746,10 +1768,11 @@ uint8_t ble_central_update_control_enables(uint8_t enable, uint8_t full_power, u
             if(full_power)
             {
                 ESP_LOGW(TAG, "FULL MODE");
+                full_power_pads[peer->position-1] = 1;
             } else {
                 ESP_LOGW(TAG, "HALF MODE");
+                low_power_pads[(peer->position)-1] = 1;
             }
-            //low_power_pads[(peer->position)-1] = 1;
             ESP_LOGE(TAG, "Enable charge on pad=%d", peer->position);
         }
         else if(enable == 0)
@@ -1757,13 +1780,13 @@ uint8_t ble_central_update_control_enables(uint8_t enable, uint8_t full_power, u
             if(full_power)
             {
                 ESP_LOGW(TAG, "FULL MODE");
+                full_power_pads[peer->position-1] = 0;
             } else {
                 ESP_LOGW(TAG, "HALF MODE");
+                low_power_pads[(peer->position)-1] = 0;
             }
-            //low_power_pads[(peer->position)-1] = 0;
             ESP_LOGE(TAG, "Disable charge on pad=%d!", peer->position);
         }
     }
-    
     return rc;
 }

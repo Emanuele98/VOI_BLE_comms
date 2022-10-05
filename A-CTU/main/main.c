@@ -55,7 +55,7 @@ static void gpio_task(void* arg)
     uint32_t io_num;
     for(;;) {
         if(xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
-            if(gpio_get_level(io_num)) {
+            if(gpio_get_level(io_num) && (dyn_payload.vrect.f > FOD_THRESH)) {
                 ESP_LOGE(TAG, "FOD!");
                 switch_safely_off();
                 alert_payload.alert_field.FOD = 1;
