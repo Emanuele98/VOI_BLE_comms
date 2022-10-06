@@ -14,6 +14,7 @@
 #include "esp_err.h"
 
 #include "ble_central.h"
+#include "led_strip.h"
 
 #define WIFI_SSID      CONFIG_WIFI_SSID
 #define WIFI_PASS      CONFIG_WIFI_PASSWORD
@@ -29,9 +30,7 @@
 static EventGroupHandle_t s_wifi_event_group;
 static int s_retry_num = 0;
 
-
 struct timeval tv_start;
-led_strip_t *strip1, *strip2, *strip3, *strip4;
 
 time_t now;
 struct tm info;
@@ -191,58 +190,11 @@ void init_sw_timers(void)
 
     /* Software timer for periodic scanning once 1 CRU is connected */
     periodic_scan_t_handle = xTimerCreate("scan", PERIODIC_SCAN_TIMER_PERIOD, pdTRUE, NULL, CTU_periodic_scan_timeout);
-}
 
-/**
- * @brief Construct a new install strip object
- * 
- * @param pin assigned GPIO pin
- */
-void install_strip(uint8_t pin, led_strip_t* strip, uint8_t channel_n)
-{
-    /* Initialize LED strip on PIN */ 
-    rmt_config_t config = RMT_DEFAULT_CONFIG_TX(pin, channel_n);
-    // set counter clock to 40MHz
-    config.clk_div = 2;
-    rmt_config(&config);
-    rmt_driver_install(config.channel, 0, 0);
-    //install ws2812 driver
-    led_strip_config_t strip_config = LED_STRIP_DEFAULT_CONFIG(STRIP_LED_NUMBER, (led_strip_dev_t)config.channel);
-    strip = led_strip_new_rmt_ws2812(&strip_config);
-    if (!strip) {
-        ESP_LOGE(TAG, "install STRIP failed");
-    }
+    /* Software timer for led strip default state */
+    periodic_leds_handle = xTimerCreate("leds", PERIODIC_LEDS_TIMER_PERIOD, pdTRUE, NULL, CTU_periodic_leds_blink);
 
-    //todo: RAINBOW to be made with a timer
-    /*
-    while (1) {
-        for (int i = 0; i < 3; i++) {
-            for (int j = i; j < STRIP_LED_NUMBER; j += 3) {
-                // Build RGB values
-                hue = j * 360 / STRIP_LED_NUMBER + start_rgb;
-                led_strip_hsv2rgb(hue, 100, 100, &red, &green, &blue);
-                // Write RGB values to strip driver
-                strip->set_pixel(strip, j, red, green, blue);
-    }
-    // Flush RGB values to LEDs
-    strip->refresh(strip, 100);
-    vTaskDelay(pdMS_TO_TICKS(EXAMPLE_CHASE_SPEED_MS));
-    strip->clear(strip, 50);
-    vTaskDelay(pdMS_TO_TICKS(EXAMPLE_CHASE_SPEED_MS));
-        }
-    start_rgb += 60;
-    }
-    */
-
-//todo: create a function for this
-
-    for (int j = 1; j < STRIP_LED_NUMBER; j++) {
-        // Write RGB values to strip driver
-        strip->set_pixel(strip, j, 0, 255, 0);
-    }
-    // Flush RGB values to LEDs
-    strip->refresh(strip, 100);
-
+    xTimerStart(periodic_leds_handle, 10);
 }
 
 /** 
@@ -251,21 +203,17 @@ void install_strip(uint8_t pin, led_strip_t* strip, uint8_t channel_n)
  *          the CTU needs to function regardless of its current mode of operation.
 */
 void init_setup(void)
-{
-    
+{    
+    install_strip(STRIP_1_PIN, 0);
+    install_strip(STRIP_2_PIN, 1);
+    install_strip(STRIP_3_PIN, 2);
+    install_strip(STRIP_4_PIN, 3);
+
     /* Initialize software timers */
     init_sw_timers();
 
     /* Initialize state switch semaphore */
-    m_set_state_sem = xSemaphoreCreateMutex();
-    
-    install_strip(STRIP_1_PIN, strip1, 0);
-    install_strip(STRIP_2_PIN, strip2, 1);
-    install_strip(STRIP_3_PIN, strip3, 2);
-    install_strip(STRIP_4_PIN, strip4, 3);
-
-    //FUNCTION TO MAKE THEM RAINBOW
-}
+    m_set_state_sem = xSemaphoreCreateMutex();}
 
 /**
  * @brief Initialize Wifi Module and Real Time Clock
@@ -344,7 +292,6 @@ void app_main(void)
 
     //TODO:
     //check esp_bt_sleep_enable()
-
 
     /* Runtime function for main context */
     CTU_states_run();

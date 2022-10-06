@@ -4,18 +4,26 @@
 extern "C" {
 #endif
 
+#include <stdlib.h>
+#include <string.h>
+#include <sys/cdefs.h>
+#include "esp_log.h"
+#include "esp_attr.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "esp_err.h"
+#include "driver/rmt.h"
+
 
 // LED STRIP
-#define EXAMPLE_CHASE_SPEED_MS  30
-#define STRIP_LED_NUMBER        36
-#define STRIP_1_PIN             14
-#define STRIP_2_PIN             33
-#define STRIP_3_PIN             32
-#define STRIP_4_PIN             21
+#define N_LEDS                  50
+#define STRIP_4_PIN             14
+#define STRIP_3_PIN             33
+#define STRIP_2_PIN             32
+#define STRIP_1_PIN             21
 
-//leds
-uint32_t hue, red, green, blue, start_rgb;
+//virtual switches for default led mode
+bool strip_enable[4];
 
 /**
 * @brief LED Strip Type
@@ -111,6 +119,13 @@ typedef struct {
     }
 
 /**
+ * @brief Construct a new install strip object
+ * 
+ * @param pin assigned GPIO pin
+ */
+void install_strip(uint8_t pin, uint8_t channel_n);
+
+/**
 * @brief Install a new ws2812 driver (based on RMT peripheral)
 *
 * @param config: LED strip configuration
@@ -127,12 +142,21 @@ led_strip_t *led_strip_new_rmt_ws2812(const led_strip_config_t *config);
  */
 void led_strip_hsv2rgb(uint32_t h, uint32_t s, uint32_t v, uint32_t *r, uint32_t *g, uint32_t *b);
 
+
 /**
- * @brief Set the color of the LED stripe
+ * @brief Function used by the timer for the default led state
  * 
- * @param hue
  */
-void set_led(uint32_t h1, uint32_t h2);
+void CTU_periodic_leds_blink(void *arg);
+
+/**
+ * @brief Set the led strip with one defined colour
+ * 
+ */
+
+void set_strip(uint8_t position, uint8_t r, uint8_t g, uint8_t b);  
+
+
 
 
 

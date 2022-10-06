@@ -133,7 +133,7 @@ struct peer {
     int8_t position;
 
     /* keep track of comms error of the peer */
-    int8_t error;
+    int8_t last_rc;
     
     /* bool to detect if localization process is currently going */
     bool localization_process;

@@ -442,6 +442,5 @@ void CTU_periodic_pad_switch(void *arg)
             break;
     }   
     
-    //ESP_LOGI(TAG,  "%d - %d - %d - %d", switch_loc_pads[0], switch_loc_pads[1], switch_loc_pads[2], switch_loc_pads[3]);
-                                                                                                                 
+    //ESP_LOGI(TAG,  "%d - %d - %d - %d", switch_loc_pads[0], switch_loc_pads[1], switch_loc_pads[2], switch_loc_pads[3]);                                                                                                      
 }

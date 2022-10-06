@@ -26,10 +26,13 @@
 #include "peer.h"
 
 /* Scan timer duration */
-#define PERIODIC_SCAN_TIMER_PERIOD    1000
+#define PERIODIC_SCAN_TIMER_PERIOD    1200
 
 /* Switching timer duration */
 #define PERIODIC_SWITCH_TIMER_PERIOD  500
+
+/* Default Leds blinking duration */
+#define PERIODIC_LEDS_TIMER_PERIOD 20
 
 /* Voltage threshold during LOW-POWER mode */
 #define VOLTAGE_LOW_THRESH 30
@@ -55,6 +58,7 @@ struct peer;
 /* All states timer handles */
 TimerHandle_t periodic_scan_t_handle;
 TimerHandle_t localization_switch_pads_t_handle;
+TimerHandle_t periodic_leds_handle;
 
 /**
  * @brief Possible states of CTU

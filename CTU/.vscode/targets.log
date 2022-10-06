@@ -11,7 +11,7 @@ Makefile:8: /make/project.mk: No such file or directory
 make.exe: *** No rule to make target `/make/project.mk'.  Stop.
 
 
-# Make data base, printed on Wed Oct  5 11:25:13 2022
+# Make data base, printed on Thu Oct  6 10:31:29 2022
 
 # Variables
 
@@ -92,7 +92,7 @@ NRFGOSTUDIOPATH = C:\Program Files (x86)\Nordic Semiconductor\nRFgo Studio
 # automatic
 %F = $(notdir $%)
 # environment
-CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_23984_MRTCCTISBCWATDVP
+CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_13904_PZNJNTZJVDHZIRWI
 # environment
 COMPUTERNAME = LAPTOP-CQUHDE6I
 # environment
@@ -218,7 +218,7 @@ TERM = cygwin
 # environment
 FPS_BROWSER_APP_PROFILE_STRING = Internet Explorer
 # environment
-VSCODE_PID = 23984
+VSCODE_PID = 13904
 # environment
 USERDOMAIN_ROAMINGPROFILE = LAPTOP-CQUHDE6I
 # variable set hash-table stats:
@@ -256,6 +256,7 @@ all:
 # Not a target:
 Makefile:
 #  Implicit rule search has not been done.
+ 
 #  Last modified 2022-08-18 12:35:08
 #  File has not been updated.
 
@@ -286,6 +287,6 @@ Makefile:
 # strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
 # strcache free: total = 4070 / max = 4070 / min = 4070 / avg = 4070
 
-# Finished Make data base on Wed Oct  5 11:25:13 2022
+# Finished Make data base on Thu Oct  6 10:31:29 2022
 
  

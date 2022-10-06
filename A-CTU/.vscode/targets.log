@@ -8,9 +8,10 @@ make.exe all --print-data-base --no-builtin-variables --no-builtin-rules --quest
 # This program built for i686-pc-msys
  
 Makefile:8: /make/project.mk: No such file or directory
+make.exe: *** No rule to make target `/make/project.mk'.  Stop.
 
 
-# Make data base, printed on Wed Oct  5 12:01:10 2022
+# Make data base, printed on Thu Oct  6 11:29:41 2022
 
 # Variables
 
@@ -91,7 +92,7 @@ NRFGOSTUDIOPATH = C:\Program Files (x86)\Nordic Semiconductor\nRFgo Studio
 # automatic
 %F = $(notdir $%)
 # environment
-CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_23984_MRTCCTISBCWATDVP
+CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_13904_PZNJNTZJVDHZIRWI
 # environment
 COMPUTERNAME = LAPTOP-CQUHDE6I
 # environment
@@ -217,16 +218,14 @@ TERM = cygwin
 # environment
 FPS_BROWSER_APP_PROFILE_STRING = Internet Explorer
 # environment
-VSCODE_PID = 23984
+VSCODE_PID = 13904
 # environment
+ 
 USERDOMAIN_ROAMINGPROFILE = LAPTOP-CQUHDE6I
 # variable set hash-table stats:
 # Load=103/1024=10%, Rehash=0, Collisions=8/126=6%
 
 # Pattern-specific Variable Values
-
- 
-make.exe: *** No rule to make target `/make/project.mk'.  Stop.
 
 # No pattern-specific variable values.
 
@@ -243,7 +242,6 @@ make.exe: *** No rule to make target `/make/project.mk'.  Stop.
 # Files
 
 # Not a target:
- 
 all:
 #  Command-line target.
 #  Implicit rule search has not been done.
@@ -258,7 +256,6 @@ all:
 
 # Not a target:
 Makefile:
- 
 #  Implicit rule search has not been done.
  
 #  Last modified 2022-08-17 13:01:55
@@ -278,6 +275,7 @@ Makefile:
 # variable set hash-table stats:
 # Load=0/32=0%, Rehash=0, Collisions=0/0=0%
 
+ 
 # files hash-table stats:
 # Load=5/1024=0%, Rehash=0, Collisions=0/17=0%
 # VPATH Search Paths
@@ -291,6 +289,6 @@ Makefile:
 # strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
 # strcache free: total = 4070 / max = 4070 / min = 4070 / avg = 4070
 
-# Finished Make data base on Wed Oct  5 12:01:10 2022
+# Finished Make data base on Thu Oct  6 11:29:41 2022
 
  

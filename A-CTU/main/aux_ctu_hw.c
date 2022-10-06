@@ -53,7 +53,7 @@ float i2c_read_voltage_sensor(void)
     if(ret!=ESP_OK)
     {
         ESP_LOGW(TAG, "voltage reading problem");
-        value = 0;
+        value = -1;
         goto exit;
     }
 
@@ -93,14 +93,14 @@ float i2c_read_current_sensor(void)
     if(ret!=ESP_OK)
     {
         ESP_LOGW(TAG, "current reading problem");
-        value = 0;
+        value = -1;
         goto exit;
     }
 
     //printf("first byte: %02x\n", first_byte);
     //printf("second byte : %02x\n", second_byte);
     value = (int16_t)(first_byte << 8 | second_byte) * 0.0000025 / 0.012;
-    printf("current: %.02f [A]\n", value);
+    //printf("current: %.02f [A]\n", value);
 
     exit:
         xSemaphoreGive(i2c_sem);
@@ -144,14 +144,14 @@ float i2c_read_temperature_sensor(bool n_temp_sens)
     if(ret!=ESP_OK)
     {
         ESP_LOGW(TAG, "temperature reading problem");
-        value = 0;
+        value = -1;
         goto exit;
     }
 
     //printf("first byte: %02x\n", first_byte);
     //printf("second byte : %02x\n", second_byte);
     value = (int16_t)(first_byte << 4 | second_byte >> 4) * 0.0625 ;
-    printf("temperature: %.02f [°C]\n", value);
+    //printf("temperature: %.02f [°C]\n", value);
 
     exit:
         xSemaphoreGive(i2c_sem);

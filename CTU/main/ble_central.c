@@ -16,17 +16,19 @@ uint8_t last_pad1, last_pad2, last_pad3, last_pad4;
 
 //defined in main.c 
 extern struct timeval tv_start;
-extern led_strip_t* strip1, strip2, strip3, strip4;
 
 //timer
 struct timeval tv_loc;
 struct timeval tv_stop;
 float time_sec;
 
-bool blink = true;
-
 //variable to know which pad is actually on in Low Power mode
+uint8_t baton = 0;
 uint8_t current_low_power = 0;
+
+/* keep count of comms_error */
+uint8_t cru_comms_error = 0;
+uint8_t ctu_comms_error = 0;
 
 /* Debug tag */
 static const char* TAG = "BLE_CENTRAL";
@@ -353,7 +355,7 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
     //SEND SWITCH COMMAND THROUGH CONTROL CHR WHEN switch_loc_pads[pad position] changes
     //LOW POWER mode
     //double check if full_power is on
-    //off check to make sure first it switches off and then on
+    //all_low_power_off check to make sure first it switches off and then on
 
     switch(peer->position)
     {
@@ -471,6 +473,10 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
     
     // Give the semaphore immediately 
     xSemaphoreGive(peer->sem_handle);
+
+    //exit the led default state
+    strip_enable[peer->position-1] = 0;
+
     
     // If the characteristic has not been read correctly
     if (error->status != 0)
@@ -484,28 +490,10 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
 
     //MISALIGNMENT CHECK
     if(peer->dyn_payload.vrect.f < VOLTAGE_MIS_THRESH )
-    {
-        //set LED orange
-        if ( blink ) {
-            blink = false;
-            if(peer_get_NUM_CRU() == 1)
-                set_led(20, 0);
-            else
-                set_led(120, 20);
-        } else {
-            blink = true;
-            if(peer_get_NUM_CRU() == 1)
-                set_led(0, 0);
-            else
-                set_led(120, 0);
-        }
-    } else 
-    {
-        //set LED green
-        if(peer_get_NUM_CRU() == 1)
-            set_led(120, 0);
-        else
-            set_led(120, 120);    }
+        set_strip(peer->position, 255, 128, 0);
+    else 
+        set_strip(peer->position, 0, 255, 0);  
+              
 
     struct peer *Aux_CTU = Aux_CTU_find(peer->position);
     if (Aux_CTU == NULL)
@@ -608,8 +596,6 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
     //enable for testing (start the switching even when no CRU connected)
     //xTimerStart(localization_switch_pads_t_handle, 0);
 
-//TODO: CREATE A FLEXIBLE VARIABLE FOR THE TASK AND SEMAPHORE TIMING
-
     struct peer *peer = (struct peer *) arg;
 
     dynamic_chr = peer_chr_find_uuid(peer,
@@ -641,7 +627,9 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
         return;
     }
 
-    peer->error = 0;
+    peer->last_rc = -1;
+    int task_delay = CTU_TIMER_PERIOD;
+
     
     /* WPT task loop */
     while (1)
@@ -649,7 +637,7 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
         //check alert is fine
         if (peer->dyn_payload.alert == 0)
         {
-            if (xSemaphoreTake(peer->sem_handle, LOC_CTU_TIMER_PERIOD) == pdTRUE)
+            if (xSemaphoreTake(peer->sem_handle, task_delay) == pdTRUE)
             {
                 /* Initiate Read procedure */        
                 rc = ble_gattc_read(peer->conn_handle, dynamic_chr->chr.val_handle,
@@ -659,41 +647,55 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
             }
         } else 
             {
-                if (xSemaphoreTake(peer->sem_handle, LOC_CTU_TIMER_PERIOD) == pdTRUE)
+                if (xSemaphoreTake(peer->sem_handle, task_delay) == pdTRUE)
                 {
                     rc = ble_gattc_read(peer->conn_handle, alert_chr->chr.val_handle,
                                     ble_central_on_alert_read, (void *)peer);
                 }
             }
-        
+
+        //*ERROR HANDLING - DISCONNECT ONLY AFTER 60 CONSECUTIVE COMMS ERRORS        
         if (rc != ESP_OK)
         {
-            if (peer->error < COMMS_ERROR_LIMIT)
+            if (peer->last_rc == rc)
             {
-                peer->error++;
-                /* Restart the task for 10 times --> then */
-                ESP_LOGW(TAG, "AUX CTU in position %d, task error number %d, error code rc=%d", peer->position, peer->error, rc);
-                //RC = https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/esp_err.html#_CPPv49esp_err_t
-                // Give the semaphore immediately 
-                xSemaphoreGive(peer->sem_handle);
-                rc = 0;
-            } else {
-                ESP_LOGW(TAG, "AUX CTU 10th task error - disconnect");
-                /* Delete watchdog */
-                esp_task_wdt_delete(NULL);
-                ble_central_kill_AUX_CTU(peer->task_handle, peer->sem_handle, peer->conn_handle);         
-            }
+                if (ctu_comms_error < COMMS_ERROR_LIMIT)
+                {
+                    ctu_comms_error++;
+                } else {
+                    ESP_LOGW(TAG, "AUX CTU 60th consecutive task error - disconnect");
+                    ctu_comms_error = 0;
+                    /* Delete watchdog */
+                    esp_task_wdt_delete(NULL);
+                    ble_central_kill_AUX_CTU(peer->task_handle, peer->sem_handle, peer->conn_handle);     
+                    return;    
+                }
+            } 
+            ESP_LOGW(TAG, "AUX CTU in position %d, task error number %d, error code rc=%d", peer->position, ctu_comms_error, rc);
+            //RC = https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/esp_err.html#_CPPv49esp_err_t
+            // Give the semaphore immediately 
+            xSemaphoreGive(peer->sem_handle);
+            rc = 0;
         }
+        
+        if ((peer->last_rc) && (!rc))
+        {
+            ESP_LOGI(TAG, "Comms RECOVERY with AUX CTU position %d", peer->position);
+            ctu_comms_error = 0;
+        }
+
+        peer->last_rc = rc;
+
+        // set Task Delay
+        if (current_localization_process())
+            task_delay = LOC_CTU_TIMER_PERIOD;
+        else 
+            task_delay = CTU_TIMER_PERIOD;
 
         /* Feed watchdog */
         esp_task_wdt_reset();
 
-        if (current_localization_process())
-        {
-            vTaskDelay(LOC_CTU_TIMER_PERIOD);
-        } else {
-            vTaskDelay(1000);
-        }
+        vTaskDelay(task_delay);
     }
 }
 
@@ -741,7 +743,6 @@ static void ble_central_CRU_task_handle(void *arg)
         return;
     }
 
-    //todo: consider removing watchdog
     err_code = esp_task_wdt_add(peer->task_handle);
     if(err_code)
     {
@@ -763,8 +764,10 @@ static void ble_central_CRU_task_handle(void *arg)
     peer->localization_process = false;
     peer->correct = false;
     peer->count = 0;
-    peer->error = 0;
+    peer->last_rc = -1;
     switch_loc_pads[0] = switch_loc_pads[1] = switch_loc_pads[2] = switch_loc_pads[3] = 0;
+
+    int task_delay = CRU_TIMER_PERIOD;
     
     /* WPT task loop */
     while (1)
@@ -786,8 +789,7 @@ static void ble_central_CRU_task_handle(void *arg)
                         xTimerStart(localization_switch_pads_t_handle, 0);
                         break;
                     
-                    //TIMEOUT FOR DETECTING LOCALIZATION (1000*200ms) -- 20s 
-                    //todo:check this again
+                    //TIMEOUT FOR DETECTING LOCALIZATION (1000*50ms) -- 50s 
                     case 1000:
                         ESP_LOGE(TAG, "Localization timer expires! Disconnecting");
                         ble_central_kill_CRU(peer->task_handle, peer->sem_handle, peer->conn_handle);
@@ -795,7 +797,7 @@ static void ble_central_CRU_task_handle(void *arg)
 
                     // read dyn chr
                     default:
-                        if (xSemaphoreTake(peer->sem_handle, LOC_CRU_TIMER_PERIOD) == pdTRUE)
+                        if (xSemaphoreTake(peer->sem_handle, task_delay) == pdTRUE)
                         {
                             peer->count++;
                             rc = ble_gattc_read(peer->conn_handle, dynamic_chr->chr.val_handle,
@@ -806,7 +808,7 @@ static void ble_central_CRU_task_handle(void *arg)
             } else if (peer->position)
             {   
                 //* POWER TRANSFER PROCESS (keep reading dyn chr)
-                if (xSemaphoreTake(peer->sem_handle, LOC_CRU_TIMER_PERIOD) == pdTRUE)
+                if (xSemaphoreTake(peer->sem_handle, task_delay) == pdTRUE)
                 {
                     /* Initiate Read procedure */        
                     rc = ble_gattc_read(peer->conn_handle, dynamic_chr->chr.val_handle,
@@ -815,40 +817,54 @@ static void ble_central_CRU_task_handle(void *arg)
             }
         } else 
             {
-                if (xSemaphoreTake(peer->sem_handle, LOC_CRU_TIMER_PERIOD) == pdTRUE)
+                if (xSemaphoreTake(peer->sem_handle, task_delay) == pdTRUE)
                 {
                     rc = ble_gattc_read(peer->conn_handle, alert_chr->chr.val_handle,
                                     ble_central_on_alert_read, (void *)peer);
                 }
             }
         
+        //*ERROR HANDLING - DISCONNECT ONLY AFTER 60 CONSECUTIVE COMMS ERRORS
         if (rc != ESP_OK)
         {
-            if (peer->error < COMMS_ERROR_LIMIT)
+            if (peer->last_rc == rc)
             {
-                peer->error++;
-                /* Restart the task for 10 times --> then */
-                ESP_LOGW(TAG, "CRU %d task error but loop anyway rc=%d", peer->error, rc);
-                //RC = https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/esp_err.html#_CPPv49esp_err_t
-                xSemaphoreGive(peer->sem_handle);
-                rc = 0;
-            } else {
-                ESP_LOGW(TAG, "CRU 10th task error - disconnect");
-                /* Delete watchdog */
-                esp_task_wdt_delete(NULL);
-                ble_central_kill_CRU(peer->task_handle, peer->sem_handle, peer->conn_handle);         
-            }
+                if (cru_comms_error < COMMS_ERROR_LIMIT)
+                {
+                    cru_comms_error++;
+                } else {
+                    ESP_LOGW(TAG, "CRU 60th  consecutive task error - disconnect"); 
+                    cru_comms_error = 0;
+                    /* Delete watchdog */
+                    esp_task_wdt_delete(NULL);
+                    ble_central_kill_CRU(peer->task_handle, peer->sem_handle, peer->conn_handle);   
+                    return;      
+                }
+            } 
+            ESP_LOGW(TAG, "CRU %d task error but loop anyway rc=%d", cru_comms_error, rc);
+            //RC = https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/esp_err.html#_CPPv49esp_err_t
+            xSemaphoreGive(peer->sem_handle);
+            rc = 0;
         }
+
+        if ((peer->last_rc) && (!rc))
+        {
+            ESP_LOGI(TAG, "Comms RECOVERY with CRU");
+            cru_comms_error = 0;
+        }
+
+        peer->last_rc = rc;
+
+        // set Task Delay
+        if (current_localization_process())
+            task_delay = LOC_CRU_TIMER_PERIOD;
+        else 
+            task_delay = CRU_TIMER_PERIOD;
 
         /* Feed watchdog */
         esp_task_wdt_reset();
 
-        if (current_localization_process())
-        {
-            vTaskDelay(LOC_CRU_TIMER_PERIOD);
-        } else {
-            vTaskDelay(1000);
-        }
+        vTaskDelay(task_delay);
     }
 }
 
@@ -1411,15 +1427,9 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
                 ESP_LOGI(TAG, "Connection EVT with CRU");
                 /* Adds CRU to list of connections */
                 rc = peer_add(event->connect.conn_handle, 1);
-                //turn on red
-                if(peer_get_NUM_CRU() == 1)
-                    set_led(0, 0);
-                else
-                    set_led(120, 0);
             }
 
             peer = peer_find(event->connect.conn_handle);
-
 
             if (rc != ESP_OK)
             {
@@ -1469,10 +1479,16 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
         if(peer->CRU)
         {
             ESP_LOGE(TAG, "CRU");
+            if (peer->position)     
+                    strip_enable[peer->position-1] = 1;
             ble_central_kill_CRU(peer->task_handle, peer->sem_handle, event->disconnect.conn.conn_handle);
-            strip1->clear(strip1, 10);
         } else {
             ESP_LOGE(TAG, "A-CTU in position: %d", peer->position);
+            if (peer->position) 
+                {
+                    strip_enable[peer->position-1] = 0;
+                    set_strip(peer->position, 244, 244, 244);
+                }
         }
 
         peer_delete(event->disconnect.conn.conn_handle);
@@ -1662,6 +1678,7 @@ static void ble_central_unpack_static_param(const struct ble_gatt_attr *attr, ui
                     } else {
                             peer->position = 0;
                             }
+        strip_enable[peer->position-1] = 1;
         ESP_LOGI(TAG, "AUX-CTU POSITION = %d", peer->position);
     }
 }

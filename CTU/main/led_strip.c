@@ -1,12 +1,9 @@
-#include <stdlib.h>
-#include <string.h>
-#include <sys/cdefs.h>
-#include "esp_log.h"
-#include "esp_attr.h"
 #include "led_strip.h"
-#include "driver/rmt.h"
 
-extern led_strip_t* strip1, strip2, strip3, strip4;
+led_strip_t* strip[4];
+bool blink = true;
+int l = 0;
+
 
 static const char *TAG = "LED STRIP";
 #define STRIP_CHECK(a, str, goto_tag, ret_value, ...)                             \
@@ -37,6 +34,37 @@ typedef struct {
     uint32_t strip_len;
     uint8_t buffer[0];
 } ws2812_t;
+
+
+void set_strip(uint8_t position, uint8_t r, uint8_t g, uint8_t b)  
+{
+    for (int j = 0; j < N_LEDS; j++) 
+    {
+        strip[position-1]->set_pixel(strip[position-1], j, r, g, b);
+    }
+    strip[position-1]->refresh(strip[position-1], 100);
+}
+
+
+void install_strip(uint8_t pin, uint8_t channel_n)
+{
+    /* Initialize LED strip on PIN */ 
+    rmt_config_t config = RMT_DEFAULT_CONFIG_TX(pin, channel_n);
+    // set counter clock to 40MHz
+    config.clk_div = 2;
+    rmt_config(&config);
+    rmt_driver_install(config.channel, 0, 0);
+    //install ws2812 driver
+    led_strip_config_t strip_config = LED_STRIP_DEFAULT_CONFIG(N_LEDS, (led_strip_dev_t)config.channel);
+    
+    strip[channel_n] = led_strip_new_rmt_ws2812(&strip_config);
+    //strip[channel_n]->clear(strip[channel_n], 0);
+    set_strip(channel_n+1, 244, 244, 244);
+
+
+    //these are switches for the default leds blinking state
+    strip_enable[0] = strip_enable[1] = strip_enable[2] = strip_enable[3] = 0;
+}
 
 //todo: remove this function and use directly the rgb values
 
@@ -133,17 +161,16 @@ static void IRAM_ATTR ws2812_rmt_adapter(const void *src, rmt_item32_t *dest, si
 
 static esp_err_t ws2812_set_pixel(led_strip_t *strip, uint32_t index, uint32_t red, uint32_t green, uint32_t blue)
 {
-    esp_err_t ret = ESP_OK;
     ws2812_t *ws2812 = __containerof(strip, ws2812_t, parent);
-    STRIP_CHECK(index < ws2812->strip_len, "index out of the maximum number of leds", err, ESP_ERR_INVALID_ARG);
-    uint32_t start = index * 3;
-    // In thr order of GRB
-    ws2812->buffer[start + 0] = green & 0xFF;
-    ws2812->buffer[start + 1] = red & 0xFF;
-    ws2812->buffer[start + 2] = blue & 0xFF;
+    if (index < ws2812->strip_len)
+    {
+        uint32_t start = index * 3;
+        // In thr order of GRB
+        ws2812->buffer[start + 0] = green & 0xFF;
+        ws2812->buffer[start + 1] = red & 0xFF;
+        ws2812->buffer[start + 2] = blue & 0xFF;
+    }
     return ESP_OK;
-err:
-    return ret;
 }
 
 static esp_err_t ws2812_refresh(led_strip_t *strip, uint32_t timeout_ms)
@@ -208,23 +235,30 @@ err:
     return ret;
 }
 
-void set_led(uint32_t h1, uint32_t h2)
+void CTU_periodic_leds_blink(void *arg)
 {
-    /*
-    for (int j = 1; j < 75; j++) {
-        // Build RGB values
-        led_strip_hsv2rgb(h1, 100, 100, &red, &green, &blue);
-        // Write RGB values to strip driver
-        strip->set_pixel(strip, j, red, green, blue);
-    }
-*/
-    for (int j = 1; j < STRIP_LED_NUMBER; j++) {
-        // Build RGB values
-        led_strip_hsv2rgb(h2, 100, 100, &red, &green, &blue);
-        // Write RGB values to strip driver
-        strip1->set_pixel(strip1, j, red, green, blue);
+    for (int i = 0; i < 4; i++)
+    {
+        if(strip_enable[i])
+        {               
+                for (int j = 0; j <= l; j++) 
+                {
+                    if (blink)
+                        strip[i]->set_pixel(strip[i], N_LEDS - j, 0, 255, 255);
+                    else 
+                        strip[i]->set_pixel(strip[i], N_LEDS - j, 255, 255, 0);
+                }
+                strip[i]->refresh(strip[i], 100);       
+        }
     }
 
-    // Flush RGB values to LEDs
-    strip1->refresh(strip1, 100);
+    if (l==N_LEDS)
+    {
+        l=0;
+        blink = !blink;
+    } else {
+        l++;
+    }
 }
+
+

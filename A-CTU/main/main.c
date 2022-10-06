@@ -75,26 +75,32 @@ void dynamic_param_timeout_handler(void *arg)
             case 0:
                 counter++;
                 dyn_payload.vrect.f = i2c_read_voltage_sensor();
-                break;
+                if (dyn_payload.vrect.f != -1) 
+                    break;
             
             //current
             case 1:
                 counter++;
                 dyn_payload.irect.f = i2c_read_current_sensor();
-                break;
+                if (dyn_payload.irect.f != -1) 
+                    break;
 
             //temperature 1
             case 2:
                 counter++;
                 dyn_payload.temp1.f = i2c_read_temperature_sensor(1);
-                break;
+                if (dyn_payload.temp1.f != -1) 
+                    break;
 
             //temperature 2
             case 3:
                 counter = 0;
                 dyn_payload.temp2.f = i2c_read_temperature_sensor(2);
+                if (dyn_payload.temp2.f  != -1) 
+                    break;
+            default:
+                xSemaphoreGive(i2c_sem);
                 break;
-
         }
     }
 }

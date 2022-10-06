@@ -43,7 +43,7 @@
 #include "led_strip.h"
 
 //BLE
-#define COMMS_ERROR_LIMIT                   100
+#define COMMS_ERROR_LIMIT                   60
 
 #define N_CHAR_UUIDS                        5
 #define N_BYTES_IN_UUID                     16
@@ -53,15 +53,17 @@
 #define BLE_WPT_INITIAL_CONN_ITVL_MIN       (8 * 1000 / BLE_HCI_CONN_ITVL)
 #define BLE_WPT_INITIAL_CONN_ITVL_MAX       (9 * 1000 / BLE_HCI_CONN_ITVL)
 
-#define LOC_CTU_TIMER_PERIOD               	100
+#define CTU_TIMER_PERIOD                    1000
+#define CRU_TIMER_PERIOD                    1000
+#define LOC_CTU_TIMER_PERIOD               	80
 #define LOC_CRU_TIMER_PERIOD                50
 
 #define BLE_PERIODIC_SCAN_ITVL				100	
 #define BLE_PERIODIC_SCAN_WIND				100
 
 //todo: check these
-#define BLE_FIRST_SCAN_ITVL                 15
-#define BLE_FIRST_SCAN_WIND					15
+#define BLE_FIRST_SCAN_ITVL                 32          /**< The scanning interval (in units of 0.625 ms. This value corresponds to 20 ms). */
+#define BLE_FIRST_SCAN_WIND					32          /**< The scanning window   (in units of 0.625 ms. This value corresponds to 20 ms). */
 
 #define BASE_CONN_HANDLE 					0
 
