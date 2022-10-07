@@ -42,7 +42,7 @@ void set_strip(uint8_t position, uint8_t r, uint8_t g, uint8_t b)
     {
         strip[position-1]->set_pixel(strip[position-1], j, r, g, b);
     }
-    strip[position-1]->refresh(strip[position-1], 100);
+    strip[position-1]->refresh(strip[position-1], 10);
 }
 
 
@@ -57,13 +57,12 @@ void install_strip(uint8_t pin, uint8_t channel_n)
     //install ws2812 driver
     led_strip_config_t strip_config = LED_STRIP_DEFAULT_CONFIG(N_LEDS, (led_strip_dev_t)config.channel);
     
+    //these are switches for the default leds blinking state
+    strip_enable[0] = strip_enable[1] = strip_enable[2] = strip_enable[3] = 0;
+
     strip[channel_n] = led_strip_new_rmt_ws2812(&strip_config);
     //strip[channel_n]->clear(strip[channel_n], 0);
     set_strip(channel_n+1, 244, 244, 244);
-
-
-    //these are switches for the default leds blinking state
-    strip_enable[0] = strip_enable[1] = strip_enable[2] = strip_enable[3] = 0;
 }
 
 //todo: remove this function and use directly the rgb values
@@ -162,7 +161,7 @@ static void IRAM_ATTR ws2812_rmt_adapter(const void *src, rmt_item32_t *dest, si
 static esp_err_t ws2812_set_pixel(led_strip_t *strip, uint32_t index, uint32_t red, uint32_t green, uint32_t blue)
 {
     ws2812_t *ws2812 = __containerof(strip, ws2812_t, parent);
-    if (index < ws2812->strip_len)
+    if ((index < ws2812->strip_len) && (index > 0))
     {
         uint32_t start = index * 3;
         // In thr order of GRB
@@ -237,9 +236,10 @@ err:
 
 void CTU_periodic_leds_blink(void *arg)
 {
+    //l = N_LEDS;
     for (int i = 0; i < 4; i++)
     {
-        if(strip_enable[i])
+        if(strip_enable[i] == true)
         {               
                 for (int j = 0; j <= l; j++) 
                 {
@@ -248,7 +248,7 @@ void CTU_periodic_leds_blink(void *arg)
                     else 
                         strip[i]->set_pixel(strip[i], N_LEDS - j, 255, 255, 0);
                 }
-                strip[i]->refresh(strip[i], 100);       
+                strip[i]->refresh(strip[i], 10);       
         }
     }
 
@@ -259,6 +259,9 @@ void CTU_periodic_leds_blink(void *arg)
     } else {
         l++;
     }
+
+    //blink = !blink;
+
 }
 
 

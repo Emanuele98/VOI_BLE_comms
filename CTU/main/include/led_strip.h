@@ -16,7 +16,7 @@ extern "C" {
 
 
 // LED STRIP
-#define N_LEDS                  50
+#define N_LEDS                  36
 #define STRIP_4_PIN             14
 #define STRIP_3_PIN             33
 #define STRIP_2_PIN             32

@@ -47,7 +47,7 @@ float i2c_read_voltage_sensor(void)
     if(ret!=ESP_OK)
     {
         ESP_LOGE(TAG, "voltage reading problem");
-        value = 0;
+        value = -1;
         goto exit;
     }
 
@@ -87,7 +87,7 @@ float i2c_read_current_sensor(void)
     if(ret!=ESP_OK)
     {
         ESP_LOGE(TAG, "current reading problem");
-        value = 0;
+        value = -1;
         goto exit;
     }
 
@@ -128,7 +128,7 @@ float i2c_read_temperature_sensor(void)
     if(ret!=ESP_OK)
     {
         ESP_LOGE(TAG, "temperature reading problem");
-        value = 0;
+        value = -1;
         goto exit;
     }
 

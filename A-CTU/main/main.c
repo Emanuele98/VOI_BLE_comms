@@ -20,8 +20,8 @@ struct timeval tv_start;
 
 #define APP_ADV_INTERVAL                32                                     /**< The advertising interval (in units of 0.625 ms. This value corresponds to 20 ms). */
 
-#define DYNAMIC_PARAM_TIMER_INTERVAL    pdMS_TO_TICKS(10)                      /**< Timer synced to Dynamic parameter characteristic (10 ms). */
-#define ALERT_PARAM_TIMER_INTERVAL      pdMS_TO_TICKS(40)				       /**< Timer synced to Alert parameter characteristic (10 ms). */
+#define DYNAMIC_PARAM_TIMER_INTERVAL    pdMS_TO_TICKS(20)                      /**< Timer synced to Dynamic parameter characteristic (10 ms). */
+#define ALERT_PARAM_TIMER_INTERVAL      pdMS_TO_TICKS(80)				       /**< Timer synced to Alert parameter characteristic (40 ms). */
 
 /* WPT SERVICE BEING ADVERTISED */
 #define WPT_SVC_UUID16                  0xFFFE
@@ -45,7 +45,7 @@ void switch_safely_off(void)
     disable_full_power_output();
     disable_low_power_output();
     //wait
-    vTaskDelay(OR_TIME_GAP / portTICK_PERIOD_MS);
+    vTaskDelay(OR_TIME_GAP);
     //enable OR gate
     enable_OR_output();
 }

@@ -16,8 +16,8 @@
 
 #define APP_ADV_INTERVAL                32                                     /**< The advertising interval (in units of 0.625 ms. This value corresponds to 20 ms). */
 
-#define DYNAMIC_PARAM_TIMER_INTERVAL    pdMS_TO_TICKS(10)                    /**< Timer synced to Dynamic parameter characteristic (50 ms). */
-#define ALERT_PARAM_TIMER_INTERVAL      pdMS_TO_TICKS(30)				       /**< Timer synced to Alert parameter characteristic (250 ms). */
+#define DYNAMIC_PARAM_TIMER_INTERVAL    pdMS_TO_TICKS(20)                    /**< Timer synced to Dynamic parameter characteristic (10 ms). */
+#define ALERT_PARAM_TIMER_INTERVAL      pdMS_TO_TICKS(60)				       /**< Timer synced to Alert parameter characteristic (30 ms). */
 
 #define WPT_SVC_UUID16               0xFFFE
 
@@ -46,21 +46,24 @@ static void dynamic_param_timeout_handler(void *arg)
             case 0:
                 counter++;
                 dyn_payload.vrect.f = i2c_read_voltage_sensor();
-                //dyn_payload.vrect.f = 10.12;
-                break;
+                if (dyn_payload.vrect.f != -1) 
+                    break;
             
             //current
             case 1:
                 counter++;
                 dyn_payload.irect.f = i2c_read_current_sensor();
-                //dyn_payload.irect.f = 10.13;
-                break;
+                if (dyn_payload.irect.f != -1) 
+                    break;
 
             //temperature 1
             case 2:
                 counter = 0;
                 dyn_payload.temp1.f = i2c_read_temperature_sensor();
-                //dyn_payload.temp.f = 10.14;
+                if (dyn_payload.temp1.f != -1) 
+                    break;
+            default:
+                xSemaphoreGive(i2c_sem);
                 break;
         }
     }
@@ -242,9 +245,6 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
 
     switch (event->type) {
     case BLE_GAP_EVENT_CONNECT:
-        /* I2C driver install */
-        init_hw();
-
         /* A new connection was established or a connection attempt failed. */
         ESP_LOGI(TAG, "connection %s; status=%d ",
                     event->connect.status == 0 ? "established" : "failed",
@@ -263,9 +263,6 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
         return 0;
 
     case BLE_GAP_EVENT_DISCONNECT:
-        /* I2C driver disinstall */
-        i2c_driver_delete(i2c_master_port);
-
         ESP_LOGI(TAG, "disconnect; reason=%d ", event->disconnect.reason);
         /* Stop timers */
         if (xTimerIsTimerActive(dynamic_t_handle) == pdTRUE)
@@ -390,7 +387,7 @@ void init_setup(void)
     init_sw_timers();
     
     /* Initialize GPIOs and other hardware peripherals (I2C) */
-    //init_hw();
+    init_hw();
 
     /* Initialize I2C semaphore */
     i2c_sem = xSemaphoreCreateMutex();

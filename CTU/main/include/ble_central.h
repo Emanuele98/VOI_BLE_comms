@@ -49,26 +49,22 @@
 #define N_BYTES_IN_UUID                     16
 
 #define FIRST_SCAN_TIMEOUT                  80
-
+//todo: double check
 #define BLE_WPT_INITIAL_CONN_ITVL_MIN       (8 * 1000 / BLE_HCI_CONN_ITVL)
 #define BLE_WPT_INITIAL_CONN_ITVL_MAX       (9 * 1000 / BLE_HCI_CONN_ITVL)
 
-#define CTU_TIMER_PERIOD                    1000
-#define CRU_TIMER_PERIOD                    1000
-#define LOC_CTU_TIMER_PERIOD               	80
-#define LOC_CRU_TIMER_PERIOD                50
+#define CTU_TIMER_PERIOD                    pdMS_TO_TICKS(2000)
+#define CRU_TIMER_PERIOD                    pdMS_TO_TICKS(2000)
+#define LOC_CTU_TIMER_PERIOD               	pdMS_TO_TICKS(200)
+#define LOC_CRU_TIMER_PERIOD                pdMS_TO_TICKS(150)
 
 #define BLE_PERIODIC_SCAN_ITVL				100	
 #define BLE_PERIODIC_SCAN_WIND				100
 
 //todo: check these
+#define BLE_SCAN_TIMEOUT                    pdMS_TO_TICKS(5000)     
 #define BLE_FIRST_SCAN_ITVL                 32          /**< The scanning interval (in units of 0.625 ms. This value corresponds to 20 ms). */
 #define BLE_FIRST_SCAN_WIND					32          /**< The scanning window   (in units of 0.625 ms. This value corresponds to 20 ms). */
-
-#define BASE_CONN_HANDLE 					0
-
-#define N_CTU_PARAMS                        12
-#define MAX_N_CHAR_IN_CONFIG                15
 
 #define N_BYTES_IN_CTU_STATIC               17
 
@@ -76,11 +72,10 @@
 
 #define WPT_SVC_UUID16                      0xFFFE
 
-#define PRU_CONTROL_CHAR_SIZE                                  5
+#define PRU_CONTROL_CHAR_SIZE               5
 
 
 /* Keeps power outputs state in memory */
-uint8_t switch_loc_pads[4];
 uint8_t low_power_pads[4];
 uint8_t full_power_pads[4];
 

@@ -30,10 +30,7 @@
 static EventGroupHandle_t s_wifi_event_group;
 static int s_retry_num = 0;
 
-struct timeval tv_start;
 
-time_t now;
-struct tm info;
 char buffer[64];
 bool update = false;
 
@@ -157,7 +154,7 @@ void host_task(void *param)
 */
 static void host_ctrl_on_reset(int reason)
 {
-    CTU_state_change(CTU_CONFIG_STATE, NULL);
+    CTU_state_change(CTU_CONFIG_STATE, (void *)NULL);
 
     ESP_LOGW(TAG, "Resetting state; reason=%d\n", reason);
     //todo: reset happens here (guru meditation error)
@@ -176,7 +173,7 @@ static void host_ctrl_on_sync(void)
     ble_hs_util_ensure_addr(0);
 
     /* Initialize configuration state */
-    CTU_state_change(CTU_CONFIG_STATE, NULL);
+    CTU_state_change(CTU_CONFIG_STATE, (void *)NULL);
 }
 
 /** 
@@ -185,10 +182,7 @@ static void host_ctrl_on_sync(void)
 */
 void init_sw_timers(void)
 {
-    /* Software timer for sequential switching of the charging pads */
-    localization_switch_pads_t_handle = xTimerCreate("localization", PERIODIC_SWITCH_TIMER_PERIOD, pdTRUE, NULL, CTU_periodic_pad_switch);
-
-    /* Software timer for periodic scanning once 1 CRU is connected */
+     /* Software timer for periodic scanning once 1 CRU is connected */
     periodic_scan_t_handle = xTimerCreate("scan", PERIODIC_SCAN_TIMER_PERIOD, pdTRUE, NULL, CTU_periodic_scan_timeout);
 
     /* Software timer for led strip default state */
@@ -213,7 +207,8 @@ void init_setup(void)
     init_sw_timers();
 
     /* Initialize state switch semaphore */
-    m_set_state_sem = xSemaphoreCreateMutex();}
+    m_set_state_sem = xSemaphoreCreateMutex();
+}
 
 /**
  * @brief Initialize Wifi Module and Real Time Clock
@@ -232,13 +227,12 @@ void connectivity_setup(void)
 
     while(!update){}
 
-    time(&now);
     // Set timezone to Eastern Standard Time and print local time
     setenv("TZ", "GMTGMT-1,M3.4.0/01,M10.4.0/02", 1);
     tzset();
+    time(&now);
     localtime_r(&now, &info);
-    strftime(buffer, sizeof(buffer), "%c", &info);
-    ESP_LOGW(TAG, "The current date/time in London is: %s", buffer);
+    ESP_LOGE(TAG, "Time is %s", asctime(&info));
 
     return;
 }
@@ -266,7 +260,7 @@ void app_main(void)
 
     /* Initialize all elements of CTU */
     init_setup();
-    //connectivity_setup();
+    connectivity_setup();
 
     /* Bind HCI and controller to NimBLE stack */
     esp_nimble_hci_and_controller_init();

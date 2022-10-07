@@ -35,7 +35,7 @@
 
 #include "aux_ctu_hw.h"
 
-#define OR_TIME_GAP pdMS_TO_TICKS(200)
+#define OR_TIME_GAP pdMS_TO_TICKS(50)
 
 //timers
 TimerHandle_t dynamic_t_handle, alert_t_handle;

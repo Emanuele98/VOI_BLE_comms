@@ -23,6 +23,10 @@
 #include "host/ble_hs.h"
 #include "host/ble_uuid.h"
 
+/* Time structures */
+time_t now;
+struct tm info;
+
 /** Peer. */
 struct peer_dsc {
     SLIST_ENTRY(peer_dsc) next;
@@ -59,10 +63,11 @@ typedef struct
 {
     union i2c         vrect;              /**< [mandatory] Vrect value from I2C (4 bytes). */
     union i2c         irect;              /**< [mandatory] Irect value from I2C (4 bytes). */
-    union i2c         temp1;               /**< [optional] Temperature value from I2C (4 bytes). */
-    union i2c         temp2;               /**< [optional] Temperature value from I2C (4 bytes). */
+    union i2c         temp1;              /**< [optional] Temperature value from I2C (4 bytes). */
+    union i2c         temp2;              /**< [optional] Temperature value from I2C (4 bytes). */
 	uint8_t	          alert;		      /**< [mandatory] CRU alert field for warnings to send to CTU (1 byte). */
 	uint8_t	          RFU;		          /**< [optional] Reserved for future use (1 byte). */
+    struct tm         dyn_time;           /** Time */
 } wpt_dynamic_payload_t;
 
 /** @brief Dynamic characteristic structure. This contains elements necessary for static payload. */
@@ -92,6 +97,7 @@ typedef union
 typedef struct
 {
 	alert_field_t     alert_field;
+    struct tm         alert_time;           /** Time */
 } wpt_alert_payload_t;
 
 /**@brief Control characteristic structure. This contains elements necessary for control payload. */
@@ -167,6 +173,7 @@ int peer_init(int max_peers, int max_svcs, int max_chrs, int max_dscs);
 struct peer *peer_find(uint16_t conn_handle);
 uint8_t peer_get_NUM_CRU(void);
 uint8_t peer_get_NUM_AUX_CTU(void);
+bool all_AUX_CTU_set(void);
 bool is_peer_alone(void);
 bool CTU_is_peer_charging(struct peer *peer);
 bool CTU_is_charging(void);

@@ -210,11 +210,12 @@ static int gatt_svr_chr_write_control(uint16_t conn_handle, uint16_t attr_handle
 	control_payload.full_power = data[1];
     control_payload.critical = data[2];
 	control_payload.RFU = ((uint16_t)data[3]<<8)|data[4];
-
+  
     if(control_payload.critical)
     {
         disable_low_power_output();
-        vTaskDelay(OR_TIME_GAP / portTICK_PERIOD_MS);
+        disable_OR_output();
+        vTaskDelay(OR_TIME_GAP);
         enable_full_power_output();
         } else
             {
@@ -223,7 +224,7 @@ static int gatt_svr_chr_write_control(uint16_t conn_handle, uint16_t attr_handle
                 //disable OR gate
                 disable_OR_output();
                 //wait 
-                vTaskDelay(OR_TIME_GAP / portTICK_PERIOD_MS);
+                vTaskDelay(OR_TIME_GAP);
                 //enable power
                 if(control_payload.full_power) {
                 enable_full_power_output();
@@ -238,7 +239,7 @@ static int gatt_svr_chr_write_control(uint16_t conn_handle, uint16_t attr_handle
                     disable_low_power_output();
                     }
                     //wait
-                    vTaskDelay(OR_TIME_GAP / portTICK_PERIOD_MS);
+                    vTaskDelay(OR_TIME_GAP);
                     //enable OR gate
                     enable_OR_output();
                 }

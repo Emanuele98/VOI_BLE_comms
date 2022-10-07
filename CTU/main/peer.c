@@ -60,6 +60,27 @@ uint8_t peer_get_NUM_AUX_CTU(void) {
     return NUM_AUX_CTU;
 }
 
+/**
+ * @brief Check all AUX CTU positions have been found
+ * 
+ * @return true yes
+ * @return false not all of them
+ */
+bool all_AUX_CTU_set(void)
+{
+    struct peer *peer;
+    bool set = true;
+
+    SLIST_FOREACH(peer, &peers, next) {
+        if ((!peer->CRU) && (!peer->position)) {
+            set = false;
+        }
+    }
+
+    return set;
+}
+
+
 
 /**
  * @brief Function that returns the position of the CRU
@@ -111,7 +132,7 @@ uint8_t loc_pad_find(void)
     uint8_t n;
     for(n=0; n<4; n++)
     {
-        if(switch_loc_pads[n])
+        if(low_power_pads[n])
         {
             break;
         }

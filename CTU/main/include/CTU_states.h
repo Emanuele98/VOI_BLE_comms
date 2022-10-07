@@ -26,13 +26,10 @@
 #include "peer.h"
 
 /* Scan timer duration */
-#define PERIODIC_SCAN_TIMER_PERIOD    1200
-
-/* Switching timer duration */
-#define PERIODIC_SWITCH_TIMER_PERIOD  500
+#define PERIODIC_SCAN_TIMER_PERIOD    1000
 
 /* Default Leds blinking duration */
-#define PERIODIC_LEDS_TIMER_PERIOD 20
+#define PERIODIC_LEDS_TIMER_PERIOD 25
 
 /* Voltage threshold during LOW-POWER mode */
 #define VOLTAGE_LOW_THRESH 30
@@ -46,6 +43,9 @@
 /* Time within the battery should pick the voltage */
 #define BATTERY_REACTION_TIME 10
 
+/* Minimum time for the voltage to be received during the localization process */
+#define MIN_LOW_POWER_ON 0.2
+
 /* Type definition for state task parameters */
 typedef struct CTU_task_params_s CTU_task_params_t;
 
@@ -57,7 +57,6 @@ struct peer;
 
 /* All states timer handles */
 TimerHandle_t periodic_scan_t_handle;
-TimerHandle_t localization_switch_pads_t_handle;
 TimerHandle_t periodic_leds_handle;
 
 /**
@@ -118,9 +117,6 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg);
 
 /* Function used by the timer to repeatedly start scanning */
 void CTU_periodic_scan_timeout(void *arg);
-
-/* Timer to switch on/off pads in low power mode during localization process */
-void CTU_periodic_pad_switch(void *arg);
 
 /* Boolean function to check if peer is charging */
 bool CTU_is_peer_charging(struct peer *peer);
