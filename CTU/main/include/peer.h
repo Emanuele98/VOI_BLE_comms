@@ -138,6 +138,9 @@ struct peer {
     /* POSITION OF THE PAD UPON WHICH THE PEER IS PLACED */
     int8_t position;
 
+    /* CRU VOI CODE FOR ID */
+    char voi_code[4];
+    
     /* keep track of comms error of the peer */
     int8_t last_rc;
     

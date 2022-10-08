@@ -104,7 +104,7 @@ static const struct ble_gap_conn_params conn_params = {
     .itvl_min = BLE_WPT_INITIAL_CONN_ITVL_MIN,
     .itvl_max = BLE_WPT_INITIAL_CONN_ITVL_MAX,
     .latency = BLE_GAP_INITIAL_CONN_LATENCY,
-    .supervision_timeout = 0x0100,
+    .supervision_timeout = 0x00f0,
     .min_ce_len = BLE_GAP_INITIAL_CONN_MIN_CE_LEN,
     .max_ce_len = BLE_GAP_INITIAL_CONN_MAX_CE_LEN,
 };
@@ -1610,6 +1610,20 @@ static void ble_central_unpack_static_param(const struct ble_gatt_attr *attr, ui
         //enable led default state
         strip_enable[peer->position-1] = true;
         ESP_LOGI(TAG, "AUX-CTU POSITION = %d", peer->position);
+    } else //SAVE CRU VOI CODE FOR IDENTIFICATION (use SD card to write times before reconnection) OR assumption that the MASTER never resets
+    {
+        if ((peer->stat_payload.mac_5 == 0xac) && (peer->stat_payload.mac_4 == 0x0b) && (peer->stat_payload.mac_3 == 0xfb) 
+            && (peer->stat_payload.mac_2 == 0x25) && (peer->stat_payload.mac_1 == 0x63) && (peer->stat_payload.mac_0 == 0x5a))
+        { 
+            strcpy(peer->voi_code, "CE8J");
+
+        } else if ((peer->stat_payload.mac_5 == 0xac) && (peer->stat_payload.mac_4 == 0x0b) && (peer->stat_payload.mac_3 == 0xfb) 
+                   && (peer->stat_payload.mac_2 == 0x25) && (peer->stat_payload.mac_1 == 0x98) && (peer->stat_payload.mac_0 == 0x16))
+            {
+                strcpy(peer->voi_code, "6F35");
+
+            }
+        
     }
 }
 

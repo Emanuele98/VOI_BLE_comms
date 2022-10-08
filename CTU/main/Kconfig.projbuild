@@ -2,8 +2,8 @@ menu "CTU Static Configuration"
 
     config WIFI_SSID
         string "WiFi name"
-        default "ErDega"
+        default ""
     config WIFI_PASSWORD
         string "WiFi password"
-        default "Ciaoneone"
+        default "cherrycoockies"
 endmenu

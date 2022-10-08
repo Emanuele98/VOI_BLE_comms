@@ -63,9 +63,9 @@
 
 //todo: check these
 #define BLE_SCAN_TIMEOUT                    pdMS_TO_TICKS(5000)     
-#define BLE_FIRST_SCAN_ITVL                 32          /**< The scanning interval (in units of 0.625 ms. This value corresponds to 20 ms). */
-#define BLE_FIRST_SCAN_WIND					32          /**< The scanning window   (in units of 0.625 ms. This value corresponds to 20 ms). */
-
+#define BLE_FIRST_SCAN_ITVL                 256          /**< The scanning interval (in units of 0.625 ms. This value corresponds to 20 ms). */
+#define BLE_FIRST_SCAN_WIND					200         /**< The scanning window   (in units of 0.625 ms. This value corresponds to 125 ms). */
+                                                        /**< The scan window must be less than 256 (160 ms) to coexist with WiFi */
 #define N_BYTES_IN_CTU_STATIC               17
 
 #define MINIMUM_ADV_RSSI                    -80

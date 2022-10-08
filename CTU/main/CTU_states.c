@@ -293,7 +293,7 @@ void CTU_periodic_scan_timeout(void *arg)
     if ((peer_get_NUM_CRU() + peer_get_NUM_AUX_CTU()) < 9)
     {
         ble_gap_disc_cancel();
-        ble_central_scan_start(BLE_SCAN_TIMEOUT, BLE_FIRST_SCAN_ITVL, BLE_FIRST_SCAN_WIND);
+        ble_central_scan_start(BLE_HS_FOREVER, BLE_FIRST_SCAN_ITVL, BLE_FIRST_SCAN_WIND);
     }
     else
     {
