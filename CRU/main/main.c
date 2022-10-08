@@ -14,10 +14,10 @@
 
 #define DEVICE_NAME                     "PRU"                          /**< Name of device. Will be included in the advertising data. */
 
-#define APP_ADV_INTERVAL                32                                     /**< The advertising interval (in units of 0.625 ms. This value corresponds to 20 ms). */
+#define APP_ADV_INTERVAL                64                                     /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
 
-#define DYNAMIC_PARAM_TIMER_INTERVAL    pdMS_TO_TICKS(20)                    /**< Timer synced to Dynamic parameter characteristic (10 ms). */
-#define ALERT_PARAM_TIMER_INTERVAL      pdMS_TO_TICKS(60)				       /**< Timer synced to Alert parameter characteristic (30 ms). */
+#define DYNAMIC_PARAM_TIMER_INTERVAL    pdMS_TO_TICKS(20)                    /**< Timer synced to Dynamic parameter characteristic (20 ms). */
+#define ALERT_PARAM_TIMER_INTERVAL      pdMS_TO_TICKS(60)				       /**< Timer synced to Alert parameter characteristic (60 ms). */
 
 #define WPT_SVC_UUID16               0xFFFE
 

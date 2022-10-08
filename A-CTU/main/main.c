@@ -18,7 +18,7 @@ struct timeval tv_start;
 
 #define DEVICE_NAME                     "AUX_CTU"                              /**< Name of device. Will be included in the advertising data. */
 
-#define APP_ADV_INTERVAL                32                                     /**< The advertising interval (in units of 0.625 ms. This value corresponds to 20 ms). */
+#define APP_ADV_INTERVAL                64                                     /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
 
 #define DYNAMIC_PARAM_TIMER_INTERVAL    pdMS_TO_TICKS(20)                      /**< Timer synced to Dynamic parameter characteristic (10 ms). */
 #define ALERT_PARAM_TIMER_INTERVAL      pdMS_TO_TICKS(80)				       /**< Timer synced to Alert parameter characteristic (40 ms). */
