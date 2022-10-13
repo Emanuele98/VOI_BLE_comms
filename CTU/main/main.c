@@ -8,7 +8,6 @@
 #include "esp_err.h"
 
 #include "include/ble_central.h"
-#include "include/led_strip.h"
 #include "include/sd_card.h"
 #include "include/wifi.h"
 
@@ -73,12 +72,7 @@ void init_sw_timers(void)
 {
      /* Software timer for periodic scanning once 1 CRU is connected */
     periodic_scan_t_handle = xTimerCreate("scan", PERIODIC_SCAN_TIMER_PERIOD, pdTRUE, NULL, CTU_periodic_scan_timeout);
-
-    //todo: remove 
-    /* Software timer for led strip default state */
-    periodic_leds_handle = xTimerCreate("leds", PERIODIC_LEDS_TIMER_PERIOD, pdTRUE, NULL, CTU_periodic_leds_blink);
-
-    //xTimerStart(periodic_leds_handle, 10);
+    
 }
 
 /** 
@@ -88,12 +82,6 @@ void init_sw_timers(void)
 */
 void init_setup(void)
 {    
-    /* Install leds */
-    install_strip(STRIP_1_PIN, 0);
-    install_strip(STRIP_2_PIN, 1);
-    install_strip(STRIP_3_PIN, 2);
-    install_strip(STRIP_4_PIN, 3);
-
     /* Install SD card */
     if (SD_CARD)
         install_sd_card();

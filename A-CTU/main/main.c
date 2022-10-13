@@ -57,8 +57,8 @@ static void gpio_task(void* arg)
         if(xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
             if(gpio_get_level(io_num) && (dyn_payload.vrect.f > FOD_THRESH)) {
                 ESP_LOGE(TAG, "FOD!");
-                switch_safely_off();
-                alert_payload.alert_field.FOD = 1;
+                //switch_safely_off();
+                //alert_payload.alert_field.FOD = 1;
             }
         }
     }
@@ -79,6 +79,9 @@ void dynamic_param_timeout_handler(void *arg)
                 {
                     strip_enable = false;
                     set_strip(0, 255, 0);
+                } else
+                {
+                    strip_enable = true;
                 }
                 break;
             
@@ -172,12 +175,12 @@ static void bleprph_advertise(void)
     //declare MASTER ADDRESS
     ble_addr_t master;
     master.type = 0;
-    master.val[0]= 0xda;
-    master.val[1]= 0x62;
-    master.val[2]= 0x25;
-    master.val[3]= 0xfb;
-    master.val[4]= 0x0b;
-    master.val[5]= 0xac;
+    master.val[0]= 0x72;
+    master.val[1]= 0x19;
+    master.val[2]= 0x9c;
+    master.val[3]= 0x84;
+    master.val[4]= 0x21;
+    master.val[5]= 0x78;
 
     rc = ble_gap_adv_start(own_addr_type, &master, BLE_HS_FOREVER,
                            &adv_params, bleprph_gap_event, NULL);

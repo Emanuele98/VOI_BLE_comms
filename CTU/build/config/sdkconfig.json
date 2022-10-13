@@ -625,7 +625,7 @@
     "UNITY_ENABLE_IDF_TEST_RUNNER": true,
     "VFS_SUPPORT_TERMIOS": true,
     "VFS_SUPPRESS_SELECT_DEBUG_OUTPUT": true,
-    "WIFI": true,
+    "WIFI": false,
     "WIFI_PASSWORD": "cherrycookies",
     "WIFI_PROV_AUTOSTOP_TIMEOUT": 30,
     "WIFI_PROV_SCAN_MAX_ENTRIES": 16,

@@ -126,7 +126,6 @@ struct peer {
 
     /** Task handle for dynamic char read */
     TaskHandle_t task_handle;
-	SemaphoreHandle_t sem_handle;
 
     /** Peripheral payloads. */
     wpt_alert_payload_t alert_payload;

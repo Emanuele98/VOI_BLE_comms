@@ -162,7 +162,7 @@ static void CTU_configuration_state(void *arg)
     SLIST_FOREACH(peer, &peers, next) {
         if(peer->CRU)
         {
-            ble_central_kill_CRU(peer->task_handle, peer->sem_handle, peer->conn_handle);
+            ble_central_kill_CRU(peer->conn_handle);
         }
     }
 }
@@ -216,7 +216,7 @@ static void CTU_local_fault_state(void *arg)
     if(peer)
     {
         //disconnect from the Auxiliary CTU
-        ble_central_kill_AUX_CTU(peer->task_handle, peer->sem_handle, peer->conn_handle);
+        ble_central_kill_AUX_CTU(peer->conn_handle);
     }
 */
     //todo: if no A-CTU connected anymore --> reset BLE stack and go back to configuration state
@@ -262,7 +262,7 @@ static void CTU_remote_fault_state(void *arg)
     }
 
     //todo: use identification and add the time to wait before reconnection
-    ble_central_kill_CRU(peer->task_handle, peer->sem_handle, peer->conn_handle);
+    ble_central_kill_CRU(peer->conn_handle);
 
 
     if (latching_fault_count == 3)

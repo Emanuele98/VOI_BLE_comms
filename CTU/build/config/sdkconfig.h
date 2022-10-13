@@ -41,7 +41,6 @@
 #define CONFIG_PARTITION_TABLE_FILENAME "partitions_singleapp.csv"
 #define CONFIG_PARTITION_TABLE_OFFSET 0x8000
 #define CONFIG_PARTITION_TABLE_MD5 1
-#define CONFIG_WIFI 1
 #define CONFIG_WIFI_SSID "RUT951_9456"
 #define CONFIG_WIFI_PASSWORD "cherrycookies"
 #define CONFIG_BROKER_URI "mqtts://bumblebee:Inductive1356@9f1c91ca48b94e70b21ae04163990bef.s1.eu.hivemq.cloud"

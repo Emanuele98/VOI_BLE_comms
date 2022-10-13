@@ -2,7 +2,6 @@ set(srcs    "main.c"
             "CTU_states.c"
             "ble_central.c"
             "peer.c"
-            "led_strip.c"
             "sd_card.c"
             "wifi.c" )
 set(include_dirs include)

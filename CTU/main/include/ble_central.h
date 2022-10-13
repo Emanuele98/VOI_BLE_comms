@@ -39,7 +39,6 @@
 
 #include "CTU_states.h"
 #include "peer.h"
-#include "led_strip.h"
 #include "sd_card.h"
 #include "wifi.h"
 
@@ -97,7 +96,7 @@ void ble_central_scan_start(uint32_t timeout, uint16_t scan_itvl, uint16_t scan_
 uint8_t ble_central_update_control_enables(uint8_t enable, uint8_t full_power, uint8_t critical, struct peer *peer);
 void ble_central_kill_all_CRU(void);
 void ble_central_kill_all_AUX_CTU(void);
-void ble_central_kill_CRU(TaskHandle_t task_handle, SemaphoreHandle_t sem_handle, uint16_t conn_handle);
-void ble_central_kill_AUX_CTU(TaskHandle_t task_handle, SemaphoreHandle_t sem_handle, uint16_t conn_handle);
+void ble_central_kill_CRU(uint16_t conn_handle);
+void ble_central_kill_AUX_CTU(uint16_t conn_handle);
 
 #endif

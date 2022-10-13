@@ -113,10 +113,15 @@ static int gatt_svr_chr_read_peer_static(uint16_t conn_handle, uint16_t attr_han
     int err_code ;
     
     //INIT STATIC PAYLOAD 
-    uint8_t mac[6] = {0};
-    esp_efuse_mac_get_default(mac);
+    //uint8_t mac[6] = {0};
+    //esp_efuse_mac_get_default(mac);
     //ESP_LOGI(TAG, "MAC Address: \n ");
     //ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x \n", mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
+
+    /* Printing ADDR */
+    //todo: its not the mac
+    uint8_t mac[6] = {0};
+    ble_hs_id_copy_addr(0, mac, NULL);
 
     static_payload.mac_0 = mac[0];
     static_payload.mac_1 = mac[1];

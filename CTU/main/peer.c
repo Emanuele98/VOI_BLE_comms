@@ -1182,11 +1182,6 @@ int peer_delete(uint16_t conn_handle)
     }  
     ESP_LOGW(TAG, "Deleting peer with conn_handle=%d; %d peers remaining", conn_handle, NUM_CRU + NUM_AUX_CTU);
 
-    if (peer->sem_handle != NULL)
-    {
-        vSemaphoreDelete(peer->sem_handle);
-    }
-
     SLIST_REMOVE(&peers, peer, peer, next);
 
     while ((svc = SLIST_FIRST(&peer->svcs)) != NULL) {

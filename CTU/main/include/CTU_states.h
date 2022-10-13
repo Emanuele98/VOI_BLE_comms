@@ -28,9 +28,6 @@
 /* Scan timer duration */
 #define PERIODIC_SCAN_TIMER_PERIOD    pdMS_TO_TICKS(1000) 
 
-/* Default Leds blinking duration */
-#define PERIODIC_LEDS_TIMER_PERIOD 25
-
 /* Voltage threshold during LOW-POWER mode */
 #define VOLTAGE_LOW_THRESH 30
 
@@ -44,7 +41,7 @@
 #define BATTERY_REACTION_TIME 10
 
 /* Minimum time for the voltage to be received during the localization process */
-#define MIN_LOW_POWER_ON 0.3
+#define MIN_LOW_POWER_ON 0.2
 
 /* Type definition for state task parameters */
 typedef struct CTU_task_params_s CTU_task_params_t;
@@ -57,7 +54,6 @@ struct peer;
 
 /* All states timer handles */
 TimerHandle_t periodic_scan_t_handle;
-TimerHandle_t periodic_leds_handle;
 
 /**
  * @brief Possible states of CTU
