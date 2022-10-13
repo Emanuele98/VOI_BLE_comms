@@ -14,10 +14,10 @@ extern "C" {
 #include "esp_err.h"
 #include "driver/rmt.h"
 
-
+//TODO: TRANSPORT THIS INTO THE A-CTUs
 // LED STRIP
 #define N_LEDS                  36
-#define STRIP_4_PIN             14
+#define STRIP_4_PIN             14  /* 22*/
 #define STRIP_3_PIN             33
 #define STRIP_2_PIN             32
 #define STRIP_1_PIN             21

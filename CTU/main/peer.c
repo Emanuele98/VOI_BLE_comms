@@ -1187,12 +1187,6 @@ int peer_delete(uint16_t conn_handle)
         vSemaphoreDelete(peer->sem_handle);
     }
 
-    if (peer->task_handle != NULL)
-    {
-        esp_task_wdt_delete(peer->task_handle);
-        vTaskDelete(peer->task_handle);
-    }
-
     SLIST_REMOVE(&peers, peer, peer, next);
 
     while ((svc = SLIST_FIRST(&peer->svcs)) != NULL) {

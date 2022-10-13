@@ -14,8 +14,6 @@
 #include <stdint.h>
 #include <sys/queue.h>
 
-#include "ble_central.h"
-
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -23,9 +21,8 @@
 #include "host/ble_hs.h"
 #include "host/ble_uuid.h"
 
-/* Time structures */
-time_t now;
-struct tm info;
+#include "ble_central.h"
+#include"wifi.h"
 
 /** Peer. */
 struct peer_dsc {
@@ -67,6 +64,8 @@ typedef struct
     union i2c         temp2;              /**< [optional] Temperature value from I2C (4 bytes). */
 	uint8_t	          alert;		      /**< [mandatory] CRU alert field for warnings to send to CTU (1 byte). */
 	uint8_t	          RFU;		          /**< [optional] Reserved for future use (1 byte). */
+    float             rx_power;           /* Calculate received power if peer is CRU */
+    float             tx_power;           /* Calculate transmitted power if peer is CTU */
     struct tm         dyn_time;           /** Time */
 } wpt_dynamic_payload_t;
 
@@ -89,7 +88,7 @@ typedef union
 		uint8_t           overtemperature:1;    /**< [mandatory] Defines which optional fields are populated (1 byte). */
 		uint8_t           overcurrent:1;        /**< [mandatory] Defines which optional fields are populated (1 byte). */
 		uint8_t           overvoltage:1;        /**< [mandatory] Defines which optional fields are populated (1 byte). */
-   		uint8_t           FOD:1;        /**< [mandatory] Defines which optional fields are populated (1 byte). */
+   		uint8_t           FOD:1;                /**< [mandatory] Defines which optional fields are populated (1 byte). */
 	};
 	uint8_t internal;
 } alert_field_t;

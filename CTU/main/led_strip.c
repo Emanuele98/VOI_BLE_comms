@@ -1,4 +1,4 @@
-#include "led_strip.h"
+#include "include/led_strip.h"
 
 led_strip_t* strip[4];
 bool blink = true;
@@ -237,6 +237,7 @@ err:
 void CTU_periodic_leds_blink(void *arg)
 {
     //l = N_LEDS;
+    
     for (int i = 0; i < 4; i++)
     {
         if(strip_enable[i] == true)
@@ -261,7 +262,6 @@ void CTU_periodic_leds_blink(void *arg)
     }
 
     //blink = !blink;
-
 }
 
 

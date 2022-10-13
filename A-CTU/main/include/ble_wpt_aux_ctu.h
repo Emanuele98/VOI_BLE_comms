@@ -38,7 +38,7 @@
 #define OR_TIME_GAP pdMS_TO_TICKS(50)
 
 //timers
-TimerHandle_t dynamic_t_handle, alert_t_handle;
+TimerHandle_t dynamic_t_handle, alert_t_handle, periodic_leds_handle;
 
 #define N_BYTES_IN_UUID 16
 

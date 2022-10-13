@@ -144,9 +144,8 @@ static int gatt_svr_chr_read_dynamic(uint16_t conn_handle, uint16_t attr_handle,
 											dyn_payload.RFU}; // 18 bytes of data
 /*
     ESP_LOGW(TAG, "- DYN CHR - rx voltage = %.02f", dyn_payload.vrect.f);
-    ESP_LOGW(TAG, "- DYN CHR - rx voltage = %.02f", dyn_payload.irect.f);
+    ESP_LOGW(TAG, "- DYN CHR - rx current = %.02f", dyn_payload.irect.f);
     ESP_LOGW(TAG, "- DYN CHR - rx temperature = %.02f", dyn_payload.temp1.f);
-    ESP_LOGW(TAG, "- DYN CHR - rx temperature = %.02f", dyn_payload.temp2.f);
 */
     err_code = os_mbuf_append(ctxt->om, &data,
                         sizeof data);

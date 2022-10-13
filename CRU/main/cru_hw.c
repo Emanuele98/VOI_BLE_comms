@@ -32,18 +32,21 @@ float i2c_read_voltage_sensor(void)
     i2c_master_write_byte(cmd, V_A_SENSOR_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN);
     i2c_master_write_byte(cmd, V_REGISTER_ADDR, ACK_CHECK_EN);
     i2c_master_stop(cmd);
-    ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
-    i2c_cmd_link_delete(cmd);
-
-    cmd = i2c_cmd_link_create();
-    i2c_master_start(cmd);
-    i2c_master_write_byte(cmd, V_A_SENSOR_ADDR  << 1 | READ_BIT, ACK_CHECK_EN);
-    i2c_master_read_byte(cmd, &first_byte, ACK_VAL);
-    i2c_master_read_byte(cmd, &second_byte, NACK_VAL);
-    i2c_master_stop(cmd);
-    ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+    ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, DYNAMIC_PARAM_TIMER_INTERVAL / 2);
     i2c_cmd_link_delete(cmd);
     
+    if (ret==ESP_OK)
+    {
+        cmd = i2c_cmd_link_create();
+        i2c_master_start(cmd);
+        i2c_master_write_byte(cmd, V_A_SENSOR_ADDR  << 1 | READ_BIT, ACK_CHECK_EN);
+        i2c_master_read_byte(cmd, &first_byte, ACK_VAL);
+        i2c_master_read_byte(cmd, &second_byte, NACK_VAL);
+        i2c_master_stop(cmd);
+        ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, DYNAMIC_PARAM_TIMER_INTERVAL / 2);
+        i2c_cmd_link_delete(cmd);
+    }
+
     if(ret!=ESP_OK)
     {
         ESP_LOGE(TAG, "voltage reading problem");
@@ -72,17 +75,20 @@ float i2c_read_current_sensor(void)
     i2c_master_write_byte(cmd, V_A_SENSOR_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN);
     i2c_master_write_byte(cmd, A_REGISTER_ADDR, ACK_CHECK_EN);
     i2c_master_stop(cmd);
-    ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+    ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, DYNAMIC_PARAM_TIMER_INTERVAL / 2);
     i2c_cmd_link_delete(cmd);
 
-    cmd = i2c_cmd_link_create();
-    i2c_master_start(cmd);
-    i2c_master_write_byte(cmd, V_A_SENSOR_ADDR  << 1 | READ_BIT, ACK_CHECK_EN);
-    i2c_master_read_byte(cmd, &first_byte, ACK_VAL);
-    i2c_master_read_byte(cmd, &second_byte, NACK_VAL);
-    i2c_master_stop(cmd);
-    ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
-    i2c_cmd_link_delete(cmd);
+    if (ret==ESP_OK)
+    {
+        cmd = i2c_cmd_link_create();
+        i2c_master_start(cmd);
+        i2c_master_write_byte(cmd, V_A_SENSOR_ADDR  << 1 | READ_BIT, ACK_CHECK_EN);
+        i2c_master_read_byte(cmd, &first_byte, ACK_VAL);
+        i2c_master_read_byte(cmd, &second_byte, NACK_VAL);
+        i2c_master_stop(cmd);
+        ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, DYNAMIC_PARAM_TIMER_INTERVAL / 2);
+        i2c_cmd_link_delete(cmd);
+    }
     
     if(ret!=ESP_OK)
     {
@@ -113,17 +119,20 @@ float i2c_read_temperature_sensor(void)
     i2c_master_write_byte(cmd, T_SENSOR_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN);
     i2c_master_write_byte(cmd, T_REGISTER_ADDR, ACK_CHECK_EN);
     i2c_master_stop(cmd);
-    ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+    ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, DYNAMIC_PARAM_TIMER_INTERVAL / 2);
     i2c_cmd_link_delete(cmd);
 
-    cmd = i2c_cmd_link_create();
-    i2c_master_start(cmd);
-    i2c_master_write_byte(cmd, T_SENSOR_ADDR  << 1 | READ_BIT, ACK_CHECK_EN);
-    i2c_master_read_byte(cmd, &first_byte, ACK_VAL);
-    i2c_master_read_byte(cmd, &second_byte, NACK_VAL);
-    i2c_master_stop(cmd);
-    ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
-    i2c_cmd_link_delete(cmd);
+    if (ret==ESP_OK)
+    {
+        cmd = i2c_cmd_link_create();
+        i2c_master_start(cmd);
+        i2c_master_write_byte(cmd, T_SENSOR_ADDR  << 1 | READ_BIT, ACK_CHECK_EN);
+        i2c_master_read_byte(cmd, &first_byte, ACK_VAL);
+        i2c_master_read_byte(cmd, &second_byte, NACK_VAL);
+        i2c_master_stop(cmd);
+        ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, DYNAMIC_PARAM_TIMER_INTERVAL / 2);
+        i2c_cmd_link_delete(cmd);
+    }
     
     if(ret!=ESP_OK)
     {

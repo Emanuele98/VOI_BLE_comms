@@ -1,11 +1,11 @@
 #include "include/CTU_states.h"
 
 /* State duration constants (in ticks) */
-#define CONFIG_MAIN_ITVL            pdMS_TO_TICKS(100)
-#define LOW_POWER_MAIN_ITVL         pdMS_TO_TICKS(100)
-#define POWER_TRANSFER_MAIN_ITVL    pdMS_TO_TICKS(100)
-#define LATCHING_FAULT_MAIN_ITVL    pdMS_TO_TICKS(100)
-#define LOCAL_FAULT_MAIN_ITVL       pdMS_TO_TICKS(100)
+#define CONFIG_MAIN_ITVL            pdMS_TO_TICKS(500)
+#define LOW_POWER_MAIN_ITVL         pdMS_TO_TICKS(500)
+#define POWER_TRANSFER_MAIN_ITVL    pdMS_TO_TICKS(500)
+#define LATCHING_FAULT_MAIN_ITVL    pdMS_TO_TICKS(500)
+#define LOCAL_FAULT_MAIN_ITVL       pdMS_TO_TICKS(500)
 
 static const char* TAG = "STATES";
 static uint8_t latching_fault_count;
@@ -68,8 +68,8 @@ void CTU_states_run(void)
 */
 BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
 {
-    if (xSemaphoreTake(m_set_state_sem, pdMS_TO_TICKS(1000)) == pdTRUE)
-    {
+    //if (xSemaphoreTake(m_set_state_sem, pdMS_TO_TICKS(2000)) == pdTRUE)  //if GURU //change core //happens anyway
+    //{
         m_CTU_task_param.state_fn_arg = arg;
         if (p_state == CTU_CONFIG_STATE) 
         {          
@@ -80,7 +80,7 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
 
             xTimerStart(periodic_scan_t_handle, 0);
 
-            ESP_LOGI(TAG,"Configuration State");
+            ESP_LOGI(TAG,"Configuration State!");
         }
         else if (p_state == CTU_LOW_POWER_STATE)
         {
@@ -98,7 +98,7 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
             m_CTU_task_param.state = CTU_LOW_POWER_STATE;
             m_CTU_task_param.itvl = LOW_POWER_MAIN_ITVL;
 
-            ESP_LOGI(TAG,"Low Power State");
+            ESP_LOGI(TAG,"Low Power State!");
         }
         else if (p_state == CTU_POWER_TRANSFER_STATE)
         {            
@@ -108,7 +108,7 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
             m_CTU_task_param.state = CTU_POWER_TRANSFER_STATE;
             m_CTU_task_param.itvl = POWER_TRANSFER_MAIN_ITVL;
 
-            ESP_LOGI(TAG,"Power Transfer State");
+            ESP_LOGI(TAG,"Power Transfer State!");
         }
         else if (p_state == CTU_LOCAL_FAULT_STATE)
         {
@@ -116,7 +116,7 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
             m_CTU_task_param.state = CTU_LOCAL_FAULT_STATE;
             m_CTU_task_param.itvl = LOCAL_FAULT_MAIN_ITVL;
 
-            ESP_LOGI(TAG,"Local Fault State");
+            ESP_LOGI(TAG,"Local Fault State!");
         }
         else if (p_state == CTU_REMOTE_FAULT_STATE)
         {
@@ -126,16 +126,16 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
             m_CTU_task_param.state = CTU_REMOTE_FAULT_STATE;
             m_CTU_task_param.itvl = LATCHING_FAULT_MAIN_ITVL;
 
-            ESP_LOGI(TAG,"Peer %d causes Latching Fault State",peer->conn_handle);
+            ESP_LOGI(TAG,"Peer %d causes Remote Fault State!",peer->conn_handle);
         }
         else
         {
             ESP_LOGW(TAG, "NULL STATE\n");
-            xSemaphoreGive(m_set_state_sem);
+            //xSemaphoreGive(m_set_state_sem);
             return pdFALSE;
         }
-        xSemaphoreGive(m_set_state_sem);
-    }
+        //xSemaphoreGive(m_set_state_sem);
+    //}
     return pdTRUE;
 }
 
@@ -210,14 +210,15 @@ static void CTU_power_transfer_state(void *arg)
 static void CTU_local_fault_state(void *arg)
 {
     //todo: check again
-
+    ESP_LOGE(TAG, "LOCAL FAULT STATE");
+/*
     struct peer *peer = (struct peer *)arg;
     if(peer)
     {
         //disconnect from the Auxiliary CTU
         ble_central_kill_AUX_CTU(peer->task_handle, peer->sem_handle, peer->conn_handle);
     }
-
+*/
     //todo: if no A-CTU connected anymore --> reset BLE stack and go back to configuration state
 
 /*
@@ -251,6 +252,8 @@ static void CTU_local_fault_state(void *arg)
 
 static void CTU_remote_fault_state(void *arg)
 {
+    ESP_LOGE(TAG, "REMOTE FAULT STATE");
+
     //disable power interface
     struct peer *peer = (struct peer *)arg;
     if(peer->position) {
@@ -293,7 +296,7 @@ void CTU_periodic_scan_timeout(void *arg)
     if ((peer_get_NUM_CRU() + peer_get_NUM_AUX_CTU()) < 9)
     {
         ble_gap_disc_cancel();
-        ble_central_scan_start(BLE_HS_FOREVER, BLE_FIRST_SCAN_ITVL, BLE_FIRST_SCAN_WIND);
+        ble_central_scan_start(BLE_SCAN_TIMEOUT, BLE_FIRST_SCAN_ITVL, BLE_FIRST_SCAN_WIND);
     }
     else
     {

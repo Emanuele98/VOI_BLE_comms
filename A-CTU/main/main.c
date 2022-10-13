@@ -6,6 +6,7 @@
 #include "ble_wpt_aux_ctu.h"
 
 #include "include/aux_ctu_hw.h"
+#include "include/led_strip.h"
 
 
 struct timeval tv_start;
@@ -18,10 +19,9 @@ struct timeval tv_start;
 
 #define DEVICE_NAME                     "AUX_CTU"                              /**< Name of device. Will be included in the advertising data. */
 
-#define APP_ADV_INTERVAL                64                                     /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
 
 #define DYNAMIC_PARAM_TIMER_INTERVAL    pdMS_TO_TICKS(20)                      /**< Timer synced to Dynamic parameter characteristic (10 ms). */
-#define ALERT_PARAM_TIMER_INTERVAL      pdMS_TO_TICKS(80)				       /**< Timer synced to Alert parameter characteristic (40 ms). */
+#define ALERT_PARAM_TIMER_INTERVAL      pdMS_TO_TICKS(40)				       /**< Timer synced to Alert parameter characteristic (40 ms). */
 
 /* WPT SERVICE BEING ADVERTISED */
 #define WPT_SVC_UUID16                  0xFFFE
@@ -75,29 +75,30 @@ void dynamic_param_timeout_handler(void *arg)
             case 0:
                 counter++;
                 dyn_payload.vrect.f = i2c_read_voltage_sensor();
-                if (dyn_payload.vrect.f != -1) 
-                    break;
+                if (dyn_payload.vrect.f > 60)
+                {
+                    strip_enable = false;
+                    set_strip(0, 255, 0);
+                }
+                break;
             
             //current
             case 1:
                 counter++;
                 dyn_payload.irect.f = i2c_read_current_sensor();
-                if (dyn_payload.irect.f != -1) 
-                    break;
+                break;
 
             //temperature 1
             case 2:
                 counter++;
                 dyn_payload.temp1.f = i2c_read_temperature_sensor(1);
-                if (dyn_payload.temp1.f != -1) 
-                    break;
+                break;
 
             //temperature 2
             case 3:
                 counter = 0;
                 dyn_payload.temp2.f = i2c_read_temperature_sensor(2);
-                if (dyn_payload.temp2.f  != -1) 
-                    break;
+                break;
             default:
                 xSemaphoreGive(i2c_sem);
                 break;
@@ -158,67 +159,27 @@ void alert_timeout_handler(void *arg)
 static void bleprph_advertise(void)
 {
     struct ble_gap_adv_params adv_params;
-    struct ble_hs_adv_fields fields;
-    const char *name;
     int rc;
-
-    /**
-     *  Set the advertisement data included in our advertisements:
-     *     o Flags (indicates advertisement type and other general info).
-     *     o Advertising tx power.
-     *     o Device name.
-     *     o 16-bit service UUIDs (alert notifications).
-     */
-
-    memset(&fields, 0, sizeof fields);
-
-    /* Advertise two flags:
-     *     o Discoverability in forthcoming advertisement (general)
-     *     o BLE-only (BR/EDR unsupported).
-     */
-    fields.flags = BLE_HS_ADV_F_DISC_GEN |
-                   BLE_HS_ADV_F_BREDR_UNSUP;
-
-    /* Indicate that the TX power level field should be included; have the
-     * stack fill this value automatically.  This is done by assigning the
-     * special value BLE_HS_ADV_TX_PWR_LVL_AUTO.
-     */
-    fields.tx_pwr_lvl_is_present = 1;
-    fields.tx_pwr_lvl = BLE_HS_ADV_TX_PWR_LVL_AUTO;
-
-    //PRU must advertises WPT service
-    fields.uuids16 = (ble_uuid16_t[]) {
-        BLE_UUID16_INIT(WPT_SVC_UUID16)
-    };
-    fields.num_uuids16 = 1;
-    fields.uuids16_is_complete = 1;
-
-    //set name
-    name = ble_svc_gap_device_name();
-    fields.name = (uint8_t *)name;
-    fields.name_len = strlen(name);
-    fields.name_is_complete = 1;
-
-    //set appearance to be recognized as AUX CTU
-    fields.appearance = 1;
-    fields.appearance_is_present = 1;
-
-    //set time interval
-    fields.adv_itvl = APP_ADV_INTERVAL;
-    fields.adv_itvl_is_present = 1;
-
-    rc = ble_gap_adv_set_fields(&fields);
-    if (rc != 0) {
-        ESP_LOGE(TAG, "error setting advertisement data; rc=%d\n", rc);
-        return;
-    }
 
     /* Begin advertising. */
     memset(&adv_params, 0, sizeof adv_params);
-    adv_params.conn_mode = BLE_GAP_CONN_MODE_UND;
+    adv_params.conn_mode = BLE_GAP_CONN_MODE_DIR;
     adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
+    adv_params.high_duty_cycle = 1;
+    adv_params.itvl_min = 20;
+    adv_params.itvl_max = 40;
+    
+    //declare MASTER ADDRESS
+    ble_addr_t master;
+    master.type = 0;
+    master.val[0]= 0xda;
+    master.val[1]= 0x62;
+    master.val[2]= 0x25;
+    master.val[3]= 0xfb;
+    master.val[4]= 0x0b;
+    master.val[5]= 0xac;
 
-    rc = ble_gap_adv_start(own_addr_type, NULL, BLE_HS_FOREVER,
+    rc = ble_gap_adv_start(own_addr_type, &master, BLE_HS_FOREVER,
                            &adv_params, bleprph_gap_event, NULL);
     if (rc != 0) {
         MODLOG_DFLT(ERROR, "error enabling advertisement; rc=%d\n", rc);
@@ -248,6 +209,9 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
     switch (event->type) {
     case BLE_GAP_EVENT_CONNECT:
         /* A new connection was established or a connection attempt failed. */
+        
+        strip_enable = true;
+        
         ESP_LOGI(TAG, "connection %s; status=%d; handle= %d",
                     event->connect.status == 0 ? "established" : "failed",
                     event->connect.status, event->connect.conn_handle);
@@ -264,6 +228,9 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
     case BLE_GAP_EVENT_DISCONNECT:
 
         ESP_LOGI(TAG, "disconnect; reason=%d ", event->disconnect.reason);
+
+        strip_enable = false;
+        set_strip(244, 244, 244);
 
         /* Stop timers */
         if (xTimerIsTimerActive(dynamic_t_handle) == pdTRUE)
@@ -351,10 +318,10 @@ static void host_ctrl_on_sync(void)
     }
 
     /* Printing ADDR */
-    //uint8_t addr_val[6] = {0};
-    //rc = ble_hs_id_copy_addr(own_addr_type, addr_val, NULL);
-    //ESP_LOGI(TAG, "Device Address: \n ");
-    //ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x \n", addr_val[5], addr_val[4], addr_val[3], addr_val[2], addr_val[1], addr_val[0]);
+    uint8_t addr_val[6] = {0};
+    rc = ble_hs_id_copy_addr(own_addr_type, addr_val, NULL);
+    ESP_LOGI(TAG, "Device Address: \n ");
+    ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x \n", addr_val[5], addr_val[4], addr_val[3], addr_val[2], addr_val[1], addr_val[0]);
 
     //uint8_t mac[6] = {0};
     //esp_efuse_mac_get_default(mac);
@@ -375,8 +342,12 @@ void init_sw_timers(void)
     // Create timers
     dynamic_t_handle = xTimerCreate("dynamic params", DYNAMIC_PARAM_TIMER_INTERVAL, pdTRUE, NULL, dynamic_param_timeout_handler);
     alert_t_handle = xTimerCreate("alert", ALERT_PARAM_TIMER_INTERVAL, pdTRUE, NULL, alert_timeout_handler);
+    /* Software timer for led strip default state */
+    periodic_leds_handle = xTimerCreate("leds", PERIODIC_LEDS_TIMER_PERIOD, pdTRUE, NULL, CTU_periodic_leds_blink);
 
-    if ((dynamic_t_handle == NULL) || (alert_t_handle == NULL))
+    xTimerStart(periodic_leds_handle, 10);
+
+    if ((dynamic_t_handle == NULL) || (alert_t_handle == NULL) || (periodic_leds_handle == NULL))
     {
         ESP_LOGW(TAG, "Timers were not created successfully");
         return;
@@ -393,6 +364,8 @@ void init_sw_timers(void)
 void init_hw(void)
 {
     esp_err_t err_code;
+
+    install_strip(STRIP_PIN);
 
     int i2c_master_port = I2C_MASTER_NUM;
     i2c_config_t conf;
@@ -521,6 +494,14 @@ void app_main(void)
 
     /*uncomment to test the I2C without the need of being connected to the central unit */
     //xTimerStart(dynamic_t_handle, 0);
+
+/*
+    //INIT STATIC PAYLOAD 
+    uint8_t mac[6] = {0};
+    esp_efuse_mac_get_default(mac);
+    ESP_LOGI(TAG, "MAC Address: \n ");
+    ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x \n", mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
+*/
 
 /*
     while(1){

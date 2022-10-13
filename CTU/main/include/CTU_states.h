@@ -26,7 +26,7 @@
 #include "peer.h"
 
 /* Scan timer duration */
-#define PERIODIC_SCAN_TIMER_PERIOD    1000
+#define PERIODIC_SCAN_TIMER_PERIOD    pdMS_TO_TICKS(1000) 
 
 /* Default Leds blinking duration */
 #define PERIODIC_LEDS_TIMER_PERIOD 25
@@ -44,7 +44,7 @@
 #define BATTERY_REACTION_TIME 10
 
 /* Minimum time for the voltage to be received during the localization process */
-#define MIN_LOW_POWER_ON 0.2
+#define MIN_LOW_POWER_ON 0.3
 
 /* Type definition for state task parameters */
 typedef struct CTU_task_params_s CTU_task_params_t;
@@ -125,7 +125,7 @@ bool CTU_is_peer_charging(struct peer *peer);
 volatile CTU_task_params_t m_CTU_task_param;
 
 /* Semaphore used to protect against multiple switching of states simultaneously */
-SemaphoreHandle_t m_set_state_sem;
+//SemaphoreHandle_t m_set_state_sem;
 
 /* Global declaration of latching fault reason */
 CTU_fault_t latching_reason;

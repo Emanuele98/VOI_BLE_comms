@@ -1594,6 +1594,26 @@
                 "children": [],
                 "depends_on": null,
                 "help": null,
+                "id": "SD_CARD",
+                "name": "SD_CARD",
+                "range": null,
+                "title": "Enable SD CARD",
+                "type": "bool"
+            },
+            {
+                "children": [],
+                "depends_on": null,
+                "help": null,
+                "id": "WIFI",
+                "name": "WIFI",
+                "range": null,
+                "title": "Enable WIFI",
+                "type": "bool"
+            },
+            {
+                "children": [],
+                "depends_on": null,
+                "help": null,
                 "id": "WIFI_SSID",
                 "name": "WIFI_SSID",
                 "range": null,
@@ -1608,6 +1628,16 @@
                 "name": "WIFI_PASSWORD",
                 "range": null,
                 "title": "WiFi password",
+                "type": "string"
+            },
+            {
+                "children": [],
+                "depends_on": null,
+                "help": null,
+                "id": "BROKER_URI",
+                "name": "BROKER_URI",
+                "range": null,
+                "title": "Broker URL",
                 "type": "string"
             }
         ],

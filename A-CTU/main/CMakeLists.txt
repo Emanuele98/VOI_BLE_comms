@@ -1,6 +1,7 @@
 set(srcs    "main.c"
             "ble_wpt_aux_ctu.c"
             "aux_ctu_hw.c"
+            "led_strip.c"
             )
 set(include_dirs include)
 

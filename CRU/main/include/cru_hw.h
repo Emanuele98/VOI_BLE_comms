@@ -6,6 +6,11 @@
 #include "driver/i2c.h"
 #include "esp_log.h"
 
+
+#define DYNAMIC_PARAM_TIMER_INTERVAL    pdMS_TO_TICKS(20)                    /**< Timer synced to Dynamic parameter characteristic (20 ms). */
+#define ALERT_PARAM_TIMER_INTERVAL      pdMS_TO_TICKS(40)				       /**< Timer synced to Alert parameter characteristic (60 ms). */
+
+
 //#define I2C_MASTER_SCL_IO 19                                  /*!< gpio number for I2C master clock */
 //#define I2C_MASTER_SDA_IO 18                                  /*!< gpio number for I2C master data  */
 

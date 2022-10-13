@@ -4,127 +4,15 @@
 #include "services/gap/ble_svc_gap.h"
 #include "syscfg/syscfg.h"
 
-/* WiFI */
-#include "esp_wifi.h"
-#include "esp_event.h"
-#include "freertos/event_groups.h"
-#include "esp_sntp.h"
-
 #include "nvs_flash.h"
 #include "esp_err.h"
 
-#include "ble_central.h"
-#include "led_strip.h"
-
-#define WIFI_SSID      CONFIG_WIFI_SSID
-#define WIFI_PASS      CONFIG_WIFI_PASSWORD
-#define WIFI_MAXIMUM_RETRY 5
-
-/* The event group allows multiple bits for each event, but we only care about two events:
- * - we are connected to the AP with an IP
- * - we failed to connect after the maximum amount of retries */
-#define WIFI_CONNECTED_BIT BIT0
-#define WIFI_FAIL_BIT      BIT1
-
-/* FreeRTOS event group to signal when we are connected*/
-static EventGroupHandle_t s_wifi_event_group;
-static int s_retry_num = 0;
-
-
-char buffer[64];
-bool update = false;
+#include "include/ble_central.h"
+#include "include/led_strip.h"
+#include "include/sd_card.h"
+#include "include/wifi.h"
 
 static const char* TAG = "MAIN";
-
-void sntp_callback(struct timeval *tv)
-{
-    update = true;
-}
-
-/**
- * @brief Handler for WiFi and IP events
- * 
- */
-static void wifi_handler(void* arg, esp_event_base_t event_base,
-                                int32_t event_id, void* event_data)
-{
-    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
-        esp_wifi_connect();
-    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        if (s_retry_num < WIFI_MAXIMUM_RETRY) {
-            esp_wifi_connect();
-            s_retry_num++;
-            ESP_LOGI(TAG, "retry to connect to the AP");
-        } else {
-            xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
-        }
-        ESP_LOGI(TAG,"connect to the AP fail");
-    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
-        ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
-        s_retry_num = 0;
-        xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
-    }
-}
-
-/**
- * @brief Initialize wifi module
- * 
- */
-static void wifi_init(void)
-{
-    s_wifi_event_group = xEventGroupCreate();
-
-    esp_netif_init();
-
-    esp_event_loop_create_default();
-    esp_netif_create_default_wifi_sta();
-
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    esp_wifi_init(&cfg);
-
-    esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_handler, NULL);
-    esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_handler, NULL);
-
-    wifi_config_t wifi_config = {
-        .sta = {
-            .ssid = WIFI_SSID,
-            .password = WIFI_PASS,
-            /* Setting a password implies station will connect to all security modes including WEP/WPA.
-             * However these modes are deprecated and not advisable to be used. Incase your Access point
-             * doesn't support WPA2, these mode can be enabled by commenting below line */
-	     .threshold.authmode = WIFI_AUTH_WPA2_PSK,
-        },
-    };
-    esp_wifi_set_mode(WIFI_MODE_STA);
-    esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config);
-    esp_wifi_start();
-
-    /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
-       number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above) */
-    EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
-            WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
-            pdFALSE,
-            pdFALSE,
-            portMAX_DELAY);
-
-    /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
-       happened. */
-    if (bits & WIFI_CONNECTED_BIT) {
-        ESP_LOGI(TAG, "connected to ap SSID:%s",
-                 WIFI_SSID);
-    } else if (bits & WIFI_FAIL_BIT) {
-        ESP_LOGI(TAG, "Failed to connect to SSID:%s",
-                 WIFI_SSID);
-    } else {
-        ESP_LOGE(TAG, "UNEXPECTED EVENT");
-    }
-
-    //todo: keep them to allow reconnection?
-    esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_handler);
-    esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_handler);
-    vEventGroupDelete(s_wifi_event_group);
-}
 
 /** 
  * @brief Task function used by the BLE host (NimBLE)
@@ -154,6 +42,7 @@ void host_task(void *param)
 */
 static void host_ctrl_on_reset(int reason)
 {
+    vTaskDelay(2000);
     CTU_state_change(CTU_CONFIG_STATE, (void *)NULL);
 
     ESP_LOGW(TAG, "Resetting state; reason=%d\n", reason);
@@ -185,10 +74,11 @@ void init_sw_timers(void)
      /* Software timer for periodic scanning once 1 CRU is connected */
     periodic_scan_t_handle = xTimerCreate("scan", PERIODIC_SCAN_TIMER_PERIOD, pdTRUE, NULL, CTU_periodic_scan_timeout);
 
+    //todo: remove 
     /* Software timer for led strip default state */
     periodic_leds_handle = xTimerCreate("leds", PERIODIC_LEDS_TIMER_PERIOD, pdTRUE, NULL, CTU_periodic_leds_blink);
 
-    xTimerStart(periodic_leds_handle, 10);
+    //xTimerStart(periodic_leds_handle, 10);
 }
 
 /** 
@@ -198,46 +88,26 @@ void init_sw_timers(void)
 */
 void init_setup(void)
 {    
+    /* Install leds */
     install_strip(STRIP_1_PIN, 0);
     install_strip(STRIP_2_PIN, 1);
     install_strip(STRIP_3_PIN, 2);
     install_strip(STRIP_4_PIN, 3);
 
+    /* Install SD card */
+    if (SD_CARD)
+        install_sd_card();
+
+    /* Initialize WiFi connectivity*/
+    if (WIFI)
+        connectivity_setup();
+
     /* Initialize software timers */
-    init_sw_timers();
+    init_sw_timers();    
 
     /* Initialize state switch semaphore */
-    m_set_state_sem = xSemaphoreCreateMutex();
+    //m_set_state_sem = xSemaphoreCreateMutex();
 }
-
-/**
- * @brief Initialize Wifi Module and Real Time Clock
- * 
- */
-void connectivity_setup(void)
-{
-    //Initialize WiFi module
-    wifi_init();
-
-    //Simple Network Time Protocol
-    sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, "pool.ntp.org");
-    sntp_init();
-    sntp_set_time_sync_notification_cb(sntp_callback);
-
-    while(!update){}
-
-    // Set timezone to Eastern Standard Time and print local time
-    setenv("TZ", "GMTGMT-1,M3.4.0/01,M10.4.0/02", 1);
-    tzset();
-    time(&now);
-    localtime_r(&now, &info);
-    ESP_LOGE(TAG, "Time is %s", asctime(&info));
-
-    return;
-}
-
-//todo: ATTACH TIMESTAMPS LOCALLY
 
 /** 
  * @brief Main function
@@ -250,6 +120,10 @@ void connectivity_setup(void)
 
 void app_main(void)
 {
+    ESP_LOGI(TAG, "[APP] Startup..");
+    ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
+    ESP_LOGI(TAG, "[APP] IDF version: %s", esp_get_idf_version());
+    
     /* Initialize NVS partition */
     esp_err_t esp_err_code = nvs_flash_init();
     if  (esp_err_code == ESP_ERR_NVS_NO_FREE_PAGES || esp_err_code == ESP_ERR_NVS_NEW_VERSION_FOUND)
@@ -260,7 +134,6 @@ void app_main(void)
 
     /* Initialize all elements of CTU */
     init_setup();
-    connectivity_setup();
 
     /* Bind HCI and controller to NimBLE stack */
     esp_nimble_hci_and_controller_init();
@@ -282,11 +155,9 @@ void app_main(void)
     //SET MAX TX POWER
     esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_SCAN, ESP_PWR_LVL_P9); 
 
-    //ESP_LOGI(TAG, "status %d", esp_bt_controller_get_status());
-
     //TODO:
     //check esp_bt_sleep_enable()
-
+ 
     /* Runtime function for main context */
     CTU_states_run();
 }

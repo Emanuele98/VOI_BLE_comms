@@ -115,8 +115,8 @@ static int gatt_svr_chr_read_peer_static(uint16_t conn_handle, uint16_t attr_han
     //INIT STATIC PAYLOAD 
     uint8_t mac[6] = {0};
     esp_efuse_mac_get_default(mac);
-    ESP_LOGI(TAG, "MAC Address: \n ");
-    ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x \n", mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
+    //ESP_LOGI(TAG, "MAC Address: \n ");
+    //ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x \n", mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
 
     static_payload.mac_0 = mac[0];
     static_payload.mac_1 = mac[1];
@@ -272,6 +272,17 @@ static int gatt_svr_chr_notify_alert_dsc(uint16_t conn_handle, uint16_t attr_han
 
     err_code = ble_gattc_notify_custom(conn_handle, attr_handle, om);
 
+    //RESET ALERTS
+    if (alert_payload.alert_field.charge_complete)
+        alert_payload.alert_field.charge_complete = 0;
+    if (alert_payload.alert_field.FOD)
+        alert_payload.alert_field.FOD = 0;
+    if (alert_payload.alert_field.overcurrent)
+        alert_payload.alert_field.overcurrent = 0;
+    if (alert_payload.alert_field.overtemperature)
+        alert_payload.alert_field.overtemperature = 0;
+    if (alert_payload.alert_field.overvoltage)
+        alert_payload.alert_field.overvoltage = 0;
 
     return err_code;
 }

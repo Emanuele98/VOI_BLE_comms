@@ -41,14 +41,17 @@ float i2c_read_voltage_sensor(void)
     ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
     i2c_cmd_link_delete(cmd);
 
-    cmd = i2c_cmd_link_create();
-    i2c_master_start(cmd);
-    i2c_master_write_byte(cmd, V_A_SENSOR_ADDR  << 1 | READ_BIT, ACK_CHECK_EN);
-    i2c_master_read_byte(cmd, &first_byte, ACK_VAL);
-    i2c_master_read_byte(cmd, &second_byte, NACK_VAL);
-    i2c_master_stop(cmd);
-    ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
-    i2c_cmd_link_delete(cmd);
+    if (ret==ESP_OK)
+    {
+        cmd = i2c_cmd_link_create();
+        i2c_master_start(cmd);
+        i2c_master_write_byte(cmd, V_A_SENSOR_ADDR  << 1 | READ_BIT, ACK_CHECK_EN);
+        i2c_master_read_byte(cmd, &first_byte, ACK_VAL);
+        i2c_master_read_byte(cmd, &second_byte, NACK_VAL);
+        i2c_master_stop(cmd);
+        ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+        i2c_cmd_link_delete(cmd);
+    }
     
     if(ret!=ESP_OK)
     {
@@ -81,14 +84,17 @@ float i2c_read_current_sensor(void)
     ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
     i2c_cmd_link_delete(cmd);
 
-    cmd = i2c_cmd_link_create();
-    i2c_master_start(cmd);
-    i2c_master_write_byte(cmd, V_A_SENSOR_ADDR  << 1 | READ_BIT, ACK_CHECK_EN);
-    i2c_master_read_byte(cmd, &first_byte, ACK_VAL);
-    i2c_master_read_byte(cmd, &second_byte, NACK_VAL);
-    i2c_master_stop(cmd);
-    ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
-    i2c_cmd_link_delete(cmd);
+    if (ret==ESP_OK)
+    {
+        cmd = i2c_cmd_link_create();
+        i2c_master_start(cmd);
+        i2c_master_write_byte(cmd, V_A_SENSOR_ADDR  << 1 | READ_BIT, ACK_CHECK_EN);
+        i2c_master_read_byte(cmd, &first_byte, ACK_VAL);
+        i2c_master_read_byte(cmd, &second_byte, NACK_VAL);
+        i2c_master_stop(cmd);
+        ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+        i2c_cmd_link_delete(cmd);
+    }
     
     if(ret!=ESP_OK)
     {
@@ -100,7 +106,7 @@ float i2c_read_current_sensor(void)
     //printf("first byte: %02x\n", first_byte);
     //printf("second byte : %02x\n", second_byte);
     value = (int16_t)(first_byte << 8 | second_byte) * 0.0000025 / 0.012;
-    //printf("current: %.02f [A]\n", value);
+    printf("current: %.02f [A]\n", value);
 
     exit:
         xSemaphoreGive(i2c_sem);
@@ -127,19 +133,22 @@ float i2c_read_temperature_sensor(bool n_temp_sens)
     ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
     i2c_cmd_link_delete(cmd);
 
-    cmd = i2c_cmd_link_create();
-    i2c_master_start(cmd);
-    if(n_temp_sens)
+    if (ret==ESP_OK)
     {
-        i2c_master_write_byte(cmd, T1_SENSOR_ADDR << 1 | READ_BIT, ACK_CHECK_EN);
-    } else {
-        i2c_master_write_byte(cmd, T2_SENSOR_ADDR << 1 | READ_BIT, ACK_CHECK_EN);
-    }    
-    i2c_master_read_byte(cmd, &first_byte, ACK_VAL);
-    i2c_master_read_byte(cmd, &second_byte, NACK_VAL);
-    i2c_master_stop(cmd);
-    ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
-    i2c_cmd_link_delete(cmd);
+        cmd = i2c_cmd_link_create();
+        i2c_master_start(cmd);
+        if(n_temp_sens)
+        {
+            i2c_master_write_byte(cmd, T1_SENSOR_ADDR << 1 | READ_BIT, ACK_CHECK_EN);
+        } else {
+            i2c_master_write_byte(cmd, T2_SENSOR_ADDR << 1 | READ_BIT, ACK_CHECK_EN);
+        }    
+        i2c_master_read_byte(cmd, &first_byte, ACK_VAL);
+        i2c_master_read_byte(cmd, &second_byte, NACK_VAL);
+        i2c_master_stop(cmd);
+        ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+        i2c_cmd_link_delete(cmd);
+    }
 
     if(ret!=ESP_OK)
     {
@@ -151,7 +160,7 @@ float i2c_read_temperature_sensor(bool n_temp_sens)
     //printf("first byte: %02x\n", first_byte);
     //printf("second byte : %02x\n", second_byte);
     value = (int16_t)(first_byte << 4 | second_byte >> 4) * 0.0625 ;
-    //printf("temperature: %.02f [°C]\n", value);
+    printf("temperature: %.02f [°C]\n", value);
 
     exit:
         xSemaphoreGive(i2c_sem);
