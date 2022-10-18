@@ -8,7 +8,7 @@
 #define LOCAL_FAULT_MAIN_ITVL       pdMS_TO_TICKS(500)
 
 static const char* TAG = "STATES";
-static uint8_t latching_fault_count;
+//static uint8_t latching_fault_count;
 
 /* State handle functions */
 static void CTU_configuration_state(void *arg);
@@ -22,6 +22,8 @@ static void CTU_remote_fault_state(void *arg);
 //defined in ble_central.c
 extern const ble_uuid_t *wpt_svc_uuid;
 extern const ble_uuid_t *wpt_char_CRU_dyn_uuid;
+
+time_t conf_time;
 
 /**
  * @brief The Apps main function
@@ -76,7 +78,6 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
             m_CTU_task_param.state_fn = CTU_configuration_state;
             m_CTU_task_param.state = CTU_CONFIG_STATE;
             m_CTU_task_param.itvl = CONFIG_MAIN_ITVL;
-
 
             xTimerStart(periodic_scan_t_handle, 0);
 
@@ -165,6 +166,14 @@ static void CTU_configuration_state(void *arg)
             ble_central_kill_CRU(peer->conn_handle);
         }
     }
+
+    time(&conf_time);
+    float time_sec = abs(difftime(conf_time, aux_found));
+
+    /* Enter low power state only when the A-CTUs are connected and no more were found in the last 10 s*/
+    if (((peer_get_NUM_AUX_CTU() == MAX_AUX_CTU) && (m_CTU_task_param.state == CTU_CONFIG_STATE)) && (time_sec > CONF_STATE_TIMEOUT))
+        CTU_state_change(CTU_LOW_POWER_STATE, (void *)NULL);
+
 }
 
 /**
@@ -211,14 +220,15 @@ static void CTU_local_fault_state(void *arg)
 {
     //todo: check again
     ESP_LOGE(TAG, "LOCAL FAULT STATE");
-/*
+
     struct peer *peer = (struct peer *)arg;
     if(peer)
     {
         //disconnect from the Auxiliary CTU
         ble_central_kill_AUX_CTU(peer->conn_handle);
+        CTU_state_change(CTU_CONFIG_STATE, NULL);
     }
-*/
+
     //todo: if no A-CTU connected anymore --> reset BLE stack and go back to configuration state
 
 /*
@@ -256,30 +266,28 @@ static void CTU_remote_fault_state(void *arg)
 
     //disable power interface
     struct peer *peer = (struct peer *)arg;
-    if(peer->position) {
-        low_power_pads[peer->position-1] = 0;
-        full_power_pads[peer->position-1] = 0;
+
+    if (peer)
+    {
+        //todo: use identification and add the time to wait before reconnection
+        ble_central_kill_CRU(peer->conn_handle);
+        if ((!CTU_is_charging()) && (m_CTU_task_param.state != CTU_LOW_POWER_STATE))
+            CTU_state_change(CTU_LOW_POWER_STATE, (void *)peer);
+        else
+            CTU_state_change(CTU_CONFIG_STATE, NULL);
     }
 
-    //todo: use identification and add the time to wait before reconnection
-    ble_central_kill_CRU(peer->conn_handle);
-
-
+    /*
     if (latching_fault_count == 3)
     {
-        /* Reset number of latching faults */
+        // Reset number of latching faults
         latching_fault_count = 0;
 
-        /* Kill any CRU task remaining */
+        // Kill any CRU task remaining
         ESP_LOGE(TAG, "Local manteinance needed!");
         //todo: send email to dave@bumblebee.com
     }
-
-    if(!peer_get_NUM_CRU())
-    {
-        CTU_state_change(CTU_LOW_POWER_STATE, (void *)peer);
-    }
-
+    */
 }
 
 /** 
@@ -305,5 +313,26 @@ void CTU_periodic_scan_timeout(void *arg)
             ble_gap_disc_cancel();
         }
         xTimerStop(periodic_scan_t_handle, 0);
+    }
+}
+
+void pass_the_baton(void)
+{
+    int8_t next_bat = baton - 1;
+    struct peer *peer;
+    
+    for (int i = 1; i < MAX_AUX_CTU; i++)
+    {
+        next_bat = ((next_bat + 1) % 4);
+        peer = Aux_CTU_find(next_bat + 1);
+        if (peer != NULL)
+        {
+            if (!full_power_pads[peer->position-1])
+            {
+                baton = peer->position;
+                //ESP_LOGI(TAG, "baton %d", baton);
+                return;
+            }
+        }
     }
 }

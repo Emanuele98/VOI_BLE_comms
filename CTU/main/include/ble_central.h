@@ -43,7 +43,7 @@
 #include "wifi.h"
 
 // number of aux unit
-#define N_AUX_CTU                           4
+#define MAX_AUX_CTU                         4
 
 //BLE
 #define COMMS_ERROR_LIMIT                   60
@@ -52,21 +52,24 @@
 #define N_BYTES_IN_UUID                     16
 
 //todo: double check
-#define BLE_WPT_INITIAL_CONN_ITVL_MIN       (8 * 1000 / BLE_HCI_CONN_ITVL)
-#define BLE_WPT_INITIAL_CONN_ITVL_MAX       (9 * 1000 / BLE_HCI_CONN_ITVL)
 
-#define CTU_TIMER_PERIOD                    pdMS_TO_TICKS(2000)
-#define CRU_TIMER_PERIOD                    pdMS_TO_TICKS(2000)
-#define LOC_CTU_TIMER_PERIOD               	pdMS_TO_TICKS(200)
-#define LOC_CRU_TIMER_PERIOD                pdMS_TO_TICKS(100)
+#define BLE_WPT_INITIAL_CONN_ITVL_MIN       (10 * 1000 / BLE_HCI_CONN_ITVL)
+#define BLE_WPT_INITIAL_CONN_ITVL_MAX       (30 * 1000 / BLE_HCI_CONN_ITVL)
+//#define BLE_WPT_INITIAL_CONN_ITVL_MIN       0x06
+//#define BLE_WPT_INITIAL_CONN_ITVL_MAX       0x20
+
+#define CTU_TIMER_PERIOD                    2000
+#define CRU_TIMER_PERIOD                    2000
+#define LOC_CTU_TIMER_PERIOD               	150 
+#define LOC_CRU_TIMER_PERIOD                50
 
 #define BLE_PERIODIC_SCAN_ITVL				100	
 #define BLE_PERIODIC_SCAN_WIND				100
 
 //todo: check these
 #define BLE_SCAN_TIMEOUT                    pdMS_TO_TICKS(2000)     
-#define BLE_FIRST_SCAN_ITVL                 32          /**< The scanning interval (in units of 0.625 ms. This value corresponds to 20 ms). */
-#define BLE_FIRST_SCAN_WIND					31          /**< The scanning window   (in units of 0.625 ms. This value corresponds to 125 ms). */
+#define BLE_FIRST_SCAN_ITVL                 64          /**< The scanning interval (in units of 0.625 ms). */
+#define BLE_FIRST_SCAN_WIND					62          /**< The scanning window   (in units of 0.625 ms). */
                                                          /**< The scan window must be less than 256 (160 ms) to coexist with WiFi */
 #define N_BYTES_IN_CTU_STATIC               17
 
@@ -76,11 +79,12 @@
 
 #define PRU_CONTROL_CHAR_SIZE               5
 
-
 /* Keeps power outputs state in memory */
 uint8_t low_power_pads[4];
 uint8_t full_power_pads[4];
 
+/* for config state */
+time_t aux_found;
 
 struct ble_hs_adv_fields;
 struct ble_gap_conn_desc;
@@ -93,7 +97,7 @@ uint8_t peer_addr[6];
 struct peer;
 
 void ble_central_scan_start(uint32_t timeout, uint16_t scan_itvl, uint16_t scan_wind);
-uint8_t ble_central_update_control_enables(uint8_t enable, uint8_t full_power, uint8_t critical, struct peer *peer);
+uint8_t ble_central_update_control_enables(uint8_t enable, uint8_t full_power, uint8_t led, struct peer *peer);
 void ble_central_kill_all_CRU(void);
 void ble_central_kill_all_AUX_CTU(void);
 void ble_central_kill_CRU(uint16_t conn_handle);

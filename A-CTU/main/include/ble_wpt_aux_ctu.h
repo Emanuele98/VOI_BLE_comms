@@ -35,10 +35,10 @@
 
 #include "aux_ctu_hw.h"
 
-#define OR_TIME_GAP pdMS_TO_TICKS(50)
+#define OR_TIME_GAP pdMS_TO_TICKS(30)
 
 //timers
-TimerHandle_t dynamic_t_handle, alert_t_handle, periodic_leds_handle;
+TimerHandle_t dynamic_t_handle, alert_t_handle, connected_leds_handle, misaligned_leds_handle;
 
 #define N_BYTES_IN_UUID 16
 
@@ -97,12 +97,12 @@ typedef struct
 /** @brief Dynamic characteristic structure. This contains elements necessary for static payload. */
 typedef struct
 {
-    uint8_t           mac_0;    /**< [mandatory] MAC address field 0 (1 byte). */
-    uint8_t           mac_1;    /**< [mandatory] MAC address field 1 (1 byte). */
-    uint8_t           mac_2;    /**< [mandatory] MAC address field 2 (1 byte). */
-    uint8_t           mac_3;    /**< [mandatory] MAC address field 3 (1 byte). */
-    uint8_t           mac_4;    /**< [mandatory] MAC address field 4 (1 byte). */
-    uint8_t           mac_5;    /**< [mandatory] MAC address field 5 (1 byte). */
+    uint8_t           ble_addr0;    /**< [mandatory] address field 0 (1 byte). */
+    uint8_t           ble_addr1;    /**< [mandatory] address field 1 (1 byte). */
+    uint8_t           ble_addr2;    /**< [mandatory] address field 2 (1 byte). */
+    uint8_t           ble_addr3;    /**< [mandatory] address field 3 (1 byte). */
+    uint8_t           ble_addr4;    /**< [mandatory] address field 4 (1 byte). */
+    uint8_t           ble_addr5;    /**< [mandatory] address field 5 (1 byte). */
 } wpt_static_payload_t;
 
 /**@brief Alert characteristic structure. This contains elements necessary for alert payload. */
@@ -129,7 +129,7 @@ typedef struct
 {
 	uint8_t           enable;              /**< [mandatory] Enable command for PTU (1 byte). */
 	uint8_t           full_power;          /**< [mandatory] Full power mode or not (1 byte). */
-	uint8_t           critical;            /**< [optional] Critical transition (1 byte). Do not involve the OR gate */
+	uint8_t           led;           	   /**< [optional] Set LED state */
 	uint16_t          RFU;                 /**< [N/A] Undefined (1 byte). */
 } wpt_control_payload_t;
 

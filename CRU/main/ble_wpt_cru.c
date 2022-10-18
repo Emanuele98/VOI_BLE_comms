@@ -88,22 +88,22 @@ static int gatt_svr_chr_read_peer_static(uint16_t conn_handle, uint16_t attr_han
 */
     /* Printing ADDR */
     //todo: its not the mac
-    uint8_t mac[6] = {0};
-    ble_hs_id_copy_addr(0, mac, NULL);
+    uint8_t ble_addr[6] = {0};
+    ble_hs_id_copy_addr(0, ble_addr, NULL);
 
-    static_payload.mac_0 = mac[0];
-    static_payload.mac_1 = mac[1];
-    static_payload.mac_2 = mac[2];
-    static_payload.mac_3 = mac[3];
-    static_payload.mac_4 = mac[4];
-    static_payload.mac_5 = mac[5];
+    static_payload.ble_addr0 = ble_addr[0];
+    static_payload.ble_addr1 = ble_addr[1];
+    static_payload.ble_addr2 = ble_addr[2];
+    static_payload.ble_addr3 = ble_addr[3];
+    static_payload.ble_addr4 = ble_addr[4];
+    static_payload.ble_addr5 = ble_addr[5];
 
-    uint8_t data[PRU_STATIC_CHAR_SIZE] = { static_payload.mac_0,
-                                           static_payload.mac_1,
-                                           static_payload.mac_2,
-                                           static_payload.mac_3,
-                                           static_payload.mac_4,
-                                           static_payload.mac_5 }; // 6 bytes of data
+    uint8_t data[PRU_STATIC_CHAR_SIZE] = { static_payload.ble_addr0,
+                                           static_payload.ble_addr1,
+                                           static_payload.ble_addr2,
+                                           static_payload.ble_addr3,
+                                           static_payload.ble_addr4,
+                                           static_payload.ble_addr5 }; // 6 bytes of data
                                                 
     err_code = os_mbuf_append(ctxt->om, &data,
                         sizeof data);
@@ -184,6 +184,17 @@ static int gatt_svr_chr_notify_alert_dsc(uint16_t conn_handle, uint16_t attr_han
 
     err_code = ble_gattc_notify_custom(conn_handle, attr_handle, om);
 
+    //RESET ALERTS
+    if (alert_payload.alert_field.charge_complete)
+        alert_payload.alert_field.charge_complete = 0;
+    if (alert_payload.alert_field.FOD)
+        alert_payload.alert_field.FOD = 0;
+    if (alert_payload.alert_field.overcurrent)
+        alert_payload.alert_field.overcurrent = 0;
+    if (alert_payload.alert_field.overtemperature)
+        alert_payload.alert_field.overtemperature = 0;
+    if (alert_payload.alert_field.overvoltage)
+        alert_payload.alert_field.overvoltage = 0;
 
     return err_code;
 }

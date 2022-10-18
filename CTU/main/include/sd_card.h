@@ -37,13 +37,13 @@ void install_sd_card(void);
  * @brief Write into the sd card
  * 
  */
-void write_sd_card(char *topic, float value, struct tm* time);
+void write_sd_card(const char *topic, float value, struct tm* time);
 
 /**
  * @brief Read a line into the sd card
  * 
  */
-void read_sd_card(char *topic);
+void read_sd_card(const char *topic);
 
 /**
  * @brief Delete completely the SD card content

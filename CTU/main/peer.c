@@ -108,7 +108,7 @@ bool current_localization_process(void)
     bool loc = 0;
 
     SLIST_FOREACH(peer, &peers, next) {
-        if ((peer->CRU) &&  (peer->localization_process)) {
+        if ((peer->CRU) && (peer->localization_process)) {
             loc = 1;
         }
     }
@@ -181,6 +181,24 @@ bool CTU_is_charging(void)
     {
         return 0;
     }
+}
+
+/**
+ * @brief Detected wheter the Tx pad in this position is the only one involved in the loc process
+ * 
+ * @param pos the position of the tx calling this function
+ */
+bool low_power_alone(uint8_t pos)
+{
+    struct peer *peer;
+    bool alone = true;
+
+    SLIST_FOREACH(peer, &peers, next) {
+        if ((!peer->CRU) && (!full_power_pads[peer->position-1])) {
+            alone = false;
+        }
+    }
+    return alone;
 }
 
 /**

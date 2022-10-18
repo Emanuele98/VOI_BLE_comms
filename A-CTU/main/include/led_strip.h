@@ -15,14 +15,20 @@ extern "C" {
 #include "driver/rmt.h"
 
 // LED STRIP
-#define N_LEDS                  15
+#define N_LEDS                  25
 #define STRIP_PIN               13
 
-/* Default Leds blinking duration */
-#define PERIODIC_LEDS_TIMER_PERIOD 25
+/* Default Leds connected blinking duration */
+#define CONNECTED_LEDS_TIMER_PERIOD 25
 
-//virtual switches for default led mode
+/* Default Leds misaligned blinking duration */
+#define MISALIGNED_LEDS_TIMER_PERIOD 200
+
+
+/* virtual switch for default led mode */
 bool strip_enable;
+/* virtual switch for the led misalignment mode */
+bool strip_misalignment;
 
 /**
 * @brief LED Strip Type
@@ -143,10 +149,17 @@ void led_strip_hsv2rgb(uint32_t h, uint32_t s, uint32_t v, uint32_t *r, uint32_t
 
 
 /**
- * @brief Function used by the timer for the default led state
+ * @brief Function used by the timer for the default connected led state
  * 
  */
-void CTU_periodic_leds_blink(void *arg);
+void connected_leds(void *arg);
+
+/**
+ * @brief Function used for orange blinking when the scooter is misaligned 
+ *  
+ */
+void misaligned_leds(void *arg);
+
 
 /**
  * @brief Set the led strip with one defined colour
@@ -154,8 +167,6 @@ void CTU_periodic_leds_blink(void *arg);
  */
 
 void set_strip(uint8_t r, uint8_t g, uint8_t b);  
-
-
 
 
 

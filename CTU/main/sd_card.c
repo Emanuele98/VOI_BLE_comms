@@ -36,13 +36,14 @@ void install_sd_card(void)
     //sdmmc_card_print_info(stdout, card);
 }
 
-void write_sd_card(char *topic, float value, struct tm* time)
+void write_sd_card(const char *topic, float value, struct tm* time)
 {
     // Use POSIX and C standard library functions to work with files.
     // First create a file.
     //ESP_LOGI(TAG, "Opening file");
     char file[100] = "/sdcard/";
     strcat(file, topic);
+    strcat(file, ".csv");
 
     //open the file in a+ in order to write the file at the end of it
     FILE* f = fopen(file, "a+");
@@ -73,7 +74,7 @@ void write_sd_card(char *topic, float value, struct tm* time)
 */
 }
 
-void read_sd_card(char *topic)
+void read_sd_card(const char *topic)
 {
     /*
     // Open renamed file for reading

@@ -8,6 +8,7 @@
 #include "esp_log.h"
 #include <sys/time.h>
 #include "freertos/queue.h"
+#include "led_strip.h"
 
 
 

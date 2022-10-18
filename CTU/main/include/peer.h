@@ -50,6 +50,15 @@ SLIST_HEAD(peer_svc_list, peer_svc);
 struct peer;
 typedef void peer_disc_fn(const struct peer *peer, int status, void *arg);
 
+typedef enum { 
+    VOI_3PAU, 
+    VOI_6F35, 
+    VOI_CE8J, 
+    VOI_D8X5
+} voi_code_enum;
+
+//idea (use this for all the calls except switch on-off - need a string field)
+
 union i2c {
 	float f;
 	uint8_t b[4];
@@ -72,12 +81,12 @@ typedef struct
 /** @brief Dynamic characteristic structure. This contains elements necessary for static payload. */
 typedef struct
 {
-    uint8_t           mac_0;    /**< [mandatory] MAC address field 0 (1 byte). */
-    uint8_t           mac_1;    /**< [mandatory] MAC address field 1 (1 byte). */
-    uint8_t           mac_2;    /**< [mandatory] MAC address field 2 (1 byte). */
-    uint8_t           mac_3;    /**< [mandatory] MAC address field 3 (1 byte). */
-    uint8_t           mac_4;    /**< [mandatory] MAC address field 4 (1 byte). */
-    uint8_t           mac_5;    /**< [mandatory] MAC address field 5 (1 byte). */
+    uint8_t           ble_addr0;    /**< [mandatory] address field 0 (1 byte). */
+    uint8_t           ble_addr1;    /**< [mandatory] address field 1 (1 byte). */
+    uint8_t           ble_addr2;    /**< [mandatory] address field 2 (1 byte). */
+    uint8_t           ble_addr3;    /**< [mandatory] address field 3 (1 byte). */
+    uint8_t           ble_addr4;    /**< [mandatory] address field 4 (1 byte). */
+    uint8_t           ble_addr5;    /**< [mandatory] address field 5 (1 byte). */
 } wpt_static_payload_t;
 
 /**@brief Alert characteristic structure. This contains elements necessary for alert payload. */
@@ -104,7 +113,7 @@ typedef struct
 {
 	uint8_t           enable;              /**< [mandatory] Enable command for PTU (1 byte). */
 	uint8_t           full_power;          /**< [mandatory] Full power mode or not (1 byte). */
-	uint8_t           critical;            /**< [optional] Critical transition (1 byte). Do not involve the OR gate */
+	uint8_t           led;           	   /**< [optional] Set LED state */
 	uint16_t          RFU;                 /**< [N/A] Undefined (2 byte). */
 } wpt_control_payload_t;
 
@@ -137,11 +146,15 @@ struct peer {
     int8_t position;
 
     /* CRU VOI CODE FOR ID */
-    char voi_code[4];
+    voi_code_enum voi_code;
+    char voi_code_string[4];
     
     /* keep track of comms error of the peer */
     int8_t last_rc;
-    
+
+    /* store last led state (1) GREEN (2) MISALIGNED */
+    uint8_t last_led;
+     
     /* bool to detect if localization process is currently going */
     bool localization_process;
 
@@ -180,6 +193,7 @@ bool CTU_is_peer_charging(struct peer *peer);
 bool CTU_is_charging(void);
 uint8_t loc_pad_find(void);
 bool all_low_power_off(void);
+bool low_power_alone(uint8_t pos);
 
 // find the aux CTU
 struct peer *Aux_CTU_find(uint16_t pos);

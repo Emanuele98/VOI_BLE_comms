@@ -28,20 +28,25 @@
 /* Scan timer duration */
 #define PERIODIC_SCAN_TIMER_PERIOD    pdMS_TO_TICKS(1000) 
 
+#define CONF_STATE_TIMEOUT            5
+
 /* Voltage threshold during LOW-POWER mode */
-#define VOLTAGE_LOW_THRESH 30
+#define VOLTAGE_LOW_THRESH            25
 
 /* Voltage threshold during FULL-POWER mode */
-#define VOLTAGE_FULL_THRESH 100
+#define VOLTAGE_FULL_THRESH           50
 
 /* Voltage threshold for misalignment check */
-#define VOLTAGE_MIS_THRESH 120
+#define VOLTAGE_MIS_THRESH            110
 
 /* Time within the battery should pick the voltage */
-#define BATTERY_REACTION_TIME 10
+#define BATTERY_REACTION_TIME         10
 
 /* Minimum time for the voltage to be received during the localization process */
-#define MIN_LOW_POWER_ON 0.2
+#define MIN_LOW_POWER_ON              0.1
+
+/* Minimum time for the Voltage check to be valid after the switching activates another pad */
+#define MIN_SWITCH_TIME               0.015
 
 /* Type definition for state task parameters */
 typedef struct CTU_task_params_s CTU_task_params_t;
@@ -52,6 +57,9 @@ typedef void task_state_fn_t(void *arg);
 /* Redefinition of peer structure for use in CTU_states definition */
 struct peer;
 
+//varaible to pass between the aux ctu processes for sequential switching during the localization process
+int8_t baton;
+
 /* All states timer handles */
 TimerHandle_t periodic_scan_t_handle;
 
@@ -60,7 +68,7 @@ TimerHandle_t periodic_scan_t_handle;
  * 
  * @param NO_FAULT                0: No latching fault
  * @param ROGUE_OBJECT            1: Rogue object present
- * @param alert               2: Alert on CRU
+ * @param alert                   2: Alert on CRU
 */
 typedef enum {
     NO_FAULT = 0,
@@ -120,8 +128,9 @@ bool CTU_is_peer_charging(struct peer *peer);
 /* Main global states structure accessible mostly read-only for some CTU modules */
 volatile CTU_task_params_t m_CTU_task_param;
 
-/* Semaphore used to protect against multiple switching of states simultaneously */
-//SemaphoreHandle_t m_set_state_sem;
+/* Funcion to pass the baton (low power mode) to the next suitable one */
+void pass_the_baton(void);
+
 
 /* Global declaration of latching fault reason */
 CTU_fault_t latching_reason;

@@ -120,22 +120,22 @@ static int gatt_svr_chr_read_peer_static(uint16_t conn_handle, uint16_t attr_han
 
     /* Printing ADDR */
     //todo: its not the mac
-    uint8_t mac[6] = {0};
-    ble_hs_id_copy_addr(0, mac, NULL);
+    uint8_t ble_addr[6] = {0};
+    ble_hs_id_copy_addr(0, ble_addr, NULL);
 
-    static_payload.mac_0 = mac[0];
-    static_payload.mac_1 = mac[1];
-    static_payload.mac_2 = mac[2];
-    static_payload.mac_3 = mac[3];
-    static_payload.mac_4 = mac[4];
-    static_payload.mac_5 = mac[5];
+    static_payload.ble_addr0 = ble_addr[0];
+    static_payload.ble_addr1 = ble_addr[1];
+    static_payload.ble_addr2 = ble_addr[2];
+    static_payload.ble_addr3 = ble_addr[3];
+    static_payload.ble_addr4 = ble_addr[4];
+    static_payload.ble_addr5 = ble_addr[5];
 
-    uint8_t data[PRU_STATIC_CHAR_SIZE] = { static_payload.mac_0,
-                                           static_payload.mac_1,
-                                           static_payload.mac_2,
-                                           static_payload.mac_3,
-                                           static_payload.mac_4,
-                                           static_payload.mac_5 }; // 6 bytes of data
+    uint8_t data[PRU_STATIC_CHAR_SIZE] = { static_payload.ble_addr0,
+                                           static_payload.ble_addr1,
+                                           static_payload.ble_addr2,
+                                           static_payload.ble_addr3,
+                                           static_payload.ble_addr4,
+                                           static_payload.ble_addr5 }; // 6 bytes of data
                                                 
     err_code = os_mbuf_append(ctxt->om, &data,
                         sizeof data);
@@ -190,6 +190,7 @@ static int gatt_svr_chr_read_dynamic(uint16_t conn_handle, uint16_t attr_handle,
 
     err_code = os_mbuf_append(ctxt->om, &data,
                         sizeof data);
+
     return err_code;
 }
 
@@ -213,42 +214,55 @@ static int gatt_svr_chr_write_control(uint16_t conn_handle, uint16_t attr_handle
     
     control_payload.enable = data[0];
 	control_payload.full_power = data[1];
-    control_payload.critical = data[2];
+    control_payload.led = data[2];
 	control_payload.RFU = ((uint16_t)data[3]<<8)|data[4];
   
-    if(control_payload.critical)
+    if (control_payload.led == 0)
     {
-        disable_low_power_output();
-        disable_OR_output();
-        vTaskDelay(OR_TIME_GAP);
-        enable_full_power_output();
-        } else
-            {
-            if(control_payload.enable)
-            {
-                //disable OR gate
-                disable_OR_output();
-                //wait 
-                vTaskDelay(OR_TIME_GAP);
-                //enable power
-                if(control_payload.full_power) {
-                enable_full_power_output();
-                } else {
-                enable_low_power_output();
-                }
-            } else {
-                    //disable power
-                    if(control_payload.full_power) {
-                    disable_full_power_output();
-                    } else {
-                    disable_low_power_output();
-                    }
-                    //wait
-                    vTaskDelay(OR_TIME_GAP);
-                    //enable OR gate
-                    enable_OR_output();
-                }
+        strip_enable = true;
+        strip_misalignment = false;
+    } else if (control_payload.led == 1)
+        {
+            strip_enable = false;
+            strip_misalignment = false;
+            set_strip(0, 200, 0);
+        } else if (control_payload.led == 2)
+            {   
+                strip_enable = false;
+                strip_misalignment = true;
             }
+
+    if(control_payload.enable)
+    {
+        if(control_payload.full_power) 
+        {
+            disable_low_power_output();
+            disable_OR_output();
+            vTaskDelay(OR_TIME_GAP);
+            //enable power
+            enable_full_power_output();
+        } else 
+        {               
+            //disable OR gate
+            disable_OR_output();
+            //wait 
+            vTaskDelay(OR_TIME_GAP); 
+            //enable power
+            enable_low_power_output();
+        }
+    } else 
+        {
+            //disable power
+            if(control_payload.full_power) 
+                disable_full_power_output();
+            else 
+                disable_low_power_output();
+        
+            //wait
+            vTaskDelay(OR_TIME_GAP);
+            //enable OR gate
+            enable_OR_output();
+        }
     return err_code;
 }
 
@@ -276,6 +290,11 @@ static int gatt_svr_chr_notify_alert_dsc(uint16_t conn_handle, uint16_t attr_han
     om = ble_hs_mbuf_from_flat(data, sizeof(data));
 
     err_code = ble_gattc_notify_custom(conn_handle, attr_handle, om);
+
+    // RED LEDS
+    strip_enable = false;
+    strip_misalignment = false;
+    set_strip(200, 0, 0);
 
     //RESET ALERTS
     if (alert_payload.alert_field.charge_complete)

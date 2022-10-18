@@ -176,7 +176,7 @@ void enable_full_power_output(void)
         gpio_set_level(FULL_POWER_OUT_PIN, 1);
         gettimeofday(&tv_stop, NULL);
         float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
-        printf("---Time: %f sec\n", time_sec);
+        //printf("---Time: %f sec\n", time_sec);
         ESP_LOGI(TAG, "SWITCHIN FULL POWER ON!");
     }
 }
@@ -187,7 +187,7 @@ void disable_full_power_output(void)
     gpio_set_level(FULL_POWER_OUT_PIN, 0);
     gettimeofday(&tv_stop, NULL);
     float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
-    printf("---Time: %f sec\n", time_sec);
+    //printf("---Time: %f sec\n", time_sec);
     ESP_LOGI(TAG, "SWITCHIN FULL POWER OFF!");
 }
 
@@ -200,7 +200,7 @@ void enable_low_power_output(void)
         gpio_set_level(LOW_POWER_OUT_PIN, 1);
         gettimeofday(&tv_stop, NULL);
         float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
-        printf("---Time: %f sec\n", time_sec);
+        //printf("---Time: %f sec\n", time_sec);
         ESP_LOGI(TAG, "SWITCHIN LOW POWER ON");
     }
 }
@@ -211,7 +211,7 @@ void disable_low_power_output(void)
     gpio_set_level(LOW_POWER_OUT_PIN, 0);
     gettimeofday(&tv_stop, NULL);
     float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
-    printf("---Time: %f sec\n", time_sec);
+    //printf("---Time: %f sec\n", time_sec);
     ESP_LOGI(TAG, "SWITCHIN LOW POWER OFF");
 }
 
@@ -224,7 +224,7 @@ void enable_OR_output(void)
         gpio_set_level(OR_GATE, 1);
         gettimeofday(&tv_stop, NULL);
         float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
-        printf("---Time: %f sec\n", time_sec);
+        //printf("---Time: %f sec\n", time_sec);
         ESP_LOGI(TAG, "ENABLE OR GATE");
     }
 }
@@ -235,7 +235,7 @@ void disable_OR_output(void)
     gpio_set_level(OR_GATE, 0);
     gettimeofday(&tv_stop, NULL);
     float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
-    printf("---Time: %f sec\n", time_sec);
+    //printf("---Time: %f sec\n", time_sec);
     ESP_LOGI(TAG, "DISABLE OR GATE");
 }
 

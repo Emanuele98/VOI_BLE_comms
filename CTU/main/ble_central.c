@@ -9,7 +9,7 @@
 
 /* Defines what type of task the unit will run on */
 #define TASKS_CORE            0
-#define TASK_STACK_SIZE       10000
+#define TASK_STACK_SIZE       4000
 #define CRU_TASK_PRIORITY     20
 #define AUX_CTU_TASK_PRIORITY 20
 
@@ -25,24 +25,68 @@ uint8_t Actu_addr4[6] = {0x9a, 0xbb, 0x25, 0xfb, 0x0b, 0xac};
 
 //CRUs bluetooth addresses
 uint8_t cru_6F35[6] = {0x02, 0xec, 0x25, 0xfb, 0x0b, 0xac};
-uint8_t cru_KV3K[6] = {0xb2, 0x6d, 0x24, 0xfb, 0x0b, 0xac};
 uint8_t cru_3PAU[6] = {0x5a, 0x63, 0x25, 0xfb, 0x0b, 0xac};
+uint8_t cru_CE8J[6] = {0x86, 0x85, 0xed, 0x0c, 0x38, 0x90};
+uint8_t cru_D8X5[6] = {0xb2, 0x6d, 0x24, 0xfb, 0x0b, 0xac};
 
-//timer
-struct timeval tv_loc;
-struct timeval tv_stop;
-struct timeval tv_low_on;
-struct timeval tv_switch;
-float time_sec, time_lowpower_on;
+//timer 
+static time_t switch_pad_ON, switch_pad_OFF, tv_loc;
+float time_sec, time_lowpower_on, min_switch_time;
 
-//varaible to pass between the aux ctu processes for sequential switching during the localization process
-uint8_t baton = 1;
 //variable to know which pad is actually on in Low Power mode
 uint8_t current_low_power = 0;
 
 /* keep count of comms_error */
 uint8_t cru_comms_error = 0;
 uint8_t ctu_comms_error = 0;
+
+/* keep track of leds state */
+static uint8_t led_state[4] = {0, 0, 0, 0}; //default misaligned state
+
+/* LIST OF TOPICS FOR MQTT AND SD CARD*/
+ // TX
+const char tx_voltage[4][80] =          {"warwicktrial/ctu/pad1/sensors/voltage", "warwicktrial/ctu/pad2/sensors/voltage",
+                                         "warwicktrial/ctu/pad3/sensors/voltage", "warwicktrial/ctu/pad4/sensors/voltage"};
+const char tx_current[4][80] =          {"warwicktrial/ctu/pad1/sensors/current", "warwicktrial/ctu/pad2/sensors/current",
+                                         "warwicktrial/ctu/pad3/sensors/current", "warwicktrial/ctu/pad4/sensors/current"};
+const char tx_temp1[4][80] =            {"warwicktrial/ctu/pad1/sensors/temperature1", "warwicktrial/ctu/pad2/sensors/temperature1",
+                                         "warwicktrial/ctu/pad3/sensors/temperature1", "warwicktrial/ctu/pad4/sensors/temperature1"};
+const char tx_temp2[4][80] =            {"warwicktrial/ctu/pad1/sensors/temperature2", "warwicktrial/ctu/pad2/sensors/temperature2",
+                                         "warwicktrial/ctu/pad3/sensors/temperature2", "warwicktrial/ctu/pad4/sensors/temperature2"};
+const char tx_power[4][80] =            {"warwicktrial/ctu/pad1/sensors/power", "warwicktrial/ctu/pad2/sensors/power",
+                                         "warwicktrial/ctu/pad3/sensors/power", "warwicktrial/ctu/pad4/sensors/power"};
+const char tx_efficiency[4][80] =       {"warwicktrial/ctu/pad1/sensors/efficiency", "warwicktrial/ctu/pad2/sensors/efficiency",
+                                         "warwicktrial/ctu/pad3/sensors/efficiency", "warwicktrial/ctu/pad4/sensors/efficiency"};
+const char tx_fod[4][80] =              {"warwicktrial/ctu/pad1/alerts/fod", "warwicktrial/ctu/pad2/alerts/fod",
+                                         "warwicktrial/ctu/pad3/alerts/fod", "warwicktrial/ctu/pad4/alerts/fod"};
+const char tx_overvoltage[4][80] =      {"warwicktrial/ctu/pad1/alerts/overvoltage", "warwicktrial/ctu/pad2/alerts/overvoltage",
+                                         "warwicktrial/ctu/pad3/alerts/overvoltage", "warwicktrial/ctu/pad4/alerts/overvoltage"};
+const char tx_overcurrent[4][80] =      {"warwicktrial/ctu/pad1/alerts/overcurrent", "warwicktrial/ctu/pad2/alerts/overcurrent",
+                                         "warwicktrial/ctu/pad3/alerts/overcurrent", "warwicktrial/ctu/pad4/alerts/overcurrent"};
+const char tx_overtemperature[4][80] =  {"warwicktrial/ctu/pad1/alerts/overtemperature", "warwicktrial/ctu/pad2/alerts/overtemperature",
+                                         "warwicktrial/ctu/pad3/alerts/overtemperature", "warwicktrial/ctu/pad4/alerts/overtemperature"};
+const char tx_status[4][80] =           {"warwicktrial/ctu/pad1/status", "warwicktrial/ctu/pad2/status",
+                                         "warwicktrial/ctu/pad3/status", "warwicktrial/ctu/pad4/status"};
+const char tx_scooter[4][80] =          {"warwicktrial/ctu/pad1/scooter", "warwicktrial/ctu/pad2/scooter",
+                                         "warwicktrial/ctu/pad3/scooter", "warwicktrial/ctu/pad4/scooter"};
+ // RX
+const char rx_voltage[4][80] =          {"warwicktrial/cru/scooter3PAU/sensors/voltage", "warwicktrial/cru/scooter6F35/sensors/voltage",
+                                         "warwicktrial/cru/scooterCE8J/sensors/voltage", "warwicktrial/cru/scooterD8X5/sensors/voltage"};
+const char rx_current[4][80] =          {"warwicktrial/cru/scooter3PAU/sensors/current", "warwicktrial/cru/scooter6F35/sensors/current",
+                                         "warwicktrial/cru/scooterCE8J/sensors/current", "warwicktrial/cru/scooterD8X5/sensors/current"};
+const char rx_temp[4][80] =             {"warwicktrial/cru/scooter3PAU/sensors/temperature", "warwicktrial/cru/scooter6F35/sensors/temperature",
+                                         "warwicktrial/cru/scooterCE8J/sensors/temperature", "warwicktrial/cru/scooterD8X5/sensors/temperature"};
+const char rx_power[4][80] =            {"warwicktrial/cru/scooter3PAU/sensors/power", "warwicktrial/cru/scooter6F35/sensors/power",
+                                         "warwicktrial/cru/scooterCE8J/sensors/power", "warwicktrial/cru/scooterD8X5/sensors/power"};
+const char rx_charge_complete[4][80] =  {"warwicktrial/cru/scooter3PAU/alerts/chargecomplete", "warwicktrial/cru/scooter6F35/alerts/chargecomplete",
+                                         "warwicktrial/cru/scooterCE8J/alerts/chargecomplete", "warwicktrial/cru/scooterD8X5/alerts/chargecomplete"};
+const char rx_overvoltage[4][80] =      {"warwicktrial/cru/scooter3PAU/alerts/overvoltage", "warwicktrial/cru/scooter6F35/alerts/overvoltage",
+                                         "warwicktrial/cru/scooterCE8J/alerts/overvoltage", "warwicktrial/cru/scooterD8X5/alerts/overvoltage"};
+const char rx_overcurrent[4][80] =      {"warwicktrial/cru/scooter3PAU/alerts/overcurrent", "warwicktrial/cru/scooter6F35/alerts/overcurrent",
+                                         "warwicktrial/cru/scooterCE8J/alerts/overcurrent", "warwicktrial/cru/scooterD8X5/alerts/overcurrent"};
+const char rx_overtemperature[4][80] =  {"warwicktrial/cru/scooter3PAU/alerts/overtemperature", "warwicktrial/cru/scooter6F35/alerts/overtemperature",
+                                         "warwicktrial/cru/scooterCE8J/alerts/overtemperature", "warwicktrial/cru/scooterD8X5/alerts/overtemperature"};
+
 
 /* Debug tag */
 static const char* TAG = "BLE_CENTRAL";
@@ -114,12 +158,12 @@ static void ble_central_unpack_dynamic_param(const struct ble_gatt_attr *attr, u
  */
 
 static const struct ble_gap_conn_params conn_params = {
-    .scan_itvl = 0x0010,
-    .scan_window = 0x000f,
+    .scan_itvl = 0x000a,
+    .scan_window = 0x0009,
     .itvl_min = BLE_WPT_INITIAL_CONN_ITVL_MIN,
     .itvl_max = BLE_WPT_INITIAL_CONN_ITVL_MAX,
-    .latency = 0x0001,                              // allow to skip 1 scan_itvl times when no data to be sent
-    .supervision_timeout = 0x0c00,                // allow 30s
+    .latency = 0x0000,                              // allow to skip 5 scan_itvl times when no data to be sent
+    .supervision_timeout = 0x00f0,                // allow 2.5s (240 * 10 ms)
     .min_ce_len = 0x0000,
     .max_ce_len = 0x0000,
 };
@@ -163,15 +207,19 @@ void ble_central_kill_AUX_CTU(uint16_t conn_handle)
     if(Aux_CTU != NULL) {
         if (Aux_CTU->position)
         {
-            ble_central_update_control_enables(0, 1, 0, Aux_CTU);         
-            ble_central_update_control_enables(0, 0, 0, Aux_CTU); 
+            if (low_power_pads[Aux_CTU->position-1])
+                ble_central_update_control_enables(0, 0, 0, Aux_CTU); 
+            if (full_power_pads[Aux_CTU->position-1])
+                ble_central_update_control_enables(0, 1, 0, Aux_CTU);   
+            led_state[Aux_CTU->position-1] = 0;
         }
-        low_power_pads[Aux_CTU->position-1] = 0;
-        full_power_pads[Aux_CTU->position-1] = 0;
-        ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
-        // use this to avoid reconnection
-        // ble_gap_terminate(conn_handle, BLE_HS_EAPP);
+        //if (Aux_CTU->task_handle)
+            //vTaskDelete(Aux_CTU->task_handle);
     }
+
+    ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
+    // use this to avoid reconnection
+    // ble_gap_terminate(conn_handle, BLE_HS_EAPP);
 }
 
 
@@ -188,6 +236,8 @@ void ble_central_kill_CRU(uint16_t conn_handle)
     
     if (peer!=NULL)
     {
+        //if (peer->task_handle)
+            //vTaskDelete(peer->task_handle);
         //IF WAS DOING THE LOCALIZATION PROCESS
         if(peer->localization_process)
         {
@@ -206,28 +256,23 @@ void ble_central_kill_CRU(uint16_t conn_handle)
             struct peer *Aux_CTU = Aux_CTU_find(peer->position);
             if(Aux_CTU != NULL) {
                 ble_central_update_control_enables(0, 1, 0, Aux_CTU);
+                //LEDS
+                led_state[peer->position-1] = 0;
+                ble_central_update_control_enables(0, 0, led_state[peer->position-1], Aux_CTU);
             }
-            if(SD_CARD == 1)
-            {
-                //SD CARD
-                time(&now);
-                localtime_r(&now, &info);
-                char path[100];
-                strcpy(path, "warwicktrial/cru/");
-                strcat(path, peer->voi_code);
-                strcat(path, "/status/status.csv");
-                write_sd_card(path, 0.00, &info);
-                strcpy(path, "warwicktrial/ctu/pad");
-                strcat(path, Aux_CTU->voi_code);
-                strcat(path, "/status/status.csv");
-                write_sd_card(path, 0.00, &info);
-            }
+            time(&now);
+            localtime_r(&now, &info);
+            char string_value[2] = "0";
+            if(SD_CARD)
+                write_sd_card(tx_status[peer->position-1], 0.00, &info);
+            if (WIFI)
+                esp_mqtt_client_publish(client, tx_status[peer->position-1], string_value, 0, 0, 0);
             peer->position = 0;
         }
-        ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
-        // use this to avoid reconnection
-        // ble_gap_terminate(conn_handle, BLE_HS_EAPP);
     }
+    ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
+    // use this to avoid reconnection
+    // ble_gap_terminate(conn_handle, BLE_HS_EAPP);
 }
 
 /** 
@@ -288,8 +333,7 @@ static int ble_central_on_localization_process(uint16_t conn_handle,
     if (error->status != 0)
     {
         ESP_LOGE(TAG, "Unable to read (ON LOCALIZATION PROCESS): status=%d", error->status);
-        esp_task_wdt_delete(peer->task_handle);
-        vTaskDelete(peer->task_handle);
+        //esp_task_wdt_delete(peer->task_handle);
         ble_central_kill_CRU(peer->conn_handle);
         return 1;
     }
@@ -300,9 +344,14 @@ static int ble_central_on_localization_process(uint16_t conn_handle,
     // DETECT POSITION OF THE CRU USING THE DYN CHR 
     // DO NOT GO TO POWER TRANSFER STATE UNTIL A POSITION IS DETECTED
     // is Vrect value above the Treshold?
-    ESP_LOGI(TAG, "Vrx = %.02f, Irx = %.02f", peer->dyn_payload.vrect.f, peer->dyn_payload.irect.f);
+    
+    //ESP_LOGI(TAG, "Vrx = %.02f, Irx = %.02f", peer->dyn_payload.vrect.f, peer->dyn_payload.irect.f);
 
-    if (peer->dyn_payload.vrect.f > VOLTAGE_LOW_THRESH )
+    //TODO: USE TIME ATTACHED TO DYN PAYLOAD
+    time_t dyn_time = mktime(&peer->dyn_payload.dyn_time);
+    min_switch_time = abs(difftime(dyn_time, switch_pad_ON));
+
+    if ((peer->dyn_payload.vrect.f > VOLTAGE_LOW_THRESH) && (min_switch_time > MIN_SWITCH_TIME))
     {
         ESP_LOGE(TAG, " VOLTAGE TRESHOLD PASSED!");
         //change the peer variable to end the localization process
@@ -318,7 +367,7 @@ static int ble_central_on_localization_process(uint16_t conn_handle,
         //make sure to send only once
         if (full_power_pads[current_low_power-1] == 0)
         {
-            rc = ble_central_update_control_enables(1, 1, 1, Aux_CTU);
+            rc = ble_central_update_control_enables(1, 1, 0, Aux_CTU);
             //make sure the command goes through
             if (!rc)
             {
@@ -327,20 +376,13 @@ static int ble_central_on_localization_process(uint16_t conn_handle,
                 //SET RX POSITION
                 peer->position = current_low_power;
                 ESP_LOGI(TAG, " CRU is in position %d", peer->position );
-                if (SD_CARD == 1)
-                {
-                    //SD CARD
-                    time(&now);
-                    localtime_r(&now, &info);
-                    char path[100];
-                    strcpy(path, "warwicktrial/cru/");
-                    strcat(path, peer->voi_code);
-                    strcat(path, "/status/status.csv");
-                    //SD CARD
-                    write_sd_card(path, 1.00, &info);
-                }
+                
+                //send which is scooter is being charged to the relative pad topic
+                if (WIFI)
+                    esp_mqtt_client_publish(client, tx_scooter[peer->position-1], peer->voi_code_string, 0, 0, 0);
+
                 //store time
-                gettimeofday(&tv_loc, NULL);      
+                time(&tv_loc);      
                 if (m_CTU_task_param.state == CTU_LOW_POWER_STATE)
                     CTU_state_change(CTU_POWER_TRANSFER_STATE, (void *)peer);
             } else
@@ -378,8 +420,7 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
     if (error->status != 0)
     {
         ESP_LOGE(TAG, "Unable to read (ON AUX CTU DYN): status=%d", error->status);
-        esp_task_wdt_delete(peer->task_handle);
-        vTaskDelete(peer->task_handle);
+        //esp_task_wdt_delete(peer->task_handle);
         ble_central_kill_AUX_CTU(peer->conn_handle);
         return 1;
     }
@@ -401,40 +442,26 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
         {
             if (baton == peer->position)
             {
-                if(!full_power_pads[baton-1])
+                rc = ble_central_update_control_enables(1, 0, 0, peer);
+                if (!rc)
                 {
-                    rc = ble_central_update_control_enables(1, 0, 0, peer);
-                    if (!rc)
-                    {
-                        current_low_power = baton;
-                        gettimeofday(&tv_low_on, NULL);
-                        if (baton == N_AUX_CTU)
-                            baton = 1;
-                        else    
-                            baton++;
-                    }
-                } else 
-                {
-                    if (baton == N_AUX_CTU)
-                        baton = 1;
-                    else    
-                        baton++;
+                    current_low_power = baton;
+                    time(&switch_pad_ON);
+                    //pass the baton to the next pad
+                    pass_the_baton(); 
                 }
-            
             }
         } else
         {
-            //SWITCH OFF
-            if (peer->position == loc_pad_find()+1)
+            //SWITCH OFF 
+            if ((peer->position == loc_pad_find()+1) && (!low_power_alone(peer->position)))
             {
-                gettimeofday(&tv_switch, NULL);
-                time_lowpower_on = tv_switch.tv_sec - tv_low_on.tv_sec + 1e-6f * (tv_switch.tv_usec - tv_low_on.tv_usec);
+                time(&switch_pad_OFF);
+                time_lowpower_on = abs(difftime(switch_pad_OFF, switch_pad_ON));
                 if (time_lowpower_on > MIN_LOW_POWER_ON)
                 {
                     //ESP_LOGE(TAG, "Time LOW POWER ON %.02f", time_lowpower_on);
-                    rc = ble_central_update_control_enables(0, 0, 0, peer);
-                    if (rc)
-                        low_power_pads[peer->position-1] = 1;
+                    ble_central_update_control_enables(0, 0, 0, peer);
                 }
             }
         }
@@ -466,8 +493,7 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
     {
         //todo: add error handling here
         ESP_LOGE(TAG, "Unable to read (ON CRU DYN): status=%d", error->status);
-        esp_task_wdt_delete(peer->task_handle);
-        vTaskDelete(peer->task_handle);
+        //esp_task_wdt_delete(peer->task_handle);
         ble_central_kill_CRU(peer->conn_handle);
         return 1;
     }
@@ -490,21 +516,17 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
     if ((time_sec < CTU_TIMER_PERIOD) && (peer->dyn_payload.rx_power) && (Aux_CTU->dyn_payload.tx_power))
     {
         float eff;
-        eff = peer->dyn_payload.rx_power / Aux_CTU->dyn_payload.tx_power;
-        if ((eff > 0) && (eff < 1))
+        eff = ( peer->dyn_payload.rx_power / Aux_CTU->dyn_payload.tx_power ) * 100;
+        if ((eff > 0) && (eff < 100))
         {
             ESP_LOGI(TAG, "Efficiency on position %d = %.02f", peer->position, eff);
             //WRITE EFFICIENCY
-            char path[100];
             char string_value[50];
-            strcpy(path, "warwicktrial/ctu/pad");
-            strcat(path, Aux_CTU->voi_code);
-            strcat(path, "/sensors/eff.csv");
             sprintf(string_value, "%.02f", eff);
             if (SD_CARD)
-                write_sd_card(path, eff, &peer->dyn_payload.dyn_time);
+                write_sd_card(tx_efficiency[peer->position-1], eff, &peer->dyn_payload.dyn_time);
             if (WIFI)
-                esp_mqtt_client_publish(client, path, string_value, 0, 0, 0);               
+                esp_mqtt_client_publish(client, tx_efficiency[peer->position-1], string_value, 0, 0, 0);               
         }
     }
 
@@ -512,8 +534,8 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
     ESP_LOGI(TAG, "Vrx = %.02f, Irx = %.02f", peer->dyn_payload.vrect.f, peer->dyn_payload.irect.f);
 
     // Check the charge has actually started (during the first 10 seconds) -- kind of double check on the localization algorithm
-    gettimeofday(&tv_stop, NULL);
-    time_sec = tv_stop.tv_sec - tv_loc.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_loc.tv_usec);
+    time(&now);
+    time_sec = abs(difftime(now, tv_loc));
     if ( time_sec < BATTERY_REACTION_TIME )
     {
         if(peer->dyn_payload.vrect.f > VOLTAGE_FULL_THRESH)
@@ -527,7 +549,6 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
         ESP_LOGE(TAG, "Voltage not received during the first 10 seconds!");
         esp_task_wdt_delete(peer->task_handle);
         ble_central_kill_CRU(peer->conn_handle);
-        vTaskDelete(peer->task_handle);
         return 1;
     }
 
@@ -538,8 +559,19 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
         ESP_LOGE(TAG, "Voltage no longer received! --> SCOOTER LEFT THE PLATFORM");
         esp_task_wdt_delete(peer->task_handle);
         ble_central_kill_CRU(peer->conn_handle);
-        vTaskDelete(peer->task_handle);
         return 1;
+    }
+
+    if (peer->dyn_payload.vrect.f > VOLTAGE_MIS_THRESH)
+        led_state[peer->position-1] = 1;
+    else
+        led_state[peer->position-1] = 2;
+
+    //SEND LEDS STATE
+    if (peer->last_led != led_state[peer->position-1])
+    {
+        ble_central_update_control_enables(0, 0, led_state[peer->position-1], Aux_CTU);
+        peer->last_led = led_state[peer->position-1];
     }
     return 0;
 }
@@ -571,7 +603,6 @@ static int ble_central_on_alert_read(uint16_t conn_handle,
     {
         ESP_LOGE(TAG, "Unable to read (ON CRU ALERT): status=%d", error->status);
         esp_task_wdt_delete(peer->task_handle);
-        vTaskDelete(peer->task_handle);
         if (peer->CRU)
                 ble_central_kill_CRU(peer->conn_handle);
         else
@@ -630,6 +661,8 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
         return;
     }
 
+    //attach the baton to an existing A-CTU
+    baton = peer->position;
     peer->last_rc = -1;
     int task_delay = CTU_TIMER_PERIOD;
     
@@ -657,16 +690,16 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
                 {
                     ctu_comms_error++;
                 } else {
-                    ESP_LOGW(TAG, "AUX CTU 60th consecutive task error - disconnect");
+                    ESP_LOGE(TAG, "AUX CTU 60th consecutive task error - disconnect");
                     ctu_comms_error = 0;
                     /* Delete watchdog */
                     esp_task_wdt_delete(NULL);
-                    ble_central_kill_AUX_CTU(peer->conn_handle);   
                     /* Delete task */
-                    vTaskDelete(NULL);      
+                    vTaskDelete(NULL); 
+                    ble_central_kill_AUX_CTU(peer->conn_handle);        
                 }
             } 
-            ESP_LOGW(TAG, "AUX CTU in position %d, task error number %d, error code rc=%d", peer->position, ctu_comms_error, rc);
+            //ESP_LOGW(TAG, "AUX CTU in position %d, task error number %d, error code rc=%d", peer->position, ctu_comms_error, rc);
             //RC = https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/esp_err.html#_CPPv49esp_err_t
         } else if ((peer->last_rc != -1) && (peer->last_rc))
         {
@@ -677,7 +710,7 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
         peer->last_rc = rc;
 
         // set Task Delay
-        if (current_localization_process())
+        if ((current_localization_process()) && (!full_power_pads[peer->position-1]))
             task_delay = LOC_CTU_TIMER_PERIOD;
         else 
             task_delay = CTU_TIMER_PERIOD;
@@ -755,6 +788,7 @@ static void ble_central_CRU_task_handle(void *arg)
     peer->correct = false;
     peer->count = 0;
     peer->last_rc = -1;
+    peer->last_led = 0;
 
     int task_delay = CRU_TIMER_PERIOD;
     
@@ -766,7 +800,7 @@ static void ble_central_CRU_task_handle(void *arg)
         if (peer->dyn_payload.alert == 0)
         {
             // ENSURE only one localization process per time!
-            if ((peer->position == 0) && ((!current_localization_process()) || (peer->localization_process)))
+            if ((peer->position == 0) && ((!current_localization_process()) || (peer->localization_process))) //add timer for next loc process
             {
                 switch (peer->count)
                 {
@@ -774,14 +808,18 @@ static void ble_central_CRU_task_handle(void *arg)
                         current_low_power = 0;
                         peer->localization_process = true;
                         peer->count++; 
+                        ESP_LOGI(TAG, "Localization process for scooter %s", peer->voi_code_string);
                         break;
                     
-                    //TIMEOUT FOR DETECTING LOCALIZATION (100*75ms) -- 7.5s 
+                    //TIMEOUT FOR DETECTING LOCALIZATION (100*80ms) -- 8s 
                     case 1000:
-                        ESP_LOGE(TAG, "Localization timer expires! Disconnecting");
-                        ble_central_kill_CRU(peer->conn_handle);
+                        ESP_LOGE(TAG, "Localization timer expires!");
+                        //delete only if this happens 10 times
+                        esp_task_wdt_delete(NULL);
+
                         /* Delete task */
                         vTaskDelete(NULL);
+                        ble_central_kill_CRU(peer->conn_handle);
                         break;
 
                     // read dyn chr
@@ -813,27 +851,27 @@ static void ble_central_CRU_task_handle(void *arg)
                 {
                     cru_comms_error++;
                 } else {
-                    ESP_LOGW(TAG, "CRU 60th  consecutive task error - disconnect"); 
+                    ESP_LOGE(TAG, "CRU 60th  consecutive task error - disconnect"); 
                     cru_comms_error = 0;
                     /* Delete watchdog */
                     esp_task_wdt_delete(NULL);
-                    ble_central_kill_CRU(peer->conn_handle);   
                     /* Delete task */
-                    vTaskDelete(NULL);      
+                    vTaskDelete(NULL);
+                    ble_central_kill_CRU(peer->conn_handle);         
                 }
             } 
-            ESP_LOGW(TAG, "CRU %d task error but loop anyway rc=%d", cru_comms_error, rc);
+            //ESP_LOGW(TAG, "CRU %d task error but loop anyway rc=%d", cru_comms_error, rc);
             //RC = https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/esp_err.html#_CPPv49esp_err_t
         } else if ((peer->last_rc != -1) && (peer->last_rc))
         {
-            ESP_LOGI(TAG, "Comms RECOVERY with CRU");
+            //ESP_LOGI(TAG, "Comms RECOVERY with CRU");
             cru_comms_error = 0;
         }
 
         peer->last_rc = rc;
 
         // set Task Delay
-        if (current_localization_process())
+        if (peer->localization_process)
             task_delay = LOC_CRU_TIMER_PERIOD;
         else 
             task_delay = CRU_TIMER_PERIOD;
@@ -940,12 +978,6 @@ static int ble_central_on_control_enable(uint16_t conn_handle,
             {
                 ESP_LOGE(TAG, "CONTROL chr not found!");
                 ble_central_kill_CRU(peer->conn_handle);      
-            }
-
-            /* Enter low power state only when the A-CTUs are connected and their position have been found*/
-            if ((peer_get_NUM_AUX_CTU() == N_AUX_CTU) && (m_CTU_task_param.state == CTU_CONFIG_STATE))
-            {
-                CTU_state_change(CTU_LOW_POWER_STATE, (void *)NULL);
             }
         }
         
@@ -1296,19 +1328,19 @@ static int ble_central_should_connect(const struct ble_gap_disc_desc *disc)
             return 1;
         }
 
-        if (peer_get_NUM_AUX_CTU() == N_AUX_CTU)
+        if ((m_CTU_task_param.state != CTU_CONFIG_STATE) && (m_CTU_task_param.state != NULL_STATE))
         {
             if (((disc->addr.val[5] == cru_6F35[5]) && (disc->addr.val[4] == cru_6F35[4]) && (disc->addr.val[3] == cru_6F35[3]) 
             && (disc->addr.val[2] == cru_6F35[2]) && (disc->addr.val[1] == cru_6F35[1]) && (disc->addr.val[0] == cru_6F35[0]))
             ||
-            ((disc->addr.val[5] == cru_KV3K[5]) && (disc->addr.val[4] == cru_KV3K[4]) && (disc->addr.val[3] == cru_KV3K[3]) 
-            && (disc->addr.val[2] == cru_KV3K[2]) && (disc->addr.val[1] == cru_KV3K[1]) && (disc->addr.val[0] == cru_KV3K[0]))
+            ((disc->addr.val[5] == cru_CE8J[5]) && (disc->addr.val[4] == cru_CE8J[4]) && (disc->addr.val[3] == cru_CE8J[3]) 
+            && (disc->addr.val[2] == cru_CE8J[2]) && (disc->addr.val[1] == cru_CE8J[1]) && (disc->addr.val[0] == cru_CE8J[0]))
             ||
             ((disc->addr.val[5] == cru_3PAU[5]) && (disc->addr.val[4] == cru_3PAU[4]) && (disc->addr.val[3] == cru_3PAU[3]) 
             && (disc->addr.val[2] == cru_3PAU[2]) && (disc->addr.val[1] == cru_3PAU[1]) && (disc->addr.val[0] == cru_3PAU[0]))
             ||
-            ((disc->addr.val[5] == cru_6F35[5]) && (disc->addr.val[4] == cru_6F35[4]) && (disc->addr.val[3] == cru_6F35[3]) 
-            && (disc->addr.val[2] == cru_6F35[2]) && (disc->addr.val[1] == cru_6F35[1]) && (disc->addr.val[0] == cru_6F35[0])))
+            ((disc->addr.val[5] == cru_D8X5[5]) && (disc->addr.val[4] == cru_D8X5[4]) && (disc->addr.val[3] == cru_D8X5[3]) 
+            && (disc->addr.val[2] == cru_D8X5[2]) && (disc->addr.val[1] == cru_D8X5[1]) && (disc->addr.val[0] == cru_D8X5[0])))
             {
                 return 2;
             }
@@ -1331,12 +1363,16 @@ static void ble_central_connect_if_interesting(const struct ble_gap_disc_desc *d
     int slave_type = 0;
 
     /* Don't do anything if we don't care about this advertiser. */
-    if (!ble_central_should_connect(disc)) {
+    if (!ble_central_should_connect(disc)) 
+    {
         return;
-    } else if(ble_central_should_connect(disc) == 1) {
+    } else if(ble_central_should_connect(disc) == 1) 
+    {
         ESP_LOGI(TAG, "AUX CTU found!");
         slave_type = 1;
-    } else if(ble_central_should_connect(disc) == 2) {
+        time(&aux_found);
+    } else if(ble_central_should_connect(disc) == 2) 
+    {
         ESP_LOGI(TAG, "CRU found!");
         slave_type = 2;
     }
@@ -1411,8 +1447,8 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
             //SET MAX TX POWER
             esp_ble_tx_power_set(event->connect.conn_handle, ESP_PWR_LVL_P9); 
             
-            time(&now);
-            localtime_r(&now, &info);
+            //time(&now);
+            //localtime_r(&now, &info);
             //ESP_LOGI(TAG, "Time is %s", asctime(&info));
             
             const uint8_t* slave_type = (const uint8_t *)arg;
@@ -1468,8 +1504,8 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
 
     case BLE_GAP_EVENT_DISCONNECT:
         
-        time(&now);
-        localtime_r(&now, &info);
+        //time(&now);
+        //localtime_r(&now, &info);
         //ESP_LOGI(TAG, "Time is %s", asctime(&info));
 
         /* Connection terminated. */
@@ -1485,16 +1521,11 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
         } else {
             if (peer->position) 
                 ESP_LOGE(TAG, "A-CTU in position: %d", peer->position);
+            if ((peer_get_NUM_AUX_CTU() != MAX_AUX_CTU) && (m_CTU_task_param.state != CTU_CONFIG_STATE))
+                CTU_state_change(CTU_CONFIG_STATE, (void *)peer);
         }
 
         peer_delete(event->disconnect.conn.conn_handle);
-
-        if ((peer_get_NUM_AUX_CTU() != N_AUX_CTU) && (m_CTU_task_param.state != CTU_CONFIG_STATE))
-        {
-            //restart configuration
-            //ble_central_kill_all_AUX_CTU();
-            CTU_state_change(CTU_CONFIG_STATE, (void *)peer);
-        }
     
         if ((peer_get_NUM_AUX_CTU() + peer_get_NUM_CRU()) == 0)
         {
@@ -1554,10 +1585,6 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
 //todo: fault state: tv_fault --> save on each peer the time to wait before reconnection (it should be kept in memory even after disconnection)
 static void ble_central_unpack_AUX_CTU_alert_param(struct os_mbuf* om, uint16_t conn_handle)
 {
-    time(&now);
-    localtime_r(&now, &info);
-    //ESP_LOGI(TAG, "Time is %s", asctime(&info));
-
     struct peer *peer = peer_find(conn_handle);
 
     if (peer!=NULL)
@@ -1571,43 +1598,44 @@ static void ble_central_unpack_AUX_CTU_alert_param(struct os_mbuf* om, uint16_t 
         time(&now);
         localtime_r(&now, &peer->alert_payload.alert_time);
 
-        char path[100];
-        strcpy(path, "warwicktrial/ctu/pad");
-        strcat(path, peer->voi_code);
-        strcat(path, "/alerts");
+        char string_value[2] = "1";
 
         if(peer->alert_payload.alert_field.overvoltage)
         {
             ESP_LOGE(TAG, "ALERT -- OVERVOLTAGE -- aux ctu position %d", peer->position);
             peer->alert_payload.alert_field.overvoltage = 0;
             CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
-            strcat(path, "/overvoltage.csv");
-            if (SD_CARD == 1)
-                write_sd_card(path, peer->dyn_payload.vrect.f, &peer->alert_payload.alert_time);
+            if (SD_CARD)
+                write_sd_card(tx_overvoltage[peer->position-1], peer->dyn_payload.vrect.f, &peer->alert_payload.alert_time);
+            if (WIFI)
+                esp_mqtt_client_publish(client, tx_overvoltage[peer->position-1], string_value, 0, 0, 0);
         } else if(peer->alert_payload.alert_field.overcurrent)
             {
                 ESP_LOGE(TAG, "ALERT -- OVERCURRENT -- aux ctu position %d", peer->position);
                 peer->alert_payload.alert_field.overcurrent = 0;
                 CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
-                strcat(path, "/overcurrent.csv");
-                if (SD_CARD == 1)
-                    write_sd_card(path, peer->dyn_payload.irect.f, &peer->alert_payload.alert_time);
+                if (SD_CARD)
+                    write_sd_card(tx_overcurrent[peer->position-1], peer->dyn_payload.irect.f, &peer->alert_payload.alert_time);
+                if (WIFI)
+                    esp_mqtt_client_publish(client, tx_overcurrent[peer->position-1], string_value, 0, 0, 0);
             } else if(peer->alert_payload.alert_field.overtemperature)
                 {
                     ESP_LOGE(TAG, "ALERT -- OVERTEMPERATURE -- aux ctu position %d", peer->position);
                     peer->alert_payload.alert_field.overtemperature = 0;
                     CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
-                    strcat(path, "/overtemperature.csv");
-                    if (SD_CARD == 1)
-                        write_sd_card(path, peer->dyn_payload.temp1.f, &peer->alert_payload.alert_time);
+                    if (SD_CARD)
+                        write_sd_card(tx_overtemperature[peer->position-1], peer->dyn_payload.temp1.f, &peer->alert_payload.alert_time);
+                    if (WIFI)
+                        esp_mqtt_client_publish(client, tx_overtemperature[peer->position-1], string_value, 0, 0, 0);
                 } else if(peer->alert_payload.alert_field.FOD)
                 {
                     ESP_LOGE(TAG, "ALERT -- FOD -- aux ctu position %d", peer->position);
                     peer->alert_payload.alert_field.FOD = 0;
                     CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
-                    strcat(path, "/fod.csv");
-                    if (SD_CARD == 1)
-                        write_sd_card(path, 1.00, &peer->alert_payload.alert_time);
+                    if (SD_CARD)
+                        write_sd_card(tx_fod[peer->position-1], 1.00, &peer->alert_payload.alert_time);
+                    if (WIFI)
+                       esp_mqtt_client_publish(client, tx_fod[peer->position-1], string_value, 0, 0, 0);
                 } 
     }
 }
@@ -1615,9 +1643,6 @@ static void ble_central_unpack_AUX_CTU_alert_param(struct os_mbuf* om, uint16_t 
 static void ble_central_unpack_CRU_alert_param(struct os_mbuf* om, uint16_t conn_handle)
 {
     struct peer *peer = peer_find(conn_handle);
-
-    time(&now);
-    localtime_r(&now, &peer->alert_payload.alert_time);
 
     if (peer!=NULL)
     {
@@ -1630,44 +1655,41 @@ static void ble_central_unpack_CRU_alert_param(struct os_mbuf* om, uint16_t conn
         time(&now);
         localtime_r(&now, &peer->alert_payload.alert_time);
 
-        char path[100];
-        strcpy(path, "warwicktrial/cru/");
-        strcat(path, peer->voi_code);
-        strcat(path, "/alerts");
+        char string_value[2] = "1";
 
         if(peer->alert_payload.alert_field.overvoltage)
         {
             ESP_LOGE(TAG, "ALERT -- OVERVOLTAGE -- cru");
             CTU_state_change(CTU_REMOTE_FAULT_STATE, (void *)peer);
-            strcat(path, "/overvoltage.csv");
-            if (SD_CARD == 1)
-                write_sd_card(path, peer->dyn_payload.vrect.f, &peer->alert_payload.alert_time);
+            if (SD_CARD)
+                write_sd_card(rx_overvoltage[peer->voi_code], peer->dyn_payload.vrect.f, &peer->alert_payload.alert_time);
+            if (WIFI)
+                esp_mqtt_client_publish(client, rx_voltage[peer->voi_code], string_value, 0, 0, 0);
         } else if(peer->alert_payload.alert_field.overcurrent)
             {
                 ESP_LOGE(TAG, "ALERT -- OVERCURRENT -- cru");
                 CTU_state_change(CTU_REMOTE_FAULT_STATE, (void *)peer);
-                strcat(path, "/overcurrent.csv");
-                if (SD_CARD == 1)
-                    write_sd_card(path, peer->dyn_payload.irect.f, &peer->alert_payload.alert_time);
+                if (SD_CARD)
+                    write_sd_card(rx_overcurrent[peer->voi_code], peer->dyn_payload.irect.f, &peer->alert_payload.alert_time);
+                if (WIFI)
+                    esp_mqtt_client_publish(client, rx_overcurrent[peer->voi_code], string_value, 0, 0, 0);
             } else if(peer->alert_payload.alert_field.overtemperature)
                 {
                     ESP_LOGE(TAG, "ALERT -- OVERTEMPERATURE -- cru");
                     CTU_state_change(CTU_REMOTE_FAULT_STATE, (void *)peer);
-                    strcat(path, "/overtemperature.csv");
-                    if (SD_CARD == 1)
-                        write_sd_card(path, peer->dyn_payload.temp1.f, &peer->alert_payload.alert_time);
+                    if (SD_CARD)
+                        write_sd_card(rx_overtemperature[peer->voi_code], peer->dyn_payload.temp1.f, &peer->alert_payload.alert_time);
+                    if (WIFI)
+                        esp_mqtt_client_publish(client, rx_overtemperature[peer->voi_code], string_value, 0, 0, 0);
                 }  else if (peer->alert_payload.alert_field.charge_complete)
                     {
                         ESP_LOGE(TAG, "ALERT -- CHARGE COMPLETE  -- cru");
                         //Disconnect and wait for a while
                         CTU_state_change(CTU_REMOTE_FAULT_STATE, (void *)peer);
-                        strcat(path, "/chargecomplete.csv");
-                        if (SD_CARD == 1)
-                            write_sd_card(path, 1.00, &peer->alert_payload.alert_time);
-                        if ((!CTU_is_charging()) && (m_CTU_task_param.state != CTU_LOW_POWER_STATE))
-                        {
-                            CTU_state_change(CTU_LOW_POWER_STATE, (void *)peer);
-                        }
+                        if (SD_CARD)
+                            write_sd_card(rx_charge_complete[peer->voi_code], 1.00, &peer->alert_payload.alert_time);
+                        if (WIFI)
+                            esp_mqtt_client_publish(client, rx_charge_complete[peer->voi_code], string_value, 0, 0, 0);
                     }   
     }
 }
@@ -1679,77 +1701,79 @@ static void ble_central_unpack_static_param(const struct ble_gatt_attr *attr, ui
 
     if (peer!=NULL)
     {
-        peer->stat_payload.mac_0 = attr->om->om_data[0];
-        peer->stat_payload.mac_1 = attr->om->om_data[1];
-        peer->stat_payload.mac_2 = attr->om->om_data[2];
-        peer->stat_payload.mac_3 = attr->om->om_data[3];
-        peer->stat_payload.mac_4 = attr->om->om_data[4];
-        peer->stat_payload.mac_5 = attr->om->om_data[5];
+        peer->stat_payload.ble_addr0 = attr->om->om_data[0];
+        peer->stat_payload.ble_addr1 = attr->om->om_data[1];
+        peer->stat_payload.ble_addr2 = attr->om->om_data[2];
+        peer->stat_payload.ble_addr3 = attr->om->om_data[3];
+        peer->stat_payload.ble_addr4 = attr->om->om_data[4];
+        peer->stat_payload.ble_addr5 = attr->om->om_data[5];
     }
 
     //ASSIGN CORRECT POSITION OF A-CTU USING THEIR MAC ADDRESSES
     if(!peer->CRU)
     {
-        if ((peer->stat_payload.mac_5 == Actu_addr1[5]) && (peer->stat_payload.mac_4 == Actu_addr1[4]) && (peer->stat_payload.mac_3 == Actu_addr1[3]) 
-            && (peer->stat_payload.mac_2 == Actu_addr1[2]) && (peer->stat_payload.mac_1 == Actu_addr1[1]) && (peer->stat_payload.mac_0 == Actu_addr1[0]))
+        if ((peer->stat_payload.ble_addr5 == Actu_addr1[5]) && (peer->stat_payload.ble_addr4 == Actu_addr1[4]) && (peer->stat_payload.ble_addr3 == Actu_addr1[3]) 
+            && (peer->stat_payload.ble_addr2 == Actu_addr1[2]) && (peer->stat_payload.ble_addr1 == Actu_addr1[1]) && (peer->stat_payload.ble_addr0 == Actu_addr1[0]))
         {
             peer->position = 1;
-            strcpy(peer->voi_code, "1");
-
-        } else if ((peer->stat_payload.mac_5 == Actu_addr2[5]) && (peer->stat_payload.mac_4 == Actu_addr2[4]) && (peer->stat_payload.mac_3 == Actu_addr2[3]) 
-                   && (peer->stat_payload.mac_2 == Actu_addr2[2]) && (peer->stat_payload.mac_1 == Actu_addr2[1]) && (peer->stat_payload.mac_0 == Actu_addr2[0]))
-            {
-                peer->position = 2;
-                strcpy(peer->voi_code, "2");
-
-            } else if ((peer->stat_payload.mac_5 == Actu_addr3[5]) && (peer->stat_payload.mac_4 == Actu_addr3[4]) && (peer->stat_payload.mac_3 == Actu_addr3[3]) 
-                       && (peer->stat_payload.mac_2 == Actu_addr3[2]) && (peer->stat_payload.mac_1 == Actu_addr3[1]) && (peer->stat_payload.mac_0 == Actu_addr3[0]))
-                {
-                    peer->position = 3;
-                    strcpy(peer->voi_code, "3");
-
-                } else if ((peer->stat_payload.mac_5 == Actu_addr4[5]) && (peer->stat_payload.mac_4 == Actu_addr4[4]) && (peer->stat_payload.mac_3 == Actu_addr4[3]) 
-                           && (peer->stat_payload.mac_2 == Actu_addr4[2]) && (peer->stat_payload.mac_1 == Actu_addr4[1]) && (peer->stat_payload.mac_0 == Actu_addr4[0]))
-                    {
-                        peer->position = 4;
-                        strcpy(peer->voi_code, "4");
-                
-                    } /*else if ((peer->stat_payload.mac_5 == 0x30) && (peer->stat_payload.mac_4 == 0x8c) && (peer->stat_payload.mac_3 == 0x25) 
-                           && (peer->stat_payload.mac_2 == 0xfb) && (peer->stat_payload.mac_1 == 0x0b) && (peer->stat_payload.mac_0 == 0xac))
-                    {
-                        peer->position = 1;
-                        strcpy(peer->voi_code, "1");
-                    } */else { 
-                            peer->position = 0;
-                            ESP_LOGE(TAG, "ERROR - AUX CTU NOT IDENTIFIED");
-                            }
-        ESP_LOGI(TAG, "AUX-CTU POSITION = %d", peer->position);
-    } else //SAVE CRU VOI CODE FOR IDENTIFICATION (use SD card to write times before reconnection) OR assumption that the MASTER never resets
-    {
-        if ((peer->stat_payload.mac_5 == 0xac) && (peer->stat_payload.mac_4 == 0x0b) && (peer->stat_payload.mac_3 == 0xfb) 
-            && (peer->stat_payload.mac_2 == 0x25) && (peer->stat_payload.mac_1 == 0x63) && (peer->stat_payload.mac_0 == 0x5a))
+        } else if ((peer->stat_payload.ble_addr5 == Actu_addr2[5]) && (peer->stat_payload.ble_addr4 == Actu_addr2[4]) && (peer->stat_payload.ble_addr3 == Actu_addr2[3]) 
+                   && (peer->stat_payload.ble_addr2 == Actu_addr2[2]) && (peer->stat_payload.ble_addr1 == Actu_addr2[1]) && (peer->stat_payload.ble_addr0 == Actu_addr2[0]))
+        {
+            peer->position = 2;
+        } else if ((peer->stat_payload.ble_addr5 == Actu_addr3[5]) && (peer->stat_payload.ble_addr4 == Actu_addr3[4]) && (peer->stat_payload.ble_addr3 == Actu_addr3[3]) 
+                    && (peer->stat_payload.ble_addr2 == Actu_addr3[2]) && (peer->stat_payload.ble_addr1 == Actu_addr3[1]) && (peer->stat_payload.ble_addr0 == Actu_addr3[0]))
+        {
+            peer->position = 3;
+        } else if ((peer->stat_payload.ble_addr5 == Actu_addr4[5]) && (peer->stat_payload.ble_addr4 == Actu_addr4[4]) && (peer->stat_payload.ble_addr3 == Actu_addr4[3]) 
+                    && (peer->stat_payload.ble_addr2 == Actu_addr4[2]) && (peer->stat_payload.ble_addr1 == Actu_addr4[1]) && (peer->stat_payload.ble_addr0 == Actu_addr4[0]))
+        {
+            peer->position = 4;
+        } /*else if ((peer->stat_payload.ble_addr5 == 0x30) && (peer->stat_payload.ble_addr4 == 0x8c) && (peer->stat_payload.ble_addr3 == 0x25) 
+                    && (peer->stat_payload.ble_addr2 == 0xfb) && (peer->stat_payload.ble_addr1 == 0x0b) && (peer->stat_payload.ble_addr0 == 0xac))
+        {
+            peer->position = 1;
+        } */else 
         { 
-            ESP_LOGI(TAG, "CE8J");
-            strcpy(peer->voi_code, "CE8J");
+            peer->position = 0;
+            ESP_LOGE(TAG, "ERROR - AUX CTU NOT IDENTIFIED !!!!!!!!!!!");
+            ble_central_kill_AUX_CTU(peer->conn_handle);
+        }
 
-        } else if ((peer->stat_payload.mac_5 == cru_6F35[5]) && (peer->stat_payload.mac_4 == cru_6F35[4]) && (peer->stat_payload.mac_3 == cru_6F35[3]) 
-                   && (peer->stat_payload.mac_2 == cru_6F35[2]) && (peer->stat_payload.mac_1 == cru_6F35[1]) && (peer->stat_payload.mac_0 == cru_6F35[0]))
-            {
-                ESP_LOGI(TAG, "6F35");
-                strcpy(peer->voi_code, "6F35");
-            } else if ((peer->stat_payload.mac_5 == 0x84) && (peer->stat_payload.mac_4 == 0x85) && (peer->stat_payload.mac_3 == 0xed) 
-                   && (peer->stat_payload.mac_2 == 0x0c) && (peer->stat_payload.mac_1 == 0x38) && (peer->stat_payload.mac_0 == 0x90))
-            {
-                ESP_LOGI(TAG, "G7EH");
-                strcpy(peer->voi_code, "G7EH");
-            } else if ((peer->stat_payload.mac_5 == cru_3PAU[5]) && (peer->stat_payload.mac_4 == cru_3PAU[4]) && (peer->stat_payload.mac_3 == cru_3PAU[3]) 
-                   && (peer->stat_payload.mac_2 == cru_3PAU[2]) && (peer->stat_payload.mac_1 == cru_3PAU[1]) && (peer->stat_payload.mac_0 == cru_3PAU[0]))
-            {
-                ESP_LOGI(TAG, "3PAU");
-                strcpy(peer->voi_code, "3PAU");
-            } else { 
-                    ESP_LOGE(TAG, "ERROR - SCOOTER NOT IDENTIFIED");
-                   }
+        char string_value[2] = "0";
+        if (WIFI)
+            esp_mqtt_client_publish(client, tx_status[peer->position-1], string_value, 0, 0, 0);
+        ESP_LOGI(TAG, "AUX-CTU POSITION = %d", peer->position);
+    } else 
+    {
+        if ((peer->stat_payload.ble_addr5 == cru_6F35[5]) && (peer->stat_payload.ble_addr4 == cru_6F35[4]) && (peer->stat_payload.ble_addr3 == cru_6F35[3]) 
+                   && (peer->stat_payload.ble_addr2 == cru_6F35[2]) && (peer->stat_payload.ble_addr1 == cru_6F35[1]) && (peer->stat_payload.ble_addr0 == cru_6F35[0]))
+        {
+            ESP_LOGI(TAG, "6F35");
+            strcpy(peer->voi_code_string, "6F35");
+            peer->voi_code = VOI_6F35;
+        } else if ((peer->stat_payload.ble_addr5 == cru_CE8J[5]) && (peer->stat_payload.ble_addr4 == cru_CE8J[4]) && (peer->stat_payload.ble_addr3 == cru_CE8J[3]) 
+            && (peer->stat_payload.ble_addr2 == cru_CE8J[2]) && (peer->stat_payload.ble_addr1 == cru_CE8J[1]) && (peer->stat_payload.ble_addr0 == cru_CE8J[0]))
+        {
+            ESP_LOGI(TAG, "CE8J");
+            strcpy(peer->voi_code_string, "CE8J");
+            peer->voi_code = VOI_CE8J;
+        } else if ((peer->stat_payload.ble_addr5 == cru_3PAU[5]) && (peer->stat_payload.ble_addr4 == cru_3PAU[4]) && (peer->stat_payload.ble_addr3 == cru_3PAU[3]) 
+            && (peer->stat_payload.ble_addr2 == cru_3PAU[2]) && (peer->stat_payload.ble_addr1 == cru_3PAU[1]) && (peer->stat_payload.ble_addr0 == cru_3PAU[0]))
+        {
+            ESP_LOGI(TAG, "3PAU");
+            strcpy(peer->voi_code_string, "3PAU");
+            peer->voi_code = VOI_3PAU;
+        } else if ((peer->stat_payload.ble_addr5 == cru_D8X5[5]) && (peer->stat_payload.ble_addr4 == cru_D8X5[4]) && (peer->stat_payload.ble_addr3 == cru_D8X5[3]) 
+            && (peer->stat_payload.ble_addr2 == cru_D8X5[2]) && (peer->stat_payload.ble_addr1 == cru_D8X5[1]) && (peer->stat_payload.ble_addr0 == cru_D8X5[0]))
+        { 
+            ESP_LOGI(TAG, "D8X5");
+            strcpy(peer->voi_code_string, "D8X5");
+            peer->voi_code = VOI_D8X5;
+        } else 
+        { 
+            ESP_LOGE(TAG, "ERROR - SCOOTER NOT IDENTIFIED");
+            ble_central_kill_CRU(peer->conn_handle);
+        }
     }
 }
 
@@ -1787,121 +1811,80 @@ static void ble_central_unpack_dynamic_param(const struct ble_gatt_attr *attr, u
         time(&now);
         localtime_r(&now, &peer->dyn_payload.dyn_time);
 
-        //todo: not during loc process?
-        if ((SD_CARD) || (WIFI))
+        char string_value[50];
+        if ((peer->CRU) && (peer->position))
         {
-            char path[100];
-            char string_value[50];
-            //STORE VALUES LOCALLY IN THE SD CARD
-            if(peer->CRU)
+            if (SD_CARD)
             {
-                strcpy(path, "warwicktrial/cru/");
-                strcat(path, peer->voi_code);
-                strcat(path, "/sensors");
-                char Vpath[100];
-                strcpy(Vpath, path);
-                char Ipath[100];
-                strcpy(Ipath, path);
-                char Tpath[100];
-                strcpy(Tpath, path);
-                char Ppath[100];
-                strcpy(Ppath, path);
-                if (SD_CARD)
-                {
-                    
-                    write_sd_card(Vpath, peer->dyn_payload.vrect.f, &peer->dyn_payload.dyn_time);
-                    write_sd_card(Ipath, peer->dyn_payload.irect.f, &peer->dyn_payload.dyn_time);
-                    write_sd_card(Tpath, peer->dyn_payload.temp1.f, &peer->dyn_payload.dyn_time);
-                }
-                if (WIFI)
-                {
-                    strcat(Vpath, "/voltage");
-                    strcat(Ipath, "/current");
-                    strcat(Tpath, "/temp");
-                    strcat(Ppath, "/rxpower");
-                    sprintf(string_value, "%.02f", peer->dyn_payload.vrect.f);
-                    esp_mqtt_client_publish(client, Vpath, string_value, 0, 0, 0);
-                    sprintf(string_value, "%.02f", peer->dyn_payload.irect.f);
-                    esp_mqtt_client_publish(client, Ipath, string_value, 0, 0, 0);
-                    sprintf(string_value, "%.02f", peer->dyn_payload.temp1.f);
-                    esp_mqtt_client_publish(client, Tpath, string_value, 0, 0, 0);
-                }
-                if (peer->dyn_payload.vrect.f > 100)
-                {
-                    // store RX power when the scooter position is found
-                    peer->dyn_payload.rx_power = peer->dyn_payload.vrect.f * peer->dyn_payload.irect.f;
-                    //ESP_LOGI(TAG, "RX POWER: %.02f", peer->dyn_payload.rx_power);
-                    sprintf(string_value, "%.02f", peer->dyn_payload.rx_power);
-                    if (SD_CARD)
-                        write_sd_card(Ppath, peer->dyn_payload.rx_power, &peer->dyn_payload.dyn_time);
-                    if (WIFI)
-                    {
-                        esp_mqtt_client_publish(client, Ppath, string_value, 0, 0, 0);
-                    }
-                }
-            } else
+                write_sd_card(rx_voltage[peer->voi_code], peer->dyn_payload.vrect.f, &peer->dyn_payload.dyn_time);
+                write_sd_card(rx_current[peer->voi_code], peer->dyn_payload.irect.f, &peer->dyn_payload.dyn_time);
+                write_sd_card(rx_temp[peer->voi_code], peer->dyn_payload.temp1.f, &peer->dyn_payload.dyn_time);
+            }
+            if (WIFI)
             {
-                strcpy(path, "warwicktrial/ctu/pad");
-                strcat(path, peer->voi_code);
-                strcat(path, "/sensors");
-                char Vpath[100];
-                strcpy(Vpath, path);
-                char Ipath[100];
-                strcpy(Ipath, path);
-                char T1path[100];
-                strcpy(T1path, path);
-                char T2path[100];
-                strcpy(T2path, path);
-                char Ppath[100];
-                strcpy(Ppath, path);
+                sprintf(string_value, "%.02f", peer->dyn_payload.vrect.f);
+                esp_mqtt_client_publish(client, rx_voltage[peer->voi_code], string_value, 0, 0, 0);
+                sprintf(string_value, "%.02f", peer->dyn_payload.irect.f);
+                esp_mqtt_client_publish(client, rx_current[peer->voi_code], string_value, 0, 0, 0);
+                sprintf(string_value, "%.02f", peer->dyn_payload.temp1.f);
+                esp_mqtt_client_publish(client, rx_temp[peer->voi_code], string_value, 0, 0, 0);
+            }
+            if (peer->dyn_payload.vrect.f > VOLTAGE_FULL_THRESH)
+            {
+                // store RX power when the scooter position is found
+                peer->dyn_payload.rx_power = peer->dyn_payload.vrect.f * peer->dyn_payload.irect.f;
+                //ESP_LOGI(TAG, "RX POWER: %.02f", peer->dyn_payload.rx_power);
+                sprintf(string_value, "%.02f", peer->dyn_payload.rx_power);
                 if (SD_CARD)
-                {
-                    write_sd_card(Vpath, peer->dyn_payload.vrect.f, &peer->dyn_payload.dyn_time);
-                    write_sd_card(Ipath, peer->dyn_payload.irect.f, &peer->dyn_payload.dyn_time);
-                    write_sd_card(T1path, peer->dyn_payload.temp1.f, &peer->dyn_payload.dyn_time);
-                    write_sd_card(T2path, peer->dyn_payload.temp2.f, &peer->dyn_payload.dyn_time);
-                }
+                    write_sd_card(rx_power[peer->voi_code], peer->dyn_payload.rx_power, &peer->dyn_payload.dyn_time);
                 if (WIFI)
-                {
-                    strcat(Vpath, "/voltage");
-                    strcat(Ipath, "/current");
-                    strcat(T1path, "/temp1");
-                    strcat(T2path, "/temp2");
-                    strcat(Ppath, "/txpower");
-                    sprintf(string_value, "%.02f", peer->dyn_payload.vrect.f);
-                    esp_mqtt_client_publish(client, Vpath, string_value, 0, 0, 0);
-                    //ESP_LOGI(TAG, "Publishing %s at %s", string_value, Vpath);                 
-                    sprintf(string_value, "%.02f", peer->dyn_payload.irect.f);
-                    esp_mqtt_client_publish(client, Ipath, string_value, 0, 0, 0);
-                    sprintf(string_value, "%.02f", peer->dyn_payload.temp1.f);
-                    esp_mqtt_client_publish(client, T1path, string_value, 0, 0, 0);
-                    sprintf(string_value, "%.02f", peer->dyn_payload.temp2.f);
-                    esp_mqtt_client_publish(client, T2path, string_value, 0, 0, 0);   
-                }
-                if (peer->dyn_payload.vrect.f > 60)
-                {
-                    //store the TX power when the full mode is enabled
-                    peer->dyn_payload.tx_power = peer->dyn_payload.vrect.f * peer->dyn_payload.irect.f;
-                    //ESP_LOGI(TAG, "TX POWER: %.02f", peer->dyn_payload.tx_power);
-                    sprintf(string_value, "%.02f", peer->dyn_payload.tx_power);
-                    if (SD_CARD)
-                        write_sd_card(Ppath, peer->dyn_payload.tx_power, &peer->dyn_payload.dyn_time);
-                    if (WIFI)
-                        esp_mqtt_client_publish(client, Ppath, string_value, 0, 0, 0);
-                }
+                    esp_mqtt_client_publish(client, rx_power[peer->voi_code], string_value, 0, 0, 0);
+                
+            }
+        } if ((!peer->CRU) && ( (!current_localization_process()) || ((current_localization_process()) && (full_power_pads[peer->position-1])) ) )
+        {
+            if (SD_CARD)
+            {
+                write_sd_card(tx_voltage[peer->position-1], peer->dyn_payload.vrect.f, &peer->dyn_payload.dyn_time);
+                write_sd_card(tx_current[peer->position-1], peer->dyn_payload.irect.f, &peer->dyn_payload.dyn_time);
+                write_sd_card(tx_temp1[peer->position-1], peer->dyn_payload.temp1.f, &peer->dyn_payload.dyn_time);
+                write_sd_card(tx_temp2[peer->position-1], peer->dyn_payload.temp2.f, &peer->dyn_payload.dyn_time);
+            }
+            if (WIFI)
+            {
+                sprintf(string_value, "%.02f", peer->dyn_payload.vrect.f);
+                esp_mqtt_client_publish(client, tx_voltage[peer->position-1], string_value, 0, 0, 0);
+                //ESP_LOGI(TAG, "Publishing %s at %s", string_value, Vpath);                 
+                sprintf(string_value, "%.02f", peer->dyn_payload.irect.f);
+                esp_mqtt_client_publish(client, tx_current[peer->position-1], string_value, 0, 0, 0);
+                sprintf(string_value, "%.02f", peer->dyn_payload.temp1.f);
+                esp_mqtt_client_publish(client, tx_temp1[peer->position-1], string_value, 0, 0, 0);
+                sprintf(string_value, "%.02f", peer->dyn_payload.temp2.f);
+                esp_mqtt_client_publish(client, tx_temp2[peer->position-1], string_value, 0, 0, 0);   
+            }
+            if (peer->dyn_payload.vrect.f > 60)
+            {
+                //store the TX power when the full mode is enabled
+                peer->dyn_payload.tx_power = peer->dyn_payload.vrect.f * peer->dyn_payload.irect.f;
+                //ESP_LOGI(TAG, "TX POWER: %.02f", peer->dyn_payload.tx_power);
+                sprintf(string_value, "%.02f", peer->dyn_payload.tx_power);
+                if (SD_CARD)
+                    write_sd_card(tx_power[peer->position-1], peer->dyn_payload.tx_power, &peer->dyn_payload.dyn_time);
+                if (WIFI)
+                    esp_mqtt_client_publish(client, tx_power[peer->position-1], string_value, 0, 0, 0);
             }
         }
     }
 }
 
-uint8_t ble_central_update_control_enables(uint8_t enable, uint8_t full_power, uint8_t critical, struct peer *peer)
+uint8_t ble_central_update_control_enables(uint8_t enable, uint8_t full_power, uint8_t led, struct peer *peer)
 {
     int rc = 0;
     uint8_t value[PRU_CONTROL_CHAR_SIZE];
     const struct peer_chr *control_chr;
 
-    time(&now);
-    localtime_r(&now, &info);
+    //time(&now);
+    //localtime_r(&now, &info);
     //ESP_LOGI(TAG, "Time is %s", asctime(&info));
 
     /* Get attribute value of CRU control characteristic */
@@ -1916,12 +1899,12 @@ uint8_t ble_central_update_control_enables(uint8_t enable, uint8_t full_power, u
         
     peer->contr_payload.enable = enable;
     peer->contr_payload.full_power = full_power;
-    peer->contr_payload.critical = critical;
+    peer->contr_payload.led = led;
     peer->contr_payload.RFU = 0;
 
     value[0] = enable;
     value[1] = full_power;
-    value[2] = critical;
+    value[2] = led;
     value[3] = 0;
     value[4] = 0;
 
@@ -1932,17 +1915,11 @@ uint8_t ble_central_update_control_enables(uint8_t enable, uint8_t full_power, u
     {    
         time(&now);
         localtime_r(&now, &info);
-        char path[100];
-        strcpy(path, "warwicktrial/ctu/pad");
-        strcat(path, peer->voi_code);
-        strcat(path, "/status/status.csv");
+
         //ENABLE OR DISABLE CHARGING 
-        if(critical)
+        if(led)
         {
-            ESP_LOGW(TAG, "CRITICAL TRANSITION FROM LOW-POWER TO FULL-POWER on pad=%d", peer->position);
-            //SD CARD
-            if (SD_CARD == 1)
-                write_sd_card(path, 1.00, &info);
+            ESP_LOGW(TAG, "SENDING LED COMMAND on pad=%d", peer->position);
         } else {
             if (enable == 1)
             {
@@ -1950,9 +1927,16 @@ uint8_t ble_central_update_control_enables(uint8_t enable, uint8_t full_power, u
                 {
                     ESP_LOGW(TAG, "FULL MODE");
                     full_power_pads[peer->position-1] = 1;
+                    
+                    char string_value[2] = "1"; 
+                    if (SD_CARD)
+                        write_sd_card(tx_status[peer->position-1], 1.00, &info);
+                    if (WIFI)
+                        esp_mqtt_client_publish(client, tx_status[peer->position-1], string_value, 0, 0, 0);
+
                 } else {
                     ESP_LOGW(TAG, "HALF MODE");
-                    low_power_pads[(peer->position)-1] = 1;
+                    low_power_pads[peer->position-1] = 1;
                 }
                 ESP_LOGW(TAG, "Enable charge on pad=%d", peer->position);
             }
@@ -1964,7 +1948,7 @@ uint8_t ble_central_update_control_enables(uint8_t enable, uint8_t full_power, u
                     full_power_pads[peer->position-1] = 0;
                 } else {
                     ESP_LOGW(TAG, "HALF MODE");
-                    low_power_pads[(peer->position)-1] = 0;
+                    low_power_pads[peer->position-1] = 0;
                 }
                 ESP_LOGW(TAG, "Disable charge on pad=%d!", peer->position);
             }

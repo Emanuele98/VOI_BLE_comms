@@ -72,7 +72,7 @@ wpt_alert_payload_t _value3_name;
 /**                   LOCAL PRU CONFIGURATIONS                    **/
 /*******************************************************************/
 //LIMITS BEFORE SENDING ALERTS
-#define OVER_CURRENT                    0.85								   /**< Maximum current tolerated */
+#define OVER_CURRENT                    1								   /**< Maximum current tolerated */
 #define OVER_VOLTAGE                    180 	                               /**< Maximum voltage tolerated */
 #define OVER_TEMPERATURE                50									   /**< Maximum temperature tolerated */
 /*Voltage treshold during FULL-POWER mode */
@@ -100,12 +100,12 @@ typedef struct
 /** @brief Dynamic characteristic structure. This contains elements necessary for static payload. */
 typedef struct
 {
-    uint8_t           mac_0;    /**< [mandatory] MAC address field 0 (1 byte). */
-    uint8_t           mac_1;    /**< [mandatory] MAC address field 1 (1 byte). */
-    uint8_t           mac_2;    /**< [mandatory] MAC address field 2 (1 byte). */
-    uint8_t           mac_3;    /**< [mandatory] MAC address field 3 (1 byte). */
-    uint8_t           mac_4;    /**< [mandatory] MAC address field 4 (1 byte). */
-    uint8_t           mac_5;    /**< [mandatory] MAC address field 5 (1 byte). */
+    uint8_t           ble_addr0;    /**< [mandatory] address field 0 (1 byte). */
+    uint8_t           ble_addr1;    /**< [mandatory] address field 1 (1 byte). */
+    uint8_t           ble_addr2;    /**< [mandatory] address field 2 (1 byte). */
+    uint8_t           ble_addr3;    /**< [mandatory] address field 3 (1 byte). */
+    uint8_t           ble_addr4;    /**< [mandatory] address field 4 (1 byte). */
+    uint8_t           ble_addr5;    /**< [mandatory] address field 5 (1 byte). */
 } wpt_static_payload_t;
 
 /**@brief Alert characteristic structure. This contains elements necessary for alert payload. */

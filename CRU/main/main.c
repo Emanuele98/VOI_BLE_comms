@@ -18,6 +18,7 @@
 
 static const char* TAG = "MAIN";
 
+static float volt, curr, t;
 static int counter = 0, Temp_counter = 0, Volt_counter = 0, Curr_counter = 0, ChargeComp_counter = 0;
 
 int i2c_master_port;
@@ -40,22 +41,25 @@ static void dynamic_param_timeout_handler(void *arg)
             //voltage
             case 0:
                 counter++;
-                dyn_payload.vrect.f = i2c_read_voltage_sensor();
-                //if (dyn_payload.vrect.f != -1) 
+                volt = i2c_read_voltage_sensor();
+                if (volt !=-1)
+                    dyn_payload.vrect.f = volt;
                 break;
             
             //current
             case 1:
                 counter++;
-                dyn_payload.irect.f = i2c_read_current_sensor();
-                //if (dyn_payload.irect.f != -1) 
+                curr = i2c_read_current_sensor();
+                if (curr != -1)
+                    dyn_payload.irect.f = curr;         
                 break;
 
             //temperature 1
             case 2:
                 counter = 0;
-                dyn_payload.temp1.f = i2c_read_temperature_sensor();
-                //if (dyn_payload.temp1.f != -1) 
+                t = i2c_read_temperature_sensor();
+                if (t != -1)
+                    dyn_payload.temp1.f = t;
                 break;
             default:
                 xSemaphoreGive(i2c_sem);
@@ -95,7 +99,7 @@ static void alert_timeout_handler(void *arg)
 		{
             Curr_counter++;
             ESP_LOGI(TAG, "OVER CURRENT");
-            if (Curr_counter > 19)
+            if (Curr_counter > 49)
             {
                 ESP_LOGE(TAG, "OVER CURRENT");
                 alert_payload.alert_field.overcurrent = 1;	

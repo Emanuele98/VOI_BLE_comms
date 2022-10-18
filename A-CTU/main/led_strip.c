@@ -1,7 +1,8 @@
 #include "include/led_strip.h"
 
 led_strip_t *strip;
-bool blink = true;
+bool blink1 = true;
+bool blink2 = true;
 int l = 0;
 
 
@@ -58,11 +59,10 @@ void install_strip(uint8_t pin)
     led_strip_config_t strip_config = LED_STRIP_DEFAULT_CONFIG(N_LEDS, (led_strip_dev_t)config.channel);
 
     strip = led_strip_new_rmt_ws2812(&strip_config);
-    //strip->clear(strip, 0);
-    set_strip(244, 244, 244);
-    
-    //switch for the default leds blinking state
-    //strip_enable = 1;
+
+    strip_enable = false;
+    strip_misalignment = false;
+    set_strip(0, 100, 100);
 }
 
 //todo: remove this function and use directly the rgb values
@@ -234,30 +234,45 @@ err:
     return ret;
 }
 
-void CTU_periodic_leds_blink(void *arg)
+void connected_leds(void *arg)
 {
-    //l = N_LEDS;
-    if(strip_enable == true)
+
+    if(strip_enable)
     {               
-            for (int j = 0; j <= l; j++) 
-            {
-                if (blink)
-                    strip->set_pixel(strip, N_LEDS - j, 0, 255, 255);
-                else 
-                    strip->set_pixel(strip, N_LEDS - j, 255, 255, 0);
-            }
-            strip->refresh(strip, 10);       
-    }
+        for (int j = 0; j <= l; j++) 
+        {
+            if (blink1)
+                strip->set_pixel(strip, N_LEDS - j, 0, 150, 150);
+            else 
+                strip->set_pixel(strip, N_LEDS - j, 150, 150, 0);
+        }
+        strip->refresh(strip, 10);       
+    } 
 
     if (l==N_LEDS)
     {
         l=0;
-        blink = !blink;
+        blink1 = !blink1;
     } else {
         l++;
     }
-
-    //blink = !blink;
 }
+
+void misaligned_leds(void *arg)
+{
+    if (strip_misalignment)
+    {
+        if (blink2)
+        {
+            for (int j = 0; j <= N_LEDS; j++) 
+                strip->set_pixel(strip, N_LEDS - j, 200, 100, 0);
+            strip->refresh(strip, 10);
+        } else
+        strip->clear(strip, 0);
+    }
+
+    blink2 = !blink2;
+}
+
 
 

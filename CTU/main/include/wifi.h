@@ -29,7 +29,7 @@
 
 #define WIFI_SSID           CONFIG_WIFI_SSID
 #define WIFI_PASS           CONFIG_WIFI_PASSWORD
-#define WIFI_MAXIMUM_RETRY  5
+#define WIFI_MAXIMUM_RETRY  10
 #define BROKER_URI          CONFIG_BROKER_URI
 
 /* The event group allows multiple bits for each event, but we only care about two events:

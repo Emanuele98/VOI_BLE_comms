@@ -19,7 +19,6 @@ struct timeval tv_start;
 
 #define DEVICE_NAME                     "AUX_CTU"                              /**< Name of device. Will be included in the advertising data. */
 
-
 #define DYNAMIC_PARAM_TIMER_INTERVAL    pdMS_TO_TICKS(20)                      /**< Timer synced to Dynamic parameter characteristic (10 ms). */
 #define ALERT_PARAM_TIMER_INTERVAL      pdMS_TO_TICKS(40)				       /**< Timer synced to Alert parameter characteristic (40 ms). */
 
@@ -28,6 +27,7 @@ struct timeval tv_start;
 
 static const char* TAG = "MAIN";
 
+static float volt, curr, t1, t2;
 static int counter = 0, Temp_counter = 0, Volt_counter = 0, Curr_counter = 0;
 
 // queue to handle gpio event from isr
@@ -57,8 +57,8 @@ static void gpio_task(void* arg)
         if(xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
             if(gpio_get_level(io_num) && (dyn_payload.vrect.f > FOD_THRESH)) {
                 ESP_LOGE(TAG, "FOD!");
-                //switch_safely_off();
-                //alert_payload.alert_field.FOD = 1;
+                switch_safely_off();
+                alert_payload.alert_field.FOD = 1;
             }
         }
     }
@@ -74,33 +74,33 @@ void dynamic_param_timeout_handler(void *arg)
             //voltage
             case 0:
                 counter++;
-                dyn_payload.vrect.f = i2c_read_voltage_sensor();
-                if (dyn_payload.vrect.f > 60)
-                {
-                    strip_enable = false;
-                    set_strip(0, 255, 0);
-                } else
-                {
-                    strip_enable = true;
-                }
+                volt = i2c_read_voltage_sensor();
+                if (volt !=-1)
+                    dyn_payload.vrect.f = volt;
                 break;
             
             //current
             case 1:
                 counter++;
-                dyn_payload.irect.f = i2c_read_current_sensor();
+                curr = i2c_read_current_sensor();
+                if (curr != -1)
+                    dyn_payload.irect.f = curr;
                 break;
 
             //temperature 1
             case 2:
                 counter++;
-                dyn_payload.temp1.f = i2c_read_temperature_sensor(1);
+                t1 = i2c_read_temperature_sensor(1);
+                if (t1 != -1)
+                    dyn_payload.temp1.f = t1;
                 break;
 
             //temperature 2
             case 3:
                 counter = 0;
-                dyn_payload.temp2.f = i2c_read_temperature_sensor(2);
+                t2 = i2c_read_temperature_sensor(2);
+                if (t2 != -1)
+                    dyn_payload.temp2.f = t2;
                 break;
             default:
                 xSemaphoreGive(i2c_sem);
@@ -118,7 +118,7 @@ void alert_timeout_handler(void *arg)
 		if ((dyn_payload.temp1.f > OVER_TEMPERATURE) || (dyn_payload.temp2.f > OVER_TEMPERATURE))
 		{
             Temp_counter++;
-            if (Temp_counter > 9)
+            if (Temp_counter > 19)
             {
                 alert_payload.alert_field.overtemperature = 1;
                 switch_safely_off();
@@ -129,7 +129,7 @@ void alert_timeout_handler(void *arg)
 		if (dyn_payload.vrect.f > OVER_VOLTAGE)
 		{
             Volt_counter++;
-            if (Volt_counter > 9)
+            if (Volt_counter > 19)
             {
                 alert_payload.alert_field.overvoltage = 1;
                 switch_safely_off();
@@ -140,7 +140,7 @@ void alert_timeout_handler(void *arg)
 		if (dyn_payload.irect.f > OVER_CURRENT)
 		{
             Curr_counter++;
-            if (Curr_counter > 9)
+            if (Curr_counter > 19)
             {
                 alert_payload.alert_field.overcurrent = 1;	
                 switch_safely_off();
@@ -232,8 +232,11 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
 
         ESP_LOGI(TAG, "disconnect; reason=%d ", event->disconnect.reason);
 
+        switch_safely_off();
+
         strip_enable = false;
-        set_strip(244, 244, 244);
+        strip_misalignment = false;
+        set_strip(0, 100, 100);
 
         /* Stop timers */
         if (xTimerIsTimerActive(dynamic_t_handle) == pdTRUE)
@@ -244,8 +247,6 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
         {
             xTimerStop(alert_t_handle, 10);
         }
-
-        switch_safely_off();
 
         // reset alerts counters
         Temp_counter = Volt_counter = Curr_counter = 0;
@@ -346,15 +347,17 @@ void init_sw_timers(void)
     dynamic_t_handle = xTimerCreate("dynamic params", DYNAMIC_PARAM_TIMER_INTERVAL, pdTRUE, NULL, dynamic_param_timeout_handler);
     alert_t_handle = xTimerCreate("alert", ALERT_PARAM_TIMER_INTERVAL, pdTRUE, NULL, alert_timeout_handler);
     /* Software timer for led strip default state */
-    periodic_leds_handle = xTimerCreate("leds", PERIODIC_LEDS_TIMER_PERIOD, pdTRUE, NULL, CTU_periodic_leds_blink);
+    connected_leds_handle = xTimerCreate("connected_leds", CONNECTED_LEDS_TIMER_PERIOD, pdTRUE, NULL, connected_leds);
+    misaligned_leds_handle = xTimerCreate("misaligned_leds", MISALIGNED_LEDS_TIMER_PERIOD, pdTRUE, NULL, misaligned_leds);
 
-    xTimerStart(periodic_leds_handle, 10);
-
-    if ((dynamic_t_handle == NULL) || (alert_t_handle == NULL) || (periodic_leds_handle == NULL))
+    if ((dynamic_t_handle == NULL) || (alert_t_handle == NULL) || (connected_leds_handle == NULL) || (misaligned_leds_handle == NULL))
     {
         ESP_LOGW(TAG, "Timers were not created successfully");
         return;
     }
+
+    xTimerStart(connected_leds_handle, 10);
+    xTimerStart(misaligned_leds_handle, 10);
 
 }
 
@@ -429,11 +432,11 @@ void init_hw(void)
 */
 void init_setup(void)
 {    
-    /* Initialize software timers */
-    init_sw_timers();
-    
     /* Initialize GPIOs and other hardware peripherals (I2C) */
     init_hw();
+
+    /* Initialize software timers */
+    init_sw_timers();
 
     /* Initialize I2C semaphore */
     i2c_sem = xSemaphoreCreateMutex();
