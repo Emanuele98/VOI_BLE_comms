@@ -8,7 +8,6 @@
 #define LOCAL_FAULT_MAIN_ITVL       pdMS_TO_TICKS(500)
 
 static const char* TAG = "STATES";
-//static uint8_t latching_fault_count;
 
 /* State handle functions */
 static void CTU_configuration_state(void *arg);
@@ -24,6 +23,11 @@ extern const ble_uuid_t *wpt_svc_uuid;
 extern const ble_uuid_t *wpt_char_CRU_dyn_uuid;
 
 time_t conf_time;
+
+/* NVS TOPICS */
+const char pads[4][20] = {"pad1", "pad2", "pad3", "pad4"};
+const char scooters[4][20] = {"3PAU", "6F35", "CE8J", "D8X5"};
+
 
 /**
  * @brief The Apps main function
@@ -80,6 +84,7 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
             m_CTU_task_param.itvl = CONFIG_MAIN_ITVL;
 
             xTimerStart(periodic_scan_t_handle, 0);
+            time(&reconn_time);
 
             ESP_LOGI(TAG,"Configuration State!");
         }
@@ -220,24 +225,39 @@ static void CTU_local_fault_state(void *arg)
 {
     //todo: check again
     ESP_LOGE(TAG, "LOCAL FAULT STATE");
-
+    
     struct peer *peer = (struct peer *)arg;
-    if(peer)
+
+    //NVS writing
+    esp_err_t err = nvs_open("reconnection", NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) 
     {
-        //disconnect from the Auxiliary CTU
-        ble_central_kill_AUX_CTU(peer->conn_handle);
-        CTU_state_change(CTU_CONFIG_STATE, NULL);
+        ESP_LOGE(TAG, "Error (%s) opening NVS handle!\n", esp_err_to_name(err));
+    } else 
+    {
+        time(&now);
+        timePad[peer->position-1] = now + 600;
+        nvs_set_i64(my_handle, pads[peer->position-1], timePad[peer->position-1]);
+
+        esp_err_t err = nvs_commit(my_handle);
+        printf((err != ESP_OK) ? "NVS INIT FAILED!" : "NVS INIT DONE");
+        nvs_close(my_handle);
     }
 
-    //todo: if no A-CTU connected anymore --> reset BLE stack and go back to configuration state
+    if(peer)
+        ble_central_kill_AUX_CTU(peer->conn_handle);
 
-/*
+    if (!CTU_is_charging())
+        CTU_state_change(CTU_CONFIG_STATE, (void *)peer);
+    else 
+        CTU_state_change(CTU_POWER_TRANSFER_STATE, (void *)peer);
+
+    //todo: if no A-CTU connected anymore --> reset BLE stack and go back to configuration state
     if (peer_get_NUM_AUX_CTU() == 0)
     {
         // Stop all tasks and all timers currently running
         ble_central_kill_all_AUX_CTU();
-        //todo: this function is deprecated
-        CTU_states_stop_timers();
+
 
         // Idle until BLE stack resets
         CTU_state_change(NULL_STATE,NULL);
@@ -245,7 +265,7 @@ static void CTU_local_fault_state(void *arg)
         // Reset BLE stack
         ble_hs_sched_reset(BLE_HS_EAPP);
     }
-*/
+
 }
 
 /** 
@@ -267,27 +287,33 @@ static void CTU_remote_fault_state(void *arg)
     //disable power interface
     struct peer *peer = (struct peer *)arg;
 
-    if (peer)
+    //NVS writing
+    esp_err_t err = nvs_open("reconnection", NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) 
     {
-        //todo: use identification and add the time to wait before reconnection
-        ble_central_kill_CRU(peer->conn_handle);
-        if ((!CTU_is_charging()) && (m_CTU_task_param.state != CTU_LOW_POWER_STATE))
-            CTU_state_change(CTU_LOW_POWER_STATE, (void *)peer);
+        ESP_LOGE(TAG, "Error (%s) opening NVS handle!\n", esp_err_to_name(err));
+    } else 
+    {
+        time(&now);
+        if (peer->alert_payload.alert_field.charge_complete)
+            timeScooter[peer->voi_code] = now + 86400;
         else
-            CTU_state_change(CTU_CONFIG_STATE, NULL);
+            timeScooter[peer->voi_code] = now + 600;
+
+        nvs_set_i64(my_handle, scooters[peer->voi_code], timeScooter[peer->voi_code]);
+
+        esp_err_t err = nvs_commit(my_handle);
+        printf((err != ESP_OK) ? "NVS INIT FAILED!" : "NVS INIT DONE");
+        nvs_close(my_handle);
     }
 
-    /*
-    if (latching_fault_count == 3)
-    {
-        // Reset number of latching faults
-        latching_fault_count = 0;
-
-        // Kill any CRU task remaining
-        ESP_LOGE(TAG, "Local manteinance needed!");
-        //todo: send email to dave@bumblebee.com
-    }
-    */
+    if (peer)
+        ble_central_kill_CRU(peer->conn_handle);
+    
+    if (!CTU_is_charging())
+        CTU_state_change(CTU_LOW_POWER_STATE, (void *)peer);
+    else 
+        CTU_state_change(CTU_POWER_TRANSFER_STATE, (void *)peer);
 }
 
 /** 
@@ -313,6 +339,28 @@ void CTU_periodic_scan_timeout(void *arg)
             ble_gap_disc_cancel();
         }
         xTimerStop(periodic_scan_t_handle, 0);
+    }
+
+    time(&reconn_time);
+    //NVS reading
+    esp_err_t err = nvs_open("reconnection", NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) 
+    {
+        ESP_LOGE(TAG, "Error (%s) opening NVS handle!\n", esp_err_to_name(err));
+    } else 
+    {
+        // Read 
+        nvs_get_i64(my_handle, "pad1", &timePad[0]);
+        nvs_get_i64(my_handle, "pad2", &timePad[1]);
+        nvs_get_i64(my_handle, "pad3", &timePad[2]);
+        nvs_get_i64(my_handle, "pad4", &timePad[3]);
+        nvs_get_i64(my_handle, "3PAU", &timeScooter[VOI_3PAU]);
+        nvs_get_i64(my_handle, "6F35", &timeScooter[VOI_6F35]);
+        nvs_get_i64(my_handle, "CE8J", &timeScooter[VOI_CE8J]);
+        nvs_get_i64(my_handle, "D8X5", &timeScooter[VOI_D8X5]);
+        
+        // Close
+        nvs_close(my_handle);
     }
 }
 

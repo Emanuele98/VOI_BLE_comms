@@ -9,6 +9,8 @@ static int s_retry_num = 0;
 
 /* Bool which will set true once the Real Time Clock is synced*/
 bool update = false;
+/* Bool which will set true once the MQTT broker is connected*/
+bool mqtt = false;
 
 //static const uint8_t mqtt_eclipse_org_pem_start[]  = BROKER_CERTIFICATE;
 
@@ -27,6 +29,7 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
     {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
+        mqtt = true;
         break;
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
@@ -211,6 +214,8 @@ void connectivity_setup(void)
 
     /* INTIIALIZE MQTT */
     mqtt_app_start();
+
+    while(!mqtt){}
 
     return;
 }

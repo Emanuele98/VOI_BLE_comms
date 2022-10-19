@@ -148,18 +148,12 @@ struct peer {
     /* CRU VOI CODE FOR ID */
     voi_code_enum voi_code;
     char voi_code_string[4];
-    
-    /* keep track of comms error of the peer */
-    int8_t last_rc;
 
-    /* store last led state (1) GREEN (2) MISALIGNED */
-    uint8_t last_led;
-     
     /* bool to detect if localization process is currently going */
     bool localization_process;
 
-    /* Counter variable */
-    int count;
+    /* Save time after a localization attempt failed for prioritize others peers waiting*/
+    time_t loc_fail;
 
     /* bool to check wheter the power is received correctly */
     bool correct;

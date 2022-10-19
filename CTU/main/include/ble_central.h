@@ -33,6 +33,10 @@
 #include <assert.h>
 #include "freertos/FreeRTOS.h"
 
+#include "esp_system.h"
+#include "nvs_flash.h"
+#include "nvs.h"
+
 #include "esp_err.h"
 #include "esp_timer.h"
 #include "esp_sleep.h"
@@ -60,14 +64,14 @@
 
 #define CTU_TIMER_PERIOD                    2000
 #define CRU_TIMER_PERIOD                    2000
-#define LOC_CTU_TIMER_PERIOD               	150 
+#define LOC_CTU_TIMER_PERIOD               	160 
 #define LOC_CRU_TIMER_PERIOD                50
 
 #define BLE_PERIODIC_SCAN_ITVL				100	
 #define BLE_PERIODIC_SCAN_WIND				100
 
 //todo: check these
-#define BLE_SCAN_TIMEOUT                    pdMS_TO_TICKS(2000)     
+#define BLE_SCAN_TIMEOUT                    2000     
 #define BLE_FIRST_SCAN_ITVL                 64          /**< The scanning interval (in units of 0.625 ms). */
 #define BLE_FIRST_SCAN_WIND					62          /**< The scanning window   (in units of 0.625 ms). */
                                                          /**< The scan window must be less than 256 (160 ms) to coexist with WiFi */
@@ -89,7 +93,6 @@ time_t aux_found;
 struct ble_hs_adv_fields;
 struct ble_gap_conn_desc;
 struct ble_hs_cfg;
-
 
 int ble_central_gap_event(struct ble_gap_event *event, void *arg);
 uint8_t peer_addr[6];

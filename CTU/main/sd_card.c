@@ -2,24 +2,28 @@
 
 static const char *TAG = "SD_card";
 
-// The card object
-sdmmc_card_t* card;
-
-sdmmc_host_t host = SDSPI_HOST_DEFAULT();
-sdspi_slot_config_t slot_config = SDSPI_SLOT_CONFIG_DEFAULT();
-
-// Options for mounting the filesystem.
-// If format_if_mount_failed is set to true, SD card will be partitioned and
-// formatted in case when mounting fails.
-esp_vfs_fat_sdmmc_mount_config_t mount_config = {
-    .format_if_mount_failed = false,
-    .max_files = 5,
-    .allocation_unit_size = 32 * 1024
-};
-
 void install_sd_card(void)
 {
-    esp_err_t ret = esp_vfs_fat_sdmmc_mount("/sdcard", &host, &slot_config, &mount_config, &card);
+    // The card object
+    sdmmc_card_t* card;
+
+    sdmmc_host_t host = SDSPI_HOST_DEFAULT();
+    sdspi_slot_config_t slot_config = SDSPI_SLOT_CONFIG_DEFAULT();
+
+    // Options for mounting the filesystem.
+    // If format_if_mount_failed is set to true, SD card will be partitioned and
+    // formatted in case when mounting fails.
+    esp_vfs_fat_sdmmc_mount_config_t mount_config = {
+        .format_if_mount_failed = false,
+        .max_files = 5,
+        .allocation_unit_size = 32 * 1024
+    };
+    slot_config.gpio_miso = PIN_NUM_MISO;
+    slot_config.gpio_mosi = PIN_NUM_MOSI;
+    slot_config.gpio_sck  = PIN_NUM_CLK;
+    slot_config.gpio_cs   = PIN_NUM_CS;
+
+    esp_err_t ret = esp_vfs_fat_sdmmc_mount("/sd", &host, &slot_config, &mount_config, &card);
 
     if (ret != ESP_OK) {
         if (ret == ESP_FAIL) {
@@ -41,14 +45,15 @@ void write_sd_card(const char *topic, float value, struct tm* time)
     // Use POSIX and C standard library functions to work with files.
     // First create a file.
     //ESP_LOGI(TAG, "Opening file");
-    char file[100] = "/sdcard/";
+    char file[50] = "/sd/";
     strcat(file, topic);
     strcat(file, ".csv");
 
-    //open the file in a+ in order to write the file at the end of it
-    FILE* f = fopen(file, "a+");
+    //open the file in 'a' in order to write the file at the end of it
+    FILE* f = fopen(file, "a");
+
     if (f == NULL) {
-        ESP_LOGE(TAG, "Failed to open file for writing");
+        ESP_LOGE(TAG, "Failed to open file for writing: %s", file);
         return;
     }
 

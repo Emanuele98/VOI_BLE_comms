@@ -18,30 +18,42 @@
 /* TESTING N 5 */
 //uint8_t Actu_addr1[6] = {0x32, 0x8c, 0x25, 0xfb, 0x0b, 0xac};
 
-uint8_t Actu_addr1[6] = {0x72, 0x81, 0x24, 0xfb, 0x0b, 0xac};
-uint8_t Actu_addr2[6] = {0x86, 0x68, 0x24, 0xfb, 0x0b, 0xac};
-uint8_t Actu_addr3[6] = {0x46, 0x0b, 0x27, 0xfb, 0x0b, 0xac};
-uint8_t Actu_addr4[6] = {0x9a, 0xbb, 0x25, 0xfb, 0x0b, 0xac};
+static uint8_t Actu_addr1[6] = {0x72, 0x81, 0x24, 0xfb, 0x0b, 0xac};
+static uint8_t Actu_addr2[6] = {0x86, 0x68, 0x24, 0xfb, 0x0b, 0xac};
+static uint8_t Actu_addr3[6] = {0x46, 0x0b, 0x27, 0xfb, 0x0b, 0xac};
+static uint8_t Actu_addr4[6] = {0x9a, 0xbb, 0x25, 0xfb, 0x0b, 0xac};
 
 //CRUs bluetooth addresses
-uint8_t cru_6F35[6] = {0x02, 0xec, 0x25, 0xfb, 0x0b, 0xac};
-uint8_t cru_3PAU[6] = {0x5a, 0x63, 0x25, 0xfb, 0x0b, 0xac};
-uint8_t cru_CE8J[6] = {0x86, 0x85, 0xed, 0x0c, 0x38, 0x90};
-uint8_t cru_D8X5[6] = {0xb2, 0x6d, 0x24, 0xfb, 0x0b, 0xac};
+static uint8_t cru_6F35[6] = {0x02, 0xec, 0x25, 0xfb, 0x0b, 0xac};
+static uint8_t cru_3PAU[6] = {0x5a, 0x63, 0x25, 0xfb, 0x0b, 0xac};
+static uint8_t cru_CE8J[6] = {0x86, 0x85, 0xed, 0x0c, 0x38, 0x90};
+static uint8_t cru_D8X5[6] = {0xb2, 0x6d, 0x24, 0xfb, 0x0b, 0xac};
 
 //timer 
-static time_t switch_pad_ON, switch_pad_OFF, tv_loc;
-float time_sec, time_lowpower_on, min_switch_time;
+static time_t switch_pad_ON, switch_pad_OFF, loc_success;
+static float time_sec, time_lowpower_on, min_switch_time, loc_time;
 
 //variable to know which pad is actually on in Low Power mode
-uint8_t current_low_power = 0;
+static uint8_t current_low_power = 0;
 
 /* keep count of comms_error */
-uint8_t cru_comms_error = 0;
-uint8_t ctu_comms_error = 0;
+static uint8_t cru_comms_error = 0;
+static uint8_t ctu_comms_error = 0;
+
+/* keep track of comms error of the peer */
+static int8_t last_rc[4];
+
+/* store last led state (1) GREEN (2) MISALIGNED */
+static uint8_t last_led[4];
+
+/* Number of failed localization processes */
+static uint8_t n_loc[4];
+
+/* counters */
+static uint16_t count[4];
 
 /* keep track of leds state */
-static uint8_t led_state[4] = {0, 0, 0, 0}; //default misaligned state
+static uint8_t led_state[4] = {0, 0, 0, 0}; //default connected state
 
 /* LIST OF TOPICS FOR MQTT AND SD CARD*/
  // TX
@@ -163,7 +175,7 @@ static const struct ble_gap_conn_params conn_params = {
     .itvl_min = BLE_WPT_INITIAL_CONN_ITVL_MIN,
     .itvl_max = BLE_WPT_INITIAL_CONN_ITVL_MAX,
     .latency = 0x0000,                              // allow to skip 5 scan_itvl times when no data to be sent
-    .supervision_timeout = 0x00f0,                // allow 2.5s (240 * 10 ms)
+    .supervision_timeout = 0x01f0,                // allow 5s (496 * 10 ms)
     .min_ce_len = 0x0000,
     .max_ce_len = 0x0000,
 };
@@ -242,7 +254,6 @@ void ble_central_kill_CRU(uint16_t conn_handle)
         if(peer->localization_process)
         {
             uint8_t n = loc_pad_find();
-            low_power_pads[n] = 0;
             struct peer *Aux_CTU = Aux_CTU_find(n+1);
             if(Aux_CTU != NULL) {
                 ble_central_update_control_enables(0, 0, 0, Aux_CTU);
@@ -382,7 +393,7 @@ static int ble_central_on_localization_process(uint16_t conn_handle,
                     esp_mqtt_client_publish(client, tx_scooter[peer->position-1], peer->voi_code_string, 0, 0, 0);
 
                 //store time
-                time(&tv_loc);      
+                time(&loc_success);      
                 if (m_CTU_task_param.state == CTU_LOW_POWER_STATE)
                     CTU_state_change(CTU_POWER_TRANSFER_STATE, (void *)peer);
             } else
@@ -535,7 +546,7 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
 
     // Check the charge has actually started (during the first 10 seconds) -- kind of double check on the localization algorithm
     time(&now);
-    time_sec = abs(difftime(now, tv_loc));
+    time_sec = abs(difftime(now, loc_success));
     if ( time_sec < BATTERY_REACTION_TIME )
     {
         if(peer->dyn_payload.vrect.f > VOLTAGE_FULL_THRESH)
@@ -557,8 +568,8 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
     {
         peer->correct = false;
         ESP_LOGE(TAG, "Voltage no longer received! --> SCOOTER LEFT THE PLATFORM");
-        esp_task_wdt_delete(peer->task_handle);
         ble_central_kill_CRU(peer->conn_handle);
+        esp_task_wdt_delete(peer->task_handle);
         return 1;
     }
 
@@ -568,10 +579,10 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
         led_state[peer->position-1] = 2;
 
     //SEND LEDS STATE
-    if (peer->last_led != led_state[peer->position-1])
+    if (last_led[peer->voi_code] != led_state[peer->position-1])
     {
         ble_central_update_control_enables(0, 0, led_state[peer->position-1], Aux_CTU);
-        peer->last_led = led_state[peer->position-1];
+        last_led[peer->voi_code] = led_state[peer->position-1];
     }
     return 0;
 }
@@ -663,7 +674,7 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
 
     //attach the baton to an existing A-CTU
     baton = peer->position;
-    peer->last_rc = -1;
+    last_rc[peer->voi_code] = -1;
     int task_delay = CTU_TIMER_PERIOD;
     
     /* WPT task loop */
@@ -684,7 +695,7 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
         //*ERROR HANDLING - DISCONNECT ONLY AFTER 60 CONSECUTIVE COMMS ERRORS        
         if (rc != ESP_OK)
         {
-            if (peer->last_rc == rc)
+            if (last_rc[peer->voi_code] == rc)
             {
                 if (ctu_comms_error < COMMS_ERROR_LIMIT)
                 {
@@ -701,13 +712,13 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
             } 
             //ESP_LOGW(TAG, "AUX CTU in position %d, task error number %d, error code rc=%d", peer->position, ctu_comms_error, rc);
             //RC = https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/esp_err.html#_CPPv49esp_err_t
-        } else if ((peer->last_rc != -1) && (peer->last_rc))
+        } else if ((last_rc[peer->voi_code] != -1) && (last_rc[peer->voi_code]))
         {
             ESP_LOGI(TAG, "Comms RECOVERY with AUX CTU %d", peer->position);
             ctu_comms_error = 0;
         }
         
-        peer->last_rc = rc;
+        last_rc[peer->voi_code] = rc;
 
         // set Task Delay
         if ((current_localization_process()) && (!full_power_pads[peer->position-1]))
@@ -786,48 +797,67 @@ static void ble_central_CRU_task_handle(void *arg)
 
     peer->localization_process = false;
     peer->correct = false;
-    peer->count = 0;
-    peer->last_rc = -1;
-    peer->last_led = 0;
+    count[peer->voi_code] = 0;
+    last_rc[peer->voi_code] = -1;
+    last_led[peer->voi_code] = 0;
+    n_loc[peer->voi_code] = 0;
+    time(&peer->loc_fail);
 
     int task_delay = CRU_TIMER_PERIOD;
     
     /* WPT task loop */
     while (1)
     {
-        //*LOCALIZATION PROCESS (find position of CRU)
         //check alert is fine
         if (peer->dyn_payload.alert == 0)
         {
             // ENSURE only one localization process per time!
-            if ((peer->position == 0) && ((!current_localization_process()) || (peer->localization_process))) //add timer for next loc process
+            if ((peer->position == 0) && ((!current_localization_process()) || (peer->localization_process)))
             {
-                switch (peer->count)
+                time(&now);
+                loc_time = abs(difftime(now, peer->loc_fail));
+                // Wait 3 second if the localization process previously failed
+                if ((!n_loc[peer->voi_code]) || ((n_loc[peer->voi_code]) && (loc_time > MIN_TIME_AFTER_LOC)))
                 {
-                    case 0:
-                        current_low_power = 0;
-                        peer->localization_process = true;
-                        peer->count++; 
-                        ESP_LOGI(TAG, "Localization process for scooter %s", peer->voi_code_string);
-                        break;
-                    
-                    //TIMEOUT FOR DETECTING LOCALIZATION (100*80ms) -- 8s 
-                    case 1000:
-                        ESP_LOGE(TAG, "Localization timer expires!");
-                        //delete only if this happens 10 times
-                        esp_task_wdt_delete(NULL);
+                    switch (count[peer->voi_code])
+                    {
+                        case 0:
+                            current_low_power = 0;
+                            peer->localization_process = true;
+                            count[peer->voi_code]++; 
+                            ESP_LOGI(TAG, "Localization process for scooter: %s", peer->voi_code_string);
+                            ESP_LOGI(TAG, "Attempt number: %d", n_loc[peer->voi_code]);
+                            break;
+                        
+                        //TIMEOUT FOR DETECTING LOCALIZATION (150*50ms) -- 7.5s 
+                        case 150:
+                            ESP_LOGE(TAG, "Localization timer expires!");
+                            if (n_loc[peer->voi_code] < MAX_LOC_ATTEMPTS)
+                            {
+                                peer->localization_process = false;
+                                n_loc[peer->voi_code]++;
+                                count[peer->voi_code] = 0;
+                                uint8_t n = loc_pad_find();
+                                struct peer *Aux_CTU = Aux_CTU_find(n+1);
+                                if(Aux_CTU != NULL) 
+                                    ble_central_update_control_enables(0, 0, 0, Aux_CTU);
+                                time(&peer->loc_fail);
+                            } else
+                            {
+                                ble_central_kill_CRU(peer->conn_handle);
+                                /* Delete task */
+                                esp_task_wdt_delete(NULL);
+                                vTaskDelete(NULL);
+                            }
+                            break;
 
-                        /* Delete task */
-                        vTaskDelete(NULL);
-                        ble_central_kill_CRU(peer->conn_handle);
-                        break;
-
-                    // read dyn chr
-                    default:
-                        peer->count++;
-                        rc = ble_gattc_read(peer->conn_handle, dynamic_chr->chr.val_handle,
-                            ble_central_on_localization_process, (void *)peer);
-                        break;
+                        // read dyn chr
+                        default:
+                            count[peer->voi_code]++;
+                            rc = ble_gattc_read(peer->conn_handle, dynamic_chr->chr.val_handle,
+                                ble_central_on_localization_process, (void *)peer);
+                            break;
+                    }
                 }
             } else if (peer->position)
             {   
@@ -845,7 +875,7 @@ static void ble_central_CRU_task_handle(void *arg)
         //*ERROR HANDLING - DISCONNECT ONLY AFTER 60 CONSECUTIVE COMMS ERRORS
         if (rc != ESP_OK)
         {
-            if (peer->last_rc == rc)
+            if (last_rc[peer->voi_code] == rc)
             {
                 if (cru_comms_error < COMMS_ERROR_LIMIT)
                 {
@@ -853,22 +883,22 @@ static void ble_central_CRU_task_handle(void *arg)
                 } else {
                     ESP_LOGE(TAG, "CRU 60th  consecutive task error - disconnect"); 
                     cru_comms_error = 0;
+                    ble_central_kill_CRU(peer->conn_handle);         
                     /* Delete watchdog */
                     esp_task_wdt_delete(NULL);
                     /* Delete task */
                     vTaskDelete(NULL);
-                    ble_central_kill_CRU(peer->conn_handle);         
                 }
             } 
             //ESP_LOGW(TAG, "CRU %d task error but loop anyway rc=%d", cru_comms_error, rc);
             //RC = https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/esp_err.html#_CPPv49esp_err_t
-        } else if ((peer->last_rc != -1) && (peer->last_rc))
+        } else if ((last_rc[peer->voi_code] != -1) && (last_rc[peer->voi_code]))
         {
             //ESP_LOGI(TAG, "Comms RECOVERY with CRU");
             cru_comms_error = 0;
         }
 
-        peer->last_rc = rc;
+        last_rc[peer->voi_code] = rc;
 
         // set Task Delay
         if (peer->localization_process)
@@ -1291,7 +1321,8 @@ void ble_central_scan_start(uint32_t timeout, uint16_t scan_itvl, uint16_t scan_
 /**
  * Indicates whether we should try to connect to the sender of the specified
  * advertisement.  The function returns a positive result if the device
- * advertises connectability and match the uuid service characteristic.
+ * advertises connectability and match the uuid service characteristic. 
+ * ALSO, the device shall wait the pre-determined time set in the NVS during a previous alert state.
  */
 static int ble_central_should_connect(const struct ble_gap_disc_desc *disc)
 {
@@ -1300,51 +1331,57 @@ static int ble_central_should_connect(const struct ble_gap_disc_desc *disc)
     { 
         return 0;
     }
-/*
+
+    //ESP_LOGI(TAG, "Address: %02x:%02x:%02x:%02x:%02x:%02x", disc->addr.val[5], disc->addr.val[4], disc->addr.val[3], disc->addr.val[2], disc->addr.val[1], disc->addr.val[0]);
+
     //strenght of the received signal
     if (disc->rssi < MINIMUM_ADV_RSSI)
     {
         return 0;
     }
-*/
-    //ESP_LOGI(TAG, "Address: %02x:%02x:%02x:%02x:%02x:%02x", disc->addr.val[5], disc->addr.val[4], disc->addr.val[3], disc->addr.val[2], disc->addr.val[1], disc->addr.val[0]);
+
+    uint8_t x = 0;
 
     //connect only to registered BLE peripheral addresses
     if (disc->addr.type == 0)
     {
         //CONNECT TO A-CTUs
-        if (((disc->addr.val[5] == Actu_addr1[5]) && (disc->addr.val[4] == Actu_addr1[4]) && (disc->addr.val[3] == Actu_addr1[3]) 
-            && (disc->addr.val[2] == Actu_addr1[2]) && (disc->addr.val[1] == Actu_addr1[1]) && (disc->addr.val[0] == Actu_addr1[0]))
-            ||
-            ((disc->addr.val[5] == Actu_addr2[5]) && (disc->addr.val[4] == Actu_addr2[4]) && (disc->addr.val[3] == Actu_addr2[3]) 
-            && (disc->addr.val[2] == Actu_addr2[2]) && (disc->addr.val[1] == Actu_addr2[1]) && (disc->addr.val[0] == Actu_addr2[0]))
-            ||
-            ((disc->addr.val[5] == Actu_addr3[5]) && (disc->addr.val[4] == Actu_addr3[4]) && (disc->addr.val[3] == Actu_addr3[3]) 
-            && (disc->addr.val[2] == Actu_addr3[2]) && (disc->addr.val[1] == Actu_addr3[1]) && (disc->addr.val[0] == Actu_addr3[0]))
-            ||
-            ((disc->addr.val[5] == Actu_addr4[5]) && (disc->addr.val[4] == Actu_addr4[4]) && (disc->addr.val[3] == Actu_addr4[3]) 
-            && (disc->addr.val[2] == Actu_addr4[2]) && (disc->addr.val[1] == Actu_addr4[1]) && (disc->addr.val[0] == Actu_addr4[0])))
+        if ((disc->addr.val[5] == Actu_addr1[5]) && (disc->addr.val[4] == Actu_addr1[4]) && (disc->addr.val[3] == Actu_addr1[3]) && (disc->addr.val[2] == Actu_addr1[2]) && (disc->addr.val[1] == Actu_addr1[1]) && (disc->addr.val[0] == Actu_addr1[0]))
+            x = 1;
+        else if ((disc->addr.val[5] == Actu_addr2[5]) && (disc->addr.val[4] == Actu_addr2[4]) && (disc->addr.val[3] == Actu_addr2[3]) && (disc->addr.val[2] == Actu_addr2[2]) && (disc->addr.val[1] == Actu_addr2[1]) && (disc->addr.val[0] == Actu_addr2[0]))
+            x = 2;
+        else if ((disc->addr.val[5] == Actu_addr3[5]) && (disc->addr.val[4] == Actu_addr3[4]) && (disc->addr.val[3] == Actu_addr3[3]) && (disc->addr.val[2] == Actu_addr3[2]) && (disc->addr.val[1] == Actu_addr3[1]) && (disc->addr.val[0] == Actu_addr3[0]))
+            x = 3;
+        else if ((disc->addr.val[5] == Actu_addr4[5]) && (disc->addr.val[4] == Actu_addr4[4]) && (disc->addr.val[3] == Actu_addr4[3]) && (disc->addr.val[2] == Actu_addr4[2]) && (disc->addr.val[1] == Actu_addr4[1]) && (disc->addr.val[0] == Actu_addr4[0]))
+            x = 4;
+
+        if (m_CTU_task_param.state != CTU_CONFIG_STATE)
         {
-            return 1;
+            if ((disc->addr.val[5] == cru_3PAU[5]) && (disc->addr.val[4] == cru_3PAU[4]) && (disc->addr.val[3] == cru_3PAU[3]) && (disc->addr.val[2] == cru_3PAU[2]) && (disc->addr.val[1] == cru_3PAU[1]) && (disc->addr.val[0] == cru_3PAU[0]))
+                x = 5;
+            else if ((disc->addr.val[5] == cru_6F35[5]) && (disc->addr.val[4] == cru_6F35[4]) && (disc->addr.val[3] == cru_6F35[3]) && (disc->addr.val[2] == cru_6F35[2]) && (disc->addr.val[1] == cru_6F35[1]) && (disc->addr.val[0] == cru_6F35[0]))
+                x = 6;
+            else if ((disc->addr.val[5] == cru_CE8J[5]) && (disc->addr.val[4] == cru_CE8J[4]) && (disc->addr.val[3] == cru_CE8J[3]) && (disc->addr.val[2] == cru_CE8J[2]) && (disc->addr.val[1] == cru_CE8J[1]) && (disc->addr.val[0] == cru_CE8J[0]))
+                x = 7;
+            else if ((disc->addr.val[5] == cru_D8X5[5]) && (disc->addr.val[4] == cru_D8X5[4]) && (disc->addr.val[3] == cru_D8X5[3]) && (disc->addr.val[2] == cru_D8X5[2]) && (disc->addr.val[1] == cru_D8X5[1]) && (disc->addr.val[0] == cru_D8X5[0]))
+                x = 8;
         }
 
-        if ((m_CTU_task_param.state != CTU_CONFIG_STATE) && (m_CTU_task_param.state != NULL_STATE))
-        {
-            if (((disc->addr.val[5] == cru_6F35[5]) && (disc->addr.val[4] == cru_6F35[4]) && (disc->addr.val[3] == cru_6F35[3]) 
-            && (disc->addr.val[2] == cru_6F35[2]) && (disc->addr.val[1] == cru_6F35[1]) && (disc->addr.val[0] == cru_6F35[0]))
-            ||
-            ((disc->addr.val[5] == cru_CE8J[5]) && (disc->addr.val[4] == cru_CE8J[4]) && (disc->addr.val[3] == cru_CE8J[3]) 
-            && (disc->addr.val[2] == cru_CE8J[2]) && (disc->addr.val[1] == cru_CE8J[1]) && (disc->addr.val[0] == cru_CE8J[0]))
-            ||
-            ((disc->addr.val[5] == cru_3PAU[5]) && (disc->addr.val[4] == cru_3PAU[4]) && (disc->addr.val[3] == cru_3PAU[3]) 
-            && (disc->addr.val[2] == cru_3PAU[2]) && (disc->addr.val[1] == cru_3PAU[1]) && (disc->addr.val[0] == cru_3PAU[0]))
-            ||
-            ((disc->addr.val[5] == cru_D8X5[5]) && (disc->addr.val[4] == cru_D8X5[4]) && (disc->addr.val[3] == cru_D8X5[3]) 
-            && (disc->addr.val[2] == cru_D8X5[2]) && (disc->addr.val[1] == cru_D8X5[1]) && (disc->addr.val[0] == cru_D8X5[0])))
-            {
-                return 2;
-            }
-        }
+        if (x==0)
+            return 0;
+
+        if (((x==1) && (reconn_time > timePad[0])) || ((x==2) && (reconn_time > timePad[1])) || ((x==3) && (reconn_time > timePad[2])) || ((x==4) && (reconn_time > timePad[3])))
+            return 1;
+        
+        if (((x==5) && (reconn_time > timeScooter[VOI_3PAU])) || ((x==6) && (reconn_time > timeScooter[VOI_6F35])) || ((x==7) && (reconn_time > timeScooter[VOI_CE8J])) || ((x==8) && (reconn_time > timeScooter[VOI_D8X5])))
+            return 2;
+        
+        /*
+        if ((x==1) || (x==2) || (x==3) || (x==4))
+            return 1;
+        if ((x==5) || (x==6) || (x==7) || (x==8))
+            return 2;
+        */
     }
 
    return 0;
@@ -1521,8 +1558,8 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
         } else {
             if (peer->position) 
                 ESP_LOGE(TAG, "A-CTU in position: %d", peer->position);
-            if ((peer_get_NUM_AUX_CTU() != MAX_AUX_CTU) && (m_CTU_task_param.state != CTU_CONFIG_STATE))
-                CTU_state_change(CTU_CONFIG_STATE, (void *)peer);
+            //if ((peer_get_NUM_AUX_CTU() != MAX_AUX_CTU) && (m_CTU_task_param.state != CTU_CONFIG_STATE))
+            //    CTU_state_change(CTU_CONFIG_STATE, (void *)peer);
         }
 
         peer_delete(event->disconnect.conn.conn_handle);
@@ -1735,7 +1772,7 @@ static void ble_central_unpack_static_param(const struct ble_gatt_attr *attr, ui
         } */else 
         { 
             peer->position = 0;
-            ESP_LOGE(TAG, "ERROR - AUX CTU NOT IDENTIFIED !!!!!!!!!!!");
+            ESP_LOGE(TAG, "ERROR - AUX CTU NOT IDENTIFIED ");
             ble_central_kill_AUX_CTU(peer->conn_handle);
         }
 

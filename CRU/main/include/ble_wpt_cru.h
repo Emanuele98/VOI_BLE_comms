@@ -72,7 +72,7 @@ wpt_alert_payload_t _value3_name;
 /**                   LOCAL PRU CONFIGURATIONS                    **/
 /*******************************************************************/
 //LIMITS BEFORE SENDING ALERTS
-#define OVER_CURRENT                    1								   /**< Maximum current tolerated */
+#define OVER_CURRENT                    1								 	   /**< Maximum current tolerated */
 #define OVER_VOLTAGE                    180 	                               /**< Maximum voltage tolerated */
 #define OVER_TEMPERATURE                50									   /**< Maximum temperature tolerated */
 /*Voltage treshold during FULL-POWER mode */

@@ -10,9 +10,66 @@
 #include "include/ble_central.h"
 #include "include/sd_card.h"
 #include "include/wifi.h"
+#include "include/DHT22.h"
 
 static const char* TAG = "MAIN";
 
+/**
+ * @brief Init the values on NVS
+ * 
+ */
+void init_NVS(void)
+{
+    //TODO: SET ONLY IF ITS DOES NOT EXIST YET! -- OTHERWISE GET
+    //NVS reading
+    esp_err_t err = nvs_open("reconnection", NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) 
+    {
+        ESP_LOGE(TAG, "Error (%s) opening NVS handle!\n", esp_err_to_name(err));
+    } else 
+        {
+            time(&now);
+            timePad[0] = timePad[1] = timePad[2] = timePad[3] = timeScooter[0] = timeScooter[1] = timeScooter[2] = timeScooter[3] = now;
+
+            esp_err_t err = nvs_get_i64(my_handle, "pad1", &timePad[0]);
+            if (err == ESP_ERR_NVS_NOT_FOUND)
+                    nvs_set_i64(my_handle, "pad1", timePad[0]);
+
+            err = nvs_get_i64(my_handle, "pad2", &timePad[1]);
+            if (err == ESP_ERR_NVS_NOT_FOUND)
+                nvs_set_i64(my_handle, "pad2", timePad[1]);
+
+            err = nvs_get_i64(my_handle, "pad3", &timePad[2]);
+            if (err == ESP_ERR_NVS_NOT_FOUND)
+                nvs_set_i64(my_handle, "pad3", timePad[2]);
+
+            err = nvs_get_i64(my_handle, "pad4", &timePad[3]);
+            if (err == ESP_ERR_NVS_NOT_FOUND)
+                nvs_set_i64(my_handle, "pad4", timePad[3]);
+            
+            err = nvs_get_i64(my_handle, "3PAU", &timeScooter[VOI_3PAU]);
+            if (err == ESP_ERR_NVS_NOT_FOUND)
+                nvs_set_i64(my_handle, "3PAU", timeScooter[VOI_3PAU]);
+
+            err = nvs_get_i64(my_handle, "6F35", &timeScooter[VOI_6F35]);
+            if (err == ESP_ERR_NVS_NOT_FOUND)
+                nvs_set_i64(my_handle, "6F35", timeScooter[VOI_6F35]);
+
+            err = nvs_get_i64(my_handle, "CE8J", &timeScooter[VOI_CE8J]);
+            if (err == ESP_ERR_NVS_NOT_FOUND)
+                nvs_set_i64(my_handle, "CE8J", timeScooter[VOI_CE8J]);
+
+            err = nvs_get_i64(my_handle, "D8X5", &timeScooter[VOI_D8X5]);
+            if (err == ESP_ERR_NVS_NOT_FOUND)
+                nvs_set_i64(my_handle, "D8X5", timeScooter[VOI_D8X5]);
+
+            err = nvs_commit(my_handle);
+            printf((err != ESP_OK) ? "NVS INIT FAILED!\n" : "NVS INIT DONE\n");
+            
+            // Close
+            nvs_close(my_handle);
+        }
+}
 /** 
  * @brief Task function used by the BLE host (NimBLE)
  * @details This function will handle most BLE calls from any other
@@ -72,7 +129,12 @@ void init_sw_timers(void)
 {
      /* Software timer for periodic scanning once 1 CRU is connected */
     periodic_scan_t_handle = xTimerCreate("scan", PERIODIC_SCAN_TIMER_PERIOD, pdTRUE, NULL, CTU_periodic_scan_timeout);
-    
+
+    /* Software timer for periodic temperature and humidity measurements */
+    ambient_temp_handle = xTimerCreate("Temp", PERIODIC_AMBIENT_TEMP_TIMER, pdTRUE, NULL, CTU_ambient_temperature);
+
+    // start periodic temperature and humidity measurements
+    xTimerStart(ambient_temp_handle, 100);
 }
 
 /** 
@@ -81,7 +143,7 @@ void init_sw_timers(void)
  *          the CTU needs to function regardless of its current mode of operation.
 */
 void init_setup(void)
-{    
+{   
     /* Install SD card */
     if (SD_CARD)
         install_sd_card();
@@ -93,8 +155,8 @@ void init_setup(void)
     /* Initialize software timers */
     init_sw_timers();    
 
-    /* Initialize state switch semaphore */
-    //m_set_state_sem = xSemaphoreCreateMutex();
+    /* Init values on NVS */ 
+    init_NVS();
 }
 
 /** 
@@ -116,6 +178,7 @@ void app_main(void)
     esp_err_t esp_err_code = nvs_flash_init();
     if  (esp_err_code == ESP_ERR_NVS_NO_FREE_PAGES || esp_err_code == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
+        // NVS partition was truncated and needs to be erased
         nvs_flash_erase();
         nvs_flash_init();
     }

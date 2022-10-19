@@ -21,7 +21,7 @@
 #endif
 
 //todo: add CD?
-#define PIN_NUM_MISO    2
+#define PIN_NUM_MISO    17
 #define PIN_NUM_MOSI    15
 #define PIN_NUM_CLK     14
 #define PIN_NUM_CS      13

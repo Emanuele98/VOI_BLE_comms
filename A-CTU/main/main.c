@@ -55,7 +55,7 @@ static void gpio_task(void* arg)
     uint32_t io_num;
     for(;;) {
         if(xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
-            if(gpio_get_level(io_num) && (dyn_payload.vrect.f > FOD_THRESH)) {
+            if(gpio_get_level(io_num) && (full_power)) {
                 ESP_LOGE(TAG, "FOD!");
                 switch_safely_off();
                 alert_payload.alert_field.FOD = 1;
@@ -90,7 +90,7 @@ void dynamic_param_timeout_handler(void *arg)
             //temperature 1
             case 2:
                 counter++;
-                t1 = i2c_read_temperature_sensor(1);
+                t1 = i2c_read_temperature_sensor(0);
                 if (t1 != -1)
                     dyn_payload.temp1.f = t1;
                 break;
@@ -98,7 +98,7 @@ void dynamic_param_timeout_handler(void *arg)
             //temperature 2
             case 3:
                 counter = 0;
-                t2 = i2c_read_temperature_sensor(2);
+                t2 = i2c_read_temperature_sensor(1);
                 if (t2 != -1)
                     dyn_payload.temp2.f = t2;
                 break;
@@ -118,7 +118,7 @@ void alert_timeout_handler(void *arg)
 		if ((dyn_payload.temp1.f > OVER_TEMPERATURE) || (dyn_payload.temp2.f > OVER_TEMPERATURE))
 		{
             Temp_counter++;
-            if (Temp_counter > 19)
+            if (Temp_counter > 199)
             {
                 alert_payload.alert_field.overtemperature = 1;
                 switch_safely_off();
@@ -129,7 +129,7 @@ void alert_timeout_handler(void *arg)
 		if (dyn_payload.vrect.f > OVER_VOLTAGE)
 		{
             Volt_counter++;
-            if (Volt_counter > 19)
+            if (Volt_counter > 199)
             {
                 alert_payload.alert_field.overvoltage = 1;
                 switch_safely_off();
@@ -140,7 +140,7 @@ void alert_timeout_handler(void *arg)
 		if (dyn_payload.irect.f > OVER_CURRENT)
 		{
             Curr_counter++;
-            if (Curr_counter > 19)
+            if (Curr_counter > 199)
             {
                 alert_payload.alert_field.overcurrent = 1;	
                 switch_safely_off();
@@ -175,8 +175,8 @@ static void bleprph_advertise(void)
     //declare MASTER ADDRESS
     ble_addr_t master;
     master.type = 0;
-    master.val[0]= 0x72;
-    master.val[1]= 0x19;
+    master.val[0]= 0x12;
+    master.val[1]= 0x15;
     master.val[2]= 0x9c;
     master.val[3]= 0x84;
     master.val[4]= 0x21;

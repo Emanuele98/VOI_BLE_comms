@@ -75,7 +75,7 @@ static void alert_timeout_handler(void *arg)
         {
             Temp_counter++;
             ESP_LOGI(TAG, "OVER TEMPERATURE");
-            if (Temp_counter > 19)
+            if (Temp_counter > 499)  //49
             {
                 ESP_LOGE(TAG, "OVER TEMPERATURE");
                 alert_payload.alert_field.overtemperature = 1;
@@ -87,7 +87,7 @@ static void alert_timeout_handler(void *arg)
 		{
             Volt_counter++;
             ESP_LOGI(TAG, "OVER VOLTAGE");
-            if (Volt_counter > 19)
+            if (Volt_counter > 499)  //49
             {
                 ESP_LOGE(TAG, "OVER VOLTAGE");
                 alert_payload.alert_field.overvoltage = 1;
@@ -99,7 +99,7 @@ static void alert_timeout_handler(void *arg)
 		{
             Curr_counter++;
             ESP_LOGI(TAG, "OVER CURRENT");
-            if (Curr_counter > 49)
+            if (Curr_counter > 499)  //49
             {
                 ESP_LOGE(TAG, "OVER CURRENT");
                 alert_payload.alert_field.overcurrent = 1;	
@@ -148,8 +148,8 @@ static void bleprph_advertise(void)
     //declare MASTER ADDRESS
     ble_addr_t master;
     master.type = 0;
-    master.val[0]= 0x72;
-    master.val[1]= 0x19;
+    master.val[0]= 0x12;
+    master.val[1]= 0x15;
     master.val[2]= 0x9c;
     master.val[3]= 0x84;
     master.val[4]= 0x21;

@@ -25,9 +25,17 @@
 #include "ble_central.h"
 #include "peer.h"
 
-/* Scan timer duration */
-#define PERIODIC_SCAN_TIMER_PERIOD    pdMS_TO_TICKS(1000) 
+/* timer durations */
+#define PERIODIC_SCAN_TIMER_PERIOD    2000 
+#define PERIODIC_AMBIENT_TEMP_TIMER   10000 
 
+/* Max number of localization attempts allowed */
+#define MAX_LOC_ATTEMPTS              5     
+
+/* Minimum time for the peer to wait after a failed localization attempt */
+#define MIN_TIME_AFTER_LOC            3
+
+/* Max time allowed without finding any A-CTUs*/
 #define CONF_STATE_TIMEOUT            5
 
 /* Voltage threshold during LOW-POWER mode */
@@ -61,7 +69,15 @@ struct peer;
 int8_t baton;
 
 /* All states timer handles */
-TimerHandle_t periodic_scan_t_handle;
+TimerHandle_t periodic_scan_t_handle, ambient_temp_handle;
+
+/* Non-Volatile-Storage */
+nvs_handle_t my_handle;
+/* Waiting times after disconnection */
+int64_t timePad[4];
+int64_t timeScooter[4];
+
+time_t reconn_time;
 
 /**
  * @brief Possible states of CTU

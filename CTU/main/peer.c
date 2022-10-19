@@ -194,7 +194,7 @@ bool low_power_alone(uint8_t pos)
     bool alone = true;
 
     SLIST_FOREACH(peer, &peers, next) {
-        if ((!peer->CRU) && (!full_power_pads[peer->position-1])) {
+        if ((!peer->CRU) && (!full_power_pads[peer->position-1]) && (pos != peer->position)) {
             alone = false;
         }
     }

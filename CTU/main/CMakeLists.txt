@@ -3,7 +3,9 @@ set(srcs    "main.c"
             "ble_central.c"
             "peer.c"
             "sd_card.c"
-            "wifi.c" )
+            "wifi.c" 
+            "DHT22.c"
+    )
 set(include_dirs include)
 
 idf_component_register(SRCS           "${srcs}"
