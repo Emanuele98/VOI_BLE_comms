@@ -35,10 +35,10 @@
 
 #include "aux_ctu_hw.h"
 
-#define OR_TIME_GAP pdMS_TO_TICKS(30)
+#define OR_TIME_GAP 30
 
 //timers
-TimerHandle_t dynamic_t_handle, alert_t_handle, connected_leds_handle, misaligned_leds_handle;
+TimerHandle_t dynamic_t_handle, alert_t_handle, connected_leds_handle, misaligned_leds_handle, charging_leds_handle;
 
 #define N_BYTES_IN_UUID 16
 
@@ -71,11 +71,13 @@ wpt_control_payload_t _value4_name;
 
 #define OVER_CURRENT                    2.5									   /**< Maximum current tolerated for I2C measurements. Flow will change in the future to handle such alert. */
 #define OVER_VOLTAGE                    70 	    	                           /**< Maximum voltage tolerated for I2C measurements. Flow will change in the future to handle such alert. */
-#define OVER_TEMPERATURE                60									   /**< Maximum temperature tolerated for I2C measurements. */
+#define OVER_TEMPERATURE                55									   /**< Maximum temperature tolerated for I2C measurements. */
 /*Voltage treshold during FULL-POWER mode */
 #define VOLTAGE_FULL_THRESH 110
 /* Voltage treshold for checking charging complete */
 #define CURRENT_THRESH 0.1
+
+bool alert, charge_complete;
 
 union i2c{
 	float f;

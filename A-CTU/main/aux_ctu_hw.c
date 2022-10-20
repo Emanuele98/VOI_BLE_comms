@@ -63,7 +63,7 @@ float i2c_read_voltage_sensor(void)
     //printf("first byte: %02x\n", byte_1);
     //printf("second byte : %02x\n", byte_2);
     value = (int16_t)(first_byte << 8 | second_byte) * 0.00125 * 3.9412;
-    printf("voltage: %.02f [V]\n", value);
+    //printf("voltage: %.02f [V]\n", value);
 
     exit:
         xSemaphoreGive(i2c_sem);
@@ -106,7 +106,7 @@ float i2c_read_current_sensor(void)
     //printf("first byte: %02x\n", first_byte);
     //printf("second byte : %02x\n", second_byte);
     value = (int16_t)(first_byte << 8 | second_byte) * 0.0000025 / 0.012;
-    printf("current: %.02f [A]\n", value);
+    //printf("current: %.02f [A]\n", value);
 
     exit:
         xSemaphoreGive(i2c_sem);
@@ -160,7 +160,7 @@ float i2c_read_temperature_sensor(bool n_temp_sens)
     //printf("first byte: %02x\n", first_byte);
     //printf("second byte : %02x\n", second_byte);
     value = (int16_t)(first_byte << 4 | second_byte >> 4) * 0.0625 ;
-    printf("temperature: %.02f [°C]\n", value);
+    //printf("temperature: %.02f [°C]\n", value);
 
     exit:
         xSemaphoreGive(i2c_sem);
@@ -174,8 +174,8 @@ void enable_full_power_output(void)
         //enable only if OR GATE is low
         full_power = 1;
         gpio_set_level(FULL_POWER_OUT_PIN, 1);
-        gettimeofday(&tv_stop, NULL);
-        float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
+        //gettimeofday(&tv_stop, NULL);
+        //float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
         //printf("---Time: %f sec\n", time_sec);
         ESP_LOGI(TAG, "SWITCHIN FULL POWER ON!");
     }
@@ -185,10 +185,11 @@ void disable_full_power_output(void)
 {
     full_power = 0;
     gpio_set_level(FULL_POWER_OUT_PIN, 0);
-    gettimeofday(&tv_stop, NULL);
-    float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
+    //gettimeofday(&tv_stop, NULL);
+    //float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
     //printf("---Time: %f sec\n", time_sec);
     ESP_LOGI(TAG, "SWITCHIN FULL POWER OFF!");
+    FOD_counter = 0;
 }
 
 void enable_low_power_output(void)
@@ -209,8 +210,8 @@ void disable_low_power_output(void)
 {
     low_power = 0;
     gpio_set_level(LOW_POWER_OUT_PIN, 0);
-    gettimeofday(&tv_stop, NULL);
-    float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
+    //gettimeofday(&tv_stop, NULL);
+    //float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
     //printf("---Time: %f sec\n", time_sec);
     ESP_LOGI(TAG, "SWITCHIN LOW POWER OFF");
 }
@@ -222,8 +223,8 @@ void enable_OR_output(void)
     {
         or_gate = 1;
         gpio_set_level(OR_GATE, 1);
-        gettimeofday(&tv_stop, NULL);
-        float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
+        //gettimeofday(&tv_stop, NULL);
+        //float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
         //printf("---Time: %f sec\n", time_sec);
         ESP_LOGI(TAG, "ENABLE OR GATE");
     }
@@ -233,8 +234,8 @@ void disable_OR_output(void)
 {
     or_gate = 0;
     gpio_set_level(OR_GATE, 0);
-    gettimeofday(&tv_stop, NULL);
-    float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
+    //gettimeofday(&tv_stop, NULL);
+    //float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
     //printf("---Time: %f sec\n", time_sec);
     ESP_LOGI(TAG, "DISABLE OR GATE");
 }

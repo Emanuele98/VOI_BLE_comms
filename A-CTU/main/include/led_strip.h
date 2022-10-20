@@ -21,14 +21,19 @@ extern "C" {
 /* Default Leds connected blinking duration */
 #define CONNECTED_LEDS_TIMER_PERIOD 25
 
-/* Default Leds misaligned blinking duration */
+/* Leds misaligned blinking duration */
 #define MISALIGNED_LEDS_TIMER_PERIOD 200
+
+/* Leds charging timer duration*/
+#define CHARGING_LEDS_TIMER_PERIOD 100
 
 
 /* virtual switch for default led mode */
 bool strip_enable;
 /* virtual switch for the led misalignment mode */
 bool strip_misalignment;
+/* virtual switch foe the charging mode */
+bool strip_charging;
 
 /**
 * @brief LED Strip Type
@@ -159,6 +164,12 @@ void connected_leds(void *arg);
  *  
  */
 void misaligned_leds(void *arg);
+
+/**
+ * @brief Function used for orange blinking when the scooter is charging
+ * 
+ */
+void charging_state(void *arg);
 
 
 /**

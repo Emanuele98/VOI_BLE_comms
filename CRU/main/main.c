@@ -75,7 +75,7 @@ static void alert_timeout_handler(void *arg)
         {
             Temp_counter++;
             ESP_LOGI(TAG, "OVER TEMPERATURE");
-            if (Temp_counter > 499)  //49
+            if (Temp_counter > 99) 
             {
                 ESP_LOGE(TAG, "OVER TEMPERATURE");
                 alert_payload.alert_field.overtemperature = 1;
@@ -87,7 +87,7 @@ static void alert_timeout_handler(void *arg)
 		{
             Volt_counter++;
             ESP_LOGI(TAG, "OVER VOLTAGE");
-            if (Volt_counter > 499)  //49
+            if (Volt_counter > 1) 
             {
                 ESP_LOGE(TAG, "OVER VOLTAGE");
                 alert_payload.alert_field.overvoltage = 1;
@@ -99,7 +99,7 @@ static void alert_timeout_handler(void *arg)
 		{
             Curr_counter++;
             ESP_LOGI(TAG, "OVER CURRENT");
-            if (Curr_counter > 499)  //49
+            if (Curr_counter > 99)  
             {
                 ESP_LOGE(TAG, "OVER CURRENT");
                 alert_payload.alert_field.overcurrent = 1;	
@@ -111,7 +111,7 @@ static void alert_timeout_handler(void *arg)
         {   
             ChargeComp_counter++;
             ESP_LOGI(TAG, "CHARGE COMPLETE");
-            if (ChargeComp_counter > 999)
+            if (ChargeComp_counter > 199)
             {
                 ESP_LOGE(TAG, "CHARGE COMPLETE");
                 alert_payload.alert_field.charge_complete = 1;

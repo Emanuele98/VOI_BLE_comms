@@ -228,4 +228,26 @@ void CTU_ambient_temperature(void *arg)
         	esp_mqtt_client_publish(client, hum_path, hum, 0, 0, 0);
 		}
     }
+
+	time(&reconn_time);
+    //NVS reading
+    esp_err_t err = nvs_open("reconnection", NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) 
+    {
+        ESP_LOGE(TAG, "Error (%s) opening NVS handle!\n", esp_err_to_name(err));
+    } else 
+    {
+        // Read 
+        nvs_get_i64(my_handle, "pad1", &timePad[0]);
+        nvs_get_i64(my_handle, "pad2", &timePad[1]);
+        nvs_get_i64(my_handle, "pad3", &timePad[2]);
+        nvs_get_i64(my_handle, "pad4", &timePad[3]);
+        nvs_get_i64(my_handle, "3PAU", &timeScooter[VOI_3PAU]);
+        nvs_get_i64(my_handle, "6F35", &timeScooter[VOI_6F35]);
+        nvs_get_i64(my_handle, "CE8J", &timeScooter[VOI_CE8J]);
+        nvs_get_i64(my_handle, "D8X5", &timeScooter[VOI_D8X5]);
+        
+        // Close
+        nvs_close(my_handle);
+    }
 }

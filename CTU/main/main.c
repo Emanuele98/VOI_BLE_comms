@@ -64,7 +64,10 @@ void init_NVS(void)
                 nvs_set_i64(my_handle, "D8X5", timeScooter[VOI_D8X5]);
 
             err = nvs_commit(my_handle);
-            printf((err != ESP_OK) ? "NVS INIT FAILED!\n" : "NVS INIT DONE\n");
+            if (!err)
+                ESP_LOGI(TAG, "NVS INIT DONE");
+            else
+                ESP_LOGE(TAG, "NVS INIT FAILED");
             
             // Close
             nvs_close(my_handle);

@@ -20,7 +20,7 @@ struct timeval tv_start;
 #define DEVICE_NAME                     "AUX_CTU"                              /**< Name of device. Will be included in the advertising data. */
 
 #define DYNAMIC_PARAM_TIMER_INTERVAL    pdMS_TO_TICKS(20)                      /**< Timer synced to Dynamic parameter characteristic (10 ms). */
-#define ALERT_PARAM_TIMER_INTERVAL      pdMS_TO_TICKS(40)				       /**< Timer synced to Alert parameter characteristic (40 ms). */
+#define ALERT_PARAM_TIMER_INTERVAL      pdMS_TO_TICKS(60)				       /**< Timer synced to Alert parameter characteristic (40 ms). */
 
 /* WPT SERVICE BEING ADVERTISED */
 #define WPT_SVC_UUID16                  0xFFFE
@@ -55,10 +55,14 @@ static void gpio_task(void* arg)
     uint32_t io_num;
     for(;;) {
         if(xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
-            if(gpio_get_level(io_num) && (full_power)) {
+            if(full_power) {
                 ESP_LOGE(TAG, "FOD!");
-                switch_safely_off();
-                alert_payload.alert_field.FOD = 1;
+                FOD_counter++;
+                //if (FOD_counter > 99)
+                //{
+                    //switch_safely_off();
+                    //alert_payload.alert_field.FOD = 1;
+                //}
             }
         }
     }
@@ -118,7 +122,7 @@ void alert_timeout_handler(void *arg)
 		if ((dyn_payload.temp1.f > OVER_TEMPERATURE) || (dyn_payload.temp2.f > OVER_TEMPERATURE))
 		{
             Temp_counter++;
-            if (Temp_counter > 199)
+            if (Temp_counter > 1)
             {
                 alert_payload.alert_field.overtemperature = 1;
                 switch_safely_off();
@@ -129,7 +133,7 @@ void alert_timeout_handler(void *arg)
 		if (dyn_payload.vrect.f > OVER_VOLTAGE)
 		{
             Volt_counter++;
-            if (Volt_counter > 199)
+            if (Volt_counter > 1)
             {
                 alert_payload.alert_field.overvoltage = 1;
                 switch_safely_off();
@@ -140,7 +144,7 @@ void alert_timeout_handler(void *arg)
 		if (dyn_payload.irect.f > OVER_CURRENT)
 		{
             Curr_counter++;
-            if (Curr_counter > 199)
+            if (Curr_counter > 1)
             {
                 alert_payload.alert_field.overcurrent = 1;	
                 switch_safely_off();
@@ -234,9 +238,13 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
 
         switch_safely_off();
 
-        strip_enable = false;
-        strip_misalignment = false;
-        set_strip(0, 100, 100);
+        if ((!alert) && (!charge_complete))
+        {
+            strip_enable = false;
+            strip_misalignment = false;
+            strip_charging = false;
+            set_strip(0, 100, 100);
+        }
 
         /* Stop timers */
         if (xTimerIsTimerActive(dynamic_t_handle) == pdTRUE)
@@ -349,6 +357,7 @@ void init_sw_timers(void)
     /* Software timer for led strip default state */
     connected_leds_handle = xTimerCreate("connected_leds", CONNECTED_LEDS_TIMER_PERIOD, pdTRUE, NULL, connected_leds);
     misaligned_leds_handle = xTimerCreate("misaligned_leds", MISALIGNED_LEDS_TIMER_PERIOD, pdTRUE, NULL, misaligned_leds);
+    charging_leds_handle = xTimerCreate("charging leds", CHARGING_LEDS_TIMER_PERIOD, pdTRUE, NULL, charging_state);
 
     if ((dynamic_t_handle == NULL) || (alert_t_handle == NULL) || (connected_leds_handle == NULL) || (misaligned_leds_handle == NULL))
     {
@@ -358,6 +367,7 @@ void init_sw_timers(void)
 
     xTimerStart(connected_leds_handle, 10);
     xTimerStart(misaligned_leds_handle, 10);
+    xTimerStart(charging_leds_handle, 10);
 
 }
 

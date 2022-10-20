@@ -64,14 +64,14 @@
 
 #define CTU_TIMER_PERIOD                    2000
 #define CRU_TIMER_PERIOD                    2000
-#define LOC_CTU_TIMER_PERIOD               	160 
-#define LOC_CRU_TIMER_PERIOD                50
+#define LOC_CTU_TIMER_PERIOD               	150 
+#define LOC_CRU_TIMER_PERIOD                45
 
 #define BLE_PERIODIC_SCAN_ITVL				100	
 #define BLE_PERIODIC_SCAN_WIND				100
 
 //todo: check these
-#define BLE_SCAN_TIMEOUT                    2000     
+#define BLE_SCAN_TIMEOUT                    1000     
 #define BLE_FIRST_SCAN_ITVL                 64          /**< The scanning interval (in units of 0.625 ms). */
 #define BLE_FIRST_SCAN_WIND					62          /**< The scanning window   (in units of 0.625 ms). */
                                                          /**< The scan window must be less than 256 (160 ms) to coexist with WiFi */
@@ -82,6 +82,22 @@
 #define WPT_SVC_UUID16                      0xFFFE
 
 #define PRU_CONTROL_CHAR_SIZE               5
+
+// RECONNECTION TIMES
+#define RECONNECTION_LOC_FAIL               30           //30 sec
+#define RECONNECTION_COMMS_FAIL             60           //1 min
+#define RECONNECTION_SCOOTER_LEFT           30           //30 sec
+#define RX_RECONNECTION_AFTER_PAD_KILLED    30           //30 min
+
+#define RX_RECONNECTION_CHARGE_COMPLETE     120          //2 min
+#define RX_RECONNECTION_OVERCURRENT         300          //5 min
+#define RX_RECONNECTION_OVERTEMPERATURE     300          //5 min
+#define RX_RECONNECTION_OVERVOLTAGE         300          //5 min
+
+#define TX_RECONNECTION_FOD                 300          //5 min
+#define TX_RECONNECTION_OVERCURRENT         300          //5 min
+#define TX_RECONNECTION_OVERTEMPERATURE     300          //5 min
+#define TX_RECONNECTION_OVERVOLTAGE         300          //5 min
 
 /* Keeps power outputs state in memory */
 uint8_t low_power_pads[4];
@@ -103,7 +119,7 @@ void ble_central_scan_start(uint32_t timeout, uint16_t scan_itvl, uint16_t scan_
 uint8_t ble_central_update_control_enables(uint8_t enable, uint8_t full_power, uint8_t led, struct peer *peer);
 void ble_central_kill_all_CRU(void);
 void ble_central_kill_all_AUX_CTU(void);
-void ble_central_kill_CRU(uint16_t conn_handle);
-void ble_central_kill_AUX_CTU(uint16_t conn_handle);
+void ble_central_kill_CRU(uint16_t conn_handle, TaskHandle_t task_handle);
+void ble_central_kill_AUX_CTU(uint16_t conn_handle, TaskHandle_t task_handle);
 
 #endif

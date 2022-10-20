@@ -223,6 +223,28 @@ struct peer *Aux_CTU_find(uint16_t pos)
     return NULL;
 }
 
+/**
+ * @brief Function that returns a peer structure from the relative CRU position
+ * @details This function searches through a linked list of peers
+ *          and tries to match a CRU with the relative position.
+ *          If the search is inconclusive, it returns NULL.
+ * 
+ * @param pos The A-CTU pad position
+ * @return NULL if no peer is found, peer structure otherwise.
+*/
+struct peer *CRU_find(uint16_t pos)
+{
+    struct peer *peer;
+
+    SLIST_FOREACH(peer, &peers, next) {
+        if ((peer->CRU) && (peer->position == pos)) {
+            return peer;
+        }
+    }
+
+    return NULL;
+}
+
 
 /**
  * @brief Function that returns a peer structure with a conn_handle
@@ -1256,6 +1278,7 @@ int peer_add(uint16_t conn_handle, bool CRU)
         }
         peer->conn_handle = conn_handle;
         peer->CRU = CRU;
+        peer->task_handle = NULL;
 
         SLIST_INSERT_HEAD(&peers, peer, next);
 

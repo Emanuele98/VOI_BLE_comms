@@ -168,7 +168,7 @@ static void CTU_configuration_state(void *arg)
     SLIST_FOREACH(peer, &peers, next) {
         if(peer->CRU)
         {
-            ble_central_kill_CRU(peer->conn_handle);
+            ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
         }
     }
 
@@ -176,7 +176,7 @@ static void CTU_configuration_state(void *arg)
     float time_sec = abs(difftime(conf_time, aux_found));
 
     /* Enter low power state only when the A-CTUs are connected and no more were found in the last 10 s*/
-    if (((peer_get_NUM_AUX_CTU() == MAX_AUX_CTU) && (m_CTU_task_param.state == CTU_CONFIG_STATE)) && (time_sec > CONF_STATE_TIMEOUT))
+    if ((time_sec > CONF_STATE_TIMEOUT) && (peer_get_NUM_AUX_CTU()))
         CTU_state_change(CTU_LOW_POWER_STATE, (void *)NULL);
 
 }
@@ -236,16 +236,28 @@ static void CTU_local_fault_state(void *arg)
     } else 
     {
         time(&now);
-        timePad[peer->position-1] = now + 600;
-        nvs_set_i64(my_handle, pads[peer->position-1], timePad[peer->position-1]);
 
-        esp_err_t err = nvs_commit(my_handle);
-        printf((err != ESP_OK) ? "NVS INIT FAILED!" : "NVS INIT DONE");
+        if (peer->alert_payload.alert_field.FOD)
+            timePad[peer->position-1] = now + TX_RECONNECTION_FOD;
+        else if (peer->alert_payload.alert_field.overcurrent)
+            timePad[peer->position-1] = now + TX_RECONNECTION_OVERCURRENT;
+        else if (peer->alert_payload.alert_field.overtemperature)
+            timePad[peer->position-1] = now + TX_RECONNECTION_OVERTEMPERATURE;
+        else if (peer->alert_payload.alert_field.overvoltage)
+            timePad[peer->position-1] = now + TX_RECONNECTION_OVERVOLTAGE;
+    
+        nvs_set_i64(my_handle, pads[peer->position-1], timePad[peer->position-1]);
+        nvs_commit(my_handle);
         nvs_close(my_handle);
     }
 
+    peer->alert_payload.alert_field.overvoltage = 0;
+    peer->alert_payload.alert_field.overtemperature = 0;
+    peer->alert_payload.alert_field.overcurrent = 0;
+    peer->alert_payload.alert_field.FOD = 0;
+
     if(peer)
-        ble_central_kill_AUX_CTU(peer->conn_handle);
+        ble_central_kill_AUX_CTU(peer->conn_handle, peer->task_handle);
 
     if (!CTU_is_charging())
         CTU_state_change(CTU_CONFIG_STATE, (void *)peer);
@@ -295,20 +307,28 @@ static void CTU_remote_fault_state(void *arg)
     } else 
     {
         time(&now);
+
         if (peer->alert_payload.alert_field.charge_complete)
-            timeScooter[peer->voi_code] = now + 86400;
-        else
-            timeScooter[peer->voi_code] = now + 600;
+            timeScooter[peer->voi_code] = now + RX_RECONNECTION_CHARGE_COMPLETE;
+        else if (peer->alert_payload.alert_field.overcurrent)
+            timeScooter[peer->voi_code] = now + RX_RECONNECTION_OVERCURRENT;
+        else if (peer->alert_payload.alert_field.overtemperature)
+            timeScooter[peer->voi_code] = now + RX_RECONNECTION_OVERTEMPERATURE;
+        else if (peer->alert_payload.alert_field.overvoltage)
+            timeScooter[peer->voi_code] = now + RX_RECONNECTION_OVERVOLTAGE;
 
         nvs_set_i64(my_handle, scooters[peer->voi_code], timeScooter[peer->voi_code]);
-
-        esp_err_t err = nvs_commit(my_handle);
-        printf((err != ESP_OK) ? "NVS INIT FAILED!" : "NVS INIT DONE");
+        nvs_commit(my_handle);
         nvs_close(my_handle);
     }
 
+    //peer->alert_payload.alert_field.charge_complete = 0;
+    peer->alert_payload.alert_field.overcurrent = 0;
+    peer->alert_payload.alert_field.overtemperature = 0;
+    peer->alert_payload.alert_field.overvoltage = 0;
+
     if (peer)
-        ble_central_kill_CRU(peer->conn_handle);
+        ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
     
     if (!CTU_is_charging())
         CTU_state_change(CTU_LOW_POWER_STATE, (void *)peer);
@@ -339,28 +359,6 @@ void CTU_periodic_scan_timeout(void *arg)
             ble_gap_disc_cancel();
         }
         xTimerStop(periodic_scan_t_handle, 0);
-    }
-
-    time(&reconn_time);
-    //NVS reading
-    esp_err_t err = nvs_open("reconnection", NVS_READWRITE, &my_handle);
-    if (err != ESP_OK) 
-    {
-        ESP_LOGE(TAG, "Error (%s) opening NVS handle!\n", esp_err_to_name(err));
-    } else 
-    {
-        // Read 
-        nvs_get_i64(my_handle, "pad1", &timePad[0]);
-        nvs_get_i64(my_handle, "pad2", &timePad[1]);
-        nvs_get_i64(my_handle, "pad3", &timePad[2]);
-        nvs_get_i64(my_handle, "pad4", &timePad[3]);
-        nvs_get_i64(my_handle, "3PAU", &timeScooter[VOI_3PAU]);
-        nvs_get_i64(my_handle, "6F35", &timeScooter[VOI_6F35]);
-        nvs_get_i64(my_handle, "CE8J", &timeScooter[VOI_CE8J]);
-        nvs_get_i64(my_handle, "D8X5", &timeScooter[VOI_D8X5]);
-        
-        // Close
-        nvs_close(my_handle);
     }
 }
 

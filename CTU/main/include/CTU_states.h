@@ -22,21 +22,22 @@
 #include "freertos/semphr.h"
 #include <sys/time.h>
 
+#include "DHT22.h"
 #include "ble_central.h"
 #include "peer.h"
 
 /* timer durations */
-#define PERIODIC_SCAN_TIMER_PERIOD    2000 
+#define PERIODIC_SCAN_TIMER_PERIOD    1000 
 #define PERIODIC_AMBIENT_TEMP_TIMER   10000 
 
 /* Max number of localization attempts allowed */
-#define MAX_LOC_ATTEMPTS              5     
+#define MAX_LOC_ATTEMPTS              2     
 
 /* Minimum time for the peer to wait after a failed localization attempt */
-#define MIN_TIME_AFTER_LOC            3
+#define MIN_TIME_AFTER_LOC            5
 
 /* Max time allowed without finding any A-CTUs*/
-#define CONF_STATE_TIMEOUT            5
+#define CONF_STATE_TIMEOUT            20
 
 /* Voltage threshold during LOW-POWER mode */
 #define VOLTAGE_LOW_THRESH            25
@@ -51,7 +52,7 @@
 #define BATTERY_REACTION_TIME         10
 
 /* Minimum time for the voltage to be received during the localization process */
-#define MIN_LOW_POWER_ON              0.1
+#define MIN_LOW_POWER_ON              0.09
 
 /* Minimum time for the Voltage check to be valid after the switching activates another pad */
 #define MIN_SWITCH_TIME               0.015
@@ -70,14 +71,6 @@ int8_t baton;
 
 /* All states timer handles */
 TimerHandle_t periodic_scan_t_handle, ambient_temp_handle;
-
-/* Non-Volatile-Storage */
-nvs_handle_t my_handle;
-/* Waiting times after disconnection */
-int64_t timePad[4];
-int64_t timeScooter[4];
-
-time_t reconn_time;
 
 /**
  * @brief Possible states of CTU

@@ -184,18 +184,6 @@ static int gatt_svr_chr_notify_alert_dsc(uint16_t conn_handle, uint16_t attr_han
 
     err_code = ble_gattc_notify_custom(conn_handle, attr_handle, om);
 
-    //RESET ALERTS
-    if (alert_payload.alert_field.charge_complete)
-        alert_payload.alert_field.charge_complete = 0;
-    if (alert_payload.alert_field.FOD)
-        alert_payload.alert_field.FOD = 0;
-    if (alert_payload.alert_field.overcurrent)
-        alert_payload.alert_field.overcurrent = 0;
-    if (alert_payload.alert_field.overtemperature)
-        alert_payload.alert_field.overtemperature = 0;
-    if (alert_payload.alert_field.overvoltage)
-        alert_payload.alert_field.overvoltage = 0;
-
     return err_code;
 }
 

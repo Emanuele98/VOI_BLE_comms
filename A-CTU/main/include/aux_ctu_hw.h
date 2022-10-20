@@ -58,6 +58,8 @@ uint8_t low_power;
 uint8_t full_power;
 uint8_t or_gate;
 
+int FOD_counter;
+
 /* Semaphore used to protect against I2C reading simultaneously */
 SemaphoreHandle_t i2c_sem;
 

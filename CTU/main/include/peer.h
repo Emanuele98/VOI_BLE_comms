@@ -191,6 +191,9 @@ bool low_power_alone(uint8_t pos);
 
 // find the aux CTU
 struct peer *Aux_CTU_find(uint16_t pos);
+// find the CRU
+struct peer *CRU_find(uint16_t pos);
+
 
 //localization functions
 bool current_localization_process(void);

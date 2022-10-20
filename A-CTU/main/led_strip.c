@@ -3,7 +3,7 @@
 led_strip_t *strip;
 bool blink1 = true;
 bool blink2 = true;
-int l = 0;
+int l1 = 0, l2 = 0;
 
 
 static const char *TAG = "LED STRIP";
@@ -62,6 +62,7 @@ void install_strip(uint8_t pin)
 
     strip_enable = false;
     strip_misalignment = false;
+    strip_charging = false;
     set_strip(0, 100, 100);
 }
 
@@ -239,22 +240,21 @@ void connected_leds(void *arg)
 
     if(strip_enable)
     {               
-        for (int j = 0; j <= l; j++) 
+        for (int j = 0; j <= l1; j++) 
         {
             if (blink1)
                 strip->set_pixel(strip, N_LEDS - j, 0, 150, 150);
             else 
                 strip->set_pixel(strip, N_LEDS - j, 150, 150, 0);
         }
-        strip->refresh(strip, 10);       
-    } 
+        strip->refresh(strip, 10);  
 
-    if (l==N_LEDS)
+    if (l1==N_LEDS)
     {
-        l=0;
+        l1=0;
         blink1 = !blink1;
-    } else {
-        l++;
+    } else 
+        l1++;
     }
 }
 
@@ -268,10 +268,27 @@ void misaligned_leds(void *arg)
                 strip->set_pixel(strip, N_LEDS - j, 200, 100, 0);
             strip->refresh(strip, 10);
         } else
-        strip->clear(strip, 0);
-    }
+            strip->clear(strip, 10);
 
     blink2 = !blink2;
+    }
+}
+
+void charging_state(void *arg)
+{
+    if (strip_charging)
+    {
+        for (int j = 1; j < l2; j++) 
+            strip->set_pixel(strip, j, 0, 205, 0);
+        for (int y = l2; y <= N_LEDS; y++)
+                strip->set_pixel(strip, y, 0, 20, 0);
+        strip->refresh(strip, 10);      
+    }
+
+    if (l2==N_LEDS)
+        l2=0;
+    else 
+        l2++;
 }
 
 

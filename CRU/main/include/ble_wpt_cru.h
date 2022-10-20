@@ -74,11 +74,11 @@ wpt_alert_payload_t _value3_name;
 //LIMITS BEFORE SENDING ALERTS
 #define OVER_CURRENT                    1								 	   /**< Maximum current tolerated */
 #define OVER_VOLTAGE                    180 	                               /**< Maximum voltage tolerated */
-#define OVER_TEMPERATURE                50									   /**< Maximum temperature tolerated */
+#define OVER_TEMPERATURE                40									   /**< Maximum temperature tolerated */
 /*Voltage treshold during FULL-POWER mode */
 #define VOLTAGE_FULL_THRESH 110
 /* Voltage treshold for checking charging complete */
-#define CURRENT_THRESH 0.1
+#define CURRENT_THRESH 0.15
 
 
 union i2c{

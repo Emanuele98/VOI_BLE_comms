@@ -143,6 +143,8 @@ static int gatt_svr_chr_read_peer_static(uint16_t conn_handle, uint16_t attr_han
     //Start app timers
     xTimerStart(dynamic_t_handle, 0);
     xTimerStart(alert_t_handle, 0);
+    alert = false;
+    charge_complete = false;
 
     //set alert values to initial state 0
     alert_payload.alert_field.overtemperature = 0; 
@@ -217,19 +219,30 @@ static int gatt_svr_chr_write_control(uint16_t conn_handle, uint16_t attr_handle
     control_payload.led = data[2];
 	control_payload.RFU = ((uint16_t)data[3]<<8)|data[4];
   
-    if (control_payload.led == 0)
+    if ((control_payload.led == 0) && (!alert))
     {
         strip_enable = true;
         strip_misalignment = false;
+        charge_complete = false;
+        strip_charging = false;
     } else if (control_payload.led == 1)
         {
             strip_enable = false;
             strip_misalignment = false;
-            set_strip(0, 200, 0);
+            strip_charging = true;
         } else if (control_payload.led == 2)
             {   
                 strip_enable = false;
+                strip_charging = false;
                 strip_misalignment = true;
+            } else if (control_payload.led == 3)
+            {
+                strip_enable = false;
+                strip_charging = false;
+                strip_misalignment = false;
+                charge_complete = true;
+                vTaskDelay(100);
+                set_strip(0, 200, 0);
             }
 
     if(control_payload.enable)
@@ -294,19 +307,10 @@ static int gatt_svr_chr_notify_alert_dsc(uint16_t conn_handle, uint16_t attr_han
     // RED LEDS
     strip_enable = false;
     strip_misalignment = false;
+    strip_charging = false;
+    alert = true;
+    vTaskDelay(100);
     set_strip(200, 0, 0);
-
-    //RESET ALERTS
-    if (alert_payload.alert_field.charge_complete)
-        alert_payload.alert_field.charge_complete = 0;
-    if (alert_payload.alert_field.FOD)
-        alert_payload.alert_field.FOD = 0;
-    if (alert_payload.alert_field.overcurrent)
-        alert_payload.alert_field.overcurrent = 0;
-    if (alert_payload.alert_field.overtemperature)
-        alert_payload.alert_field.overtemperature = 0;
-    if (alert_payload.alert_field.overvoltage)
-        alert_payload.alert_field.overvoltage = 0;
 
     return err_code;
 }
