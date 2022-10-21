@@ -87,7 +87,7 @@ static void alert_timeout_handler(void *arg)
 		{
             Volt_counter++;
             ESP_LOGI(TAG, "OVER VOLTAGE");
-            if (Volt_counter > 1) 
+            if (Volt_counter > 5) 
             {
                 ESP_LOGE(TAG, "OVER VOLTAGE");
                 alert_payload.alert_field.overvoltage = 1;
@@ -148,13 +148,21 @@ static void bleprph_advertise(void)
     //declare MASTER ADDRESS
     ble_addr_t master;
     master.type = 0;
+    
     master.val[0]= 0x12;
     master.val[1]= 0x15;
     master.val[2]= 0x9c;
     master.val[3]= 0x84;
     master.val[4]= 0x21;
     master.val[5]= 0x78;
-
+/*
+    master.val[0]= 0xb2;
+    master.val[1]= 0xcb;
+    master.val[2]= 0x25;
+    master.val[3]= 0xfb;
+    master.val[4]= 0x0b;
+    master.val[5]= 0xac;
+*/
     rc = ble_gap_adv_start(own_addr_type, &master, BLE_HS_FOREVER,
                            &adv_params, bleprph_gap_event, NULL);
     if (rc != 0) {
@@ -238,6 +246,7 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
 
         /* Connection terminated; resume advertising. */
         bleprph_advertise();
+
         return 0;
 
     case BLE_GAP_EVENT_CONN_UPDATE:
@@ -249,8 +258,8 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
         return 0;
 
     case BLE_GAP_EVENT_ADV_COMPLETE:
-        ESP_LOGI(TAG, "advertise complete; reason=%d",
-                    event->adv_complete.reason);
+        //ESP_LOGI(TAG, "advertise complete; reason=%d",
+        //            event->adv_complete.reason);
         bleprph_advertise();
         return 0;
     }

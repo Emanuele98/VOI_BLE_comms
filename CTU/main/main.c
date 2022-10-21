@@ -130,6 +130,12 @@ static void host_ctrl_on_sync(void)
 */
 void init_sw_timers(void)
 {
+    time(&reconn_time);
+    //time(&time_scooter_left[0]);
+    //time(&time_scooter_left[1]);
+    //time(&time_scooter_left[2]);
+    //time(&time_scooter_left[3]);
+
      /* Software timer for periodic scanning once 1 CRU is connected */
     periodic_scan_t_handle = xTimerCreate("scan", PERIODIC_SCAN_TIMER_PERIOD, pdTRUE, NULL, CTU_periodic_scan_timeout);
 

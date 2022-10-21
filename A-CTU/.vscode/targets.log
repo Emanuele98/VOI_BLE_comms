@@ -11,7 +11,7 @@ Makefile:8: /make/project.mk: No such file or directory
 make.exe: *** No rule to make target `/make/project.mk'.  Stop.
 
 
-# Make data base, printed on Thu Oct 20 11:29:09 2022
+# Make data base, printed on Fri Oct 21 16:09:07 2022
 
 # Variables
 
@@ -92,7 +92,7 @@ NRFGOSTUDIOPATH = C:\Program Files (x86)\Nordic Semiconductor\nRFgo Studio
 # automatic
 %F = $(notdir $%)
 # environment
-CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_17996_JIWGVZHCUWCQMJEY
+CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_6116_WRRRVDUCHBHLNIBN
 # environment
 COMPUTERNAME = LAPTOP-CQUHDE6I
 # environment
@@ -218,9 +218,10 @@ TERM = cygwin
 # environment
 FPS_BROWSER_APP_PROFILE_STRING = Internet Explorer
 # environment
-VSCODE_PID = 17996
+VSCODE_PID = 6116
 # environment
 USERDOMAIN_ROAMINGPROFILE = LAPTOP-CQUHDE6I
+ 
 # variable set hash-table stats:
 # Load=103/1024=10%, Rehash=0, Collisions=8/126=6%
 
@@ -230,9 +231,9 @@ USERDOMAIN_ROAMINGPROFILE = LAPTOP-CQUHDE6I
 
 # Directories
 
-# . (device 1328, inode 1386878): 11 files, no impossibilities.
+# . (device 1328, inode 1386878): 12 files, no impossibilities.
 
-# 11 files, no impossibilities in 1 directories.
+# 12 files, no impossibilities in 1 directories.
 
 # Implicit Rules
 
@@ -286,6 +287,6 @@ Makefile:
 # strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
 # strcache free: total = 4070 / max = 4070 / min = 4070 / avg = 4070
 
-# Finished Make data base on Thu Oct 20 11:29:09 2022
+# Finished Make data base on Fri Oct 21 16:09:07 2022
 
  

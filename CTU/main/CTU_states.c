@@ -84,7 +84,6 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
             m_CTU_task_param.itvl = CONFIG_MAIN_ITVL;
 
             xTimerStart(periodic_scan_t_handle, 0);
-            time(&reconn_time);
 
             ESP_LOGI(TAG,"Configuration State!");
         }
@@ -259,17 +258,16 @@ static void CTU_local_fault_state(void *arg)
     if(peer)
         ble_central_kill_AUX_CTU(peer->conn_handle, peer->task_handle);
 
-    if (!CTU_is_charging())
+    /*if (!CTU_is_charging())
         CTU_state_change(CTU_CONFIG_STATE, (void *)peer);
-    else 
-        CTU_state_change(CTU_POWER_TRANSFER_STATE, (void *)peer);
+    else */
+    CTU_state_change(CTU_POWER_TRANSFER_STATE, (void *)peer);
 
     //todo: if no A-CTU connected anymore --> reset BLE stack and go back to configuration state
     if (peer_get_NUM_AUX_CTU() == 0)
     {
         // Stop all tasks and all timers currently running
         ble_central_kill_all_AUX_CTU();
-
 
         // Idle until BLE stack resets
         CTU_state_change(NULL_STATE,NULL);

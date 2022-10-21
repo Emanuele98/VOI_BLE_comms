@@ -58,11 +58,17 @@ static void gpio_task(void* arg)
             if(full_power) {
                 ESP_LOGE(TAG, "FOD!");
                 FOD_counter++;
-                //if (FOD_counter > 99)
-                //{
-                    //switch_safely_off();
-                    //alert_payload.alert_field.FOD = 1;
-                //}
+                if (FOD_counter > 199)
+                {
+                    switch_safely_off();
+                    alert_payload.alert_field.FOD = 1;
+                    // RED LEDS
+                    strip_enable = false;
+                    strip_misalignment = false;
+                    strip_charging = false;
+                    set_strip(200, 0, 0);
+                    vTaskDelay(1000);
+                }
             }
         }
     }
@@ -122,7 +128,7 @@ void alert_timeout_handler(void *arg)
 		if ((dyn_payload.temp1.f > OVER_TEMPERATURE) || (dyn_payload.temp2.f > OVER_TEMPERATURE))
 		{
             Temp_counter++;
-            if (Temp_counter > 1)
+            if (Temp_counter > 10)
             {
                 alert_payload.alert_field.overtemperature = 1;
                 switch_safely_off();
@@ -133,7 +139,7 @@ void alert_timeout_handler(void *arg)
 		if (dyn_payload.vrect.f > OVER_VOLTAGE)
 		{
             Volt_counter++;
-            if (Volt_counter > 1)
+            if (Volt_counter > 5)
             {
                 alert_payload.alert_field.overvoltage = 1;
                 switch_safely_off();
@@ -144,7 +150,7 @@ void alert_timeout_handler(void *arg)
 		if (dyn_payload.irect.f > OVER_CURRENT)
 		{
             Curr_counter++;
-            if (Curr_counter > 1)
+            if (Curr_counter > 10)
             {
                 alert_payload.alert_field.overcurrent = 1;	
                 switch_safely_off();
@@ -179,13 +185,21 @@ static void bleprph_advertise(void)
     //declare MASTER ADDRESS
     ble_addr_t master;
     master.type = 0;
+
     master.val[0]= 0x12;
     master.val[1]= 0x15;
     master.val[2]= 0x9c;
     master.val[3]= 0x84;
     master.val[4]= 0x21;
     master.val[5]= 0x78;
-
+/*
+    master.val[0]= 0xb2;
+    master.val[1]= 0xcb;
+    master.val[2]= 0x25;
+    master.val[3]= 0xfb;
+    master.val[4]= 0x0b;
+    master.val[5]= 0xac;
+*/
     rc = ble_gap_adv_start(own_addr_type, &master, BLE_HS_FOREVER,
                            &adv_params, bleprph_gap_event, NULL);
     if (rc != 0) {
@@ -365,9 +379,9 @@ void init_sw_timers(void)
         return;
     }
 
-    xTimerStart(connected_leds_handle, 10);
-    xTimerStart(misaligned_leds_handle, 10);
-    xTimerStart(charging_leds_handle, 10);
+    xTimerStart(connected_leds_handle, 0);
+    xTimerStart(misaligned_leds_handle, 0);
+    xTimerStart(charging_leds_handle, 0);
 
 }
 
@@ -412,7 +426,7 @@ void init_hw(void)
 
     //INPUT PIN
     //interrupt of rising edge
-    io_conf.intr_type = GPIO_INTR_POSEDGE;
+    io_conf.intr_type = GPIO_INTR_HIGH_LEVEL;
     //bit mask of the pins
     io_conf.pin_bit_mask = GPIO_INPUT_PIN_SEL;
     //set as input mode    

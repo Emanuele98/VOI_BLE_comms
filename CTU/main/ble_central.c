@@ -55,9 +55,6 @@ static uint16_t count[4];
 /* keep track of leds state */
 static uint8_t led_state[4] = {0, 0, 0, 0}; //default connected state
 
-/* Check for repetitive undervoltage during the charging process */
-static uint8_t n_underVoltage[4];
-
 /* LIST OF TOPICS FOR MQTT AND SD CARD*/
  // TX
 const char tx_voltage[4][80] =          {"warwicktrial/ctu/pad1/sensors/voltage", "warwicktrial/ctu/pad2/sensors/voltage",
@@ -238,6 +235,9 @@ void ble_central_kill_AUX_CTU(uint16_t conn_handle, TaskHandle_t task_handle)
             vTaskDelete(Aux_CTU->task_handle);           
             Aux_CTU->task_handle = NULL;
         }
+    ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
+    // use this to avoid reconnection
+    // ble_gap_terminate(conn_handle, BLE_HS_EAPP);
     }
 
     // kill the scooter that was charging above it
@@ -259,10 +259,6 @@ void ble_central_kill_AUX_CTU(uint16_t conn_handle, TaskHandle_t task_handle)
         }
         ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
     }
-
-    ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
-    // use this to avoid reconnection
-    // ble_gap_terminate(conn_handle, BLE_HS_EAPP);
 }
 
 
@@ -318,8 +314,8 @@ void ble_central_kill_CRU(uint16_t conn_handle, TaskHandle_t task_handle)
             vTaskDelete(peer->task_handle);
             peer->task_handle = NULL;
         }
-    }
     ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
+    }
     // use this to avoid reconnection
     // ble_gap_terminate(conn_handle, BLE_HS_EAPP);
 }
@@ -584,7 +580,7 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
     time_sec = abs(difftime(now, loc_success));
     if ( time_sec < BATTERY_REACTION_TIME )
     {
-        if(peer->dyn_payload.vrect.f > VOLTAGE_FULL_THRESH)
+        if(peer->dyn_payload.vrect.f > VOLTAGE_FULL_THRESH_ON)
         {
             peer->correct = true;
         }
@@ -598,32 +594,28 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
     }
 
     //DOUBLE CHECK THE IT IS STILL RECEIVING VOLTAGE
-    if ((peer->dyn_payload.vrect.f < VOLTAGE_FULL_THRESH) && (time_sec > BATTERY_REACTION_TIME))
+    if ((peer->dyn_payload.vrect.f < VOLTAGE_FULL_THRESH_OFF) && (time_sec > BATTERY_REACTION_TIME))
     {
-        if (n_underVoltage[peer->voi_code] > 3)
+        //time(&time_scooter_left[peer->position-1]);
+        peer->correct = false;
+        //scooter_left[peer->position-1] = true;
+        ESP_LOGE(TAG, "Voltage no longer received! --> SCOOTER LEFT THE PLATFORM");
+        //NVS writing
+        esp_err_t err = nvs_open("reconnection", NVS_READWRITE, &my_handle);
+        if (err != ESP_OK) 
         {
-            peer->correct = false;
-            ESP_LOGE(TAG, "Voltage no longer received! --> SCOOTER LEFT THE PLATFORM");
-            //NVS writing
-            esp_err_t err = nvs_open("reconnection", NVS_READWRITE, &my_handle);
-            if (err != ESP_OK) 
-            {
-                ESP_LOGE(TAG, "Error (%s) opening NVS handle!\n", esp_err_to_name(err));
-            } else 
-            {
-                time(&now);
-                timeScooter[peer->voi_code] = now + RECONNECTION_SCOOTER_LEFT;
-                nvs_set_i64(my_handle, scooters[peer->voi_code], timeScooter[peer->voi_code]);
-                nvs_commit(my_handle);
-                nvs_close(my_handle);
-            }
-            ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
-            return 1;
-        } else
+            ESP_LOGE(TAG, "Error (%s) opening NVS handle!\n", esp_err_to_name(err));
+        } else 
         {
-            ESP_LOGE(TAG, "Voltage no longer received! %d", n_underVoltage[peer->voi_code]);
-            n_underVoltage[peer->voi_code]++;
+            time(&now);
+            timeScooter[peer->voi_code] = now + RECONNECTION_SCOOTER_LEFT;
+            nvs_set_i64(my_handle, scooters[peer->voi_code], timeScooter[peer->voi_code]);
+            nvs_commit(my_handle);
+            nvs_close(my_handle);
         }
+        ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
+        ble_central_kill_AUX_CTU(Aux_CTU->conn_handle, Aux_CTU->task_handle);
+        return 1;
     }
 
     if ((peer->dyn_payload.vrect.f > VOLTAGE_MIS_THRESH) || (!peer->correct))
@@ -727,13 +719,14 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
     //attach the baton to an existing A-CTU
     baton = peer->position;
     last_rc[peer->voi_code] = -1;
+    //scooter_left[peer->position-1] = false;
     int task_delay = CTU_TIMER_PERIOD;
     
     /* WPT task loop */
     while (1)
     {
         //check alert is fine
-        if (peer->dyn_payload.alert == 0)
+        if (peer->dyn_payload.alert == 0) /*&& (!scooter_left[peer->position-1]))*/
         {
                 /* Initiate Read procedure */        
                 rc = ble_gattc_read(peer->conn_handle, dynamic_chr->chr.val_handle,
@@ -862,7 +855,6 @@ static void ble_central_CRU_task_handle(void *arg)
     last_rc[peer->voi_code] = -1;
     last_led[peer->voi_code] = 0;
     n_loc[peer->voi_code] = 0;
-    n_underVoltage[peer->voi_code] = 0;
     time(&peer->loc_fail);
 
     int task_delay = CRU_TIMER_PERIOD;
@@ -1361,8 +1353,8 @@ void ble_central_scan_start(uint32_t timeout, uint16_t scan_itvl, uint16_t scan_
         return;
     }
     //ESP_LOGI(TAG, "Address type: %d", own_addr_type);
-/*  //remove semaphores and leds // use only ble addresses
-    uint8_t out_id_addr[6] = {0};
+    //remove semaphores and leds // use only ble addresses
+/*  uint8_t out_id_addr[6] = {0};
 
     //TODO: DERIVE YOUR ADDRESS
     rc = ble_hs_id_copy_addr(BLE_ADDR_PUBLIC, out_id_addr, NULL);
@@ -1633,16 +1625,19 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
         //ESP_LOGW(TAG, "Delete peer structure for conn_handle=%d",event->disconnect.conn.conn_handle);
 
         peer = peer_find(event->disconnect.conn.conn_handle);
-
-        if(peer->CRU)
+        if (peer != NULL)
         {
-            ESP_LOGE(TAG, "CRU");
-            ble_central_kill_CRU(event->disconnect.conn.conn_handle, NULL);
-        } else {
-            if (peer->position) 
-                ESP_LOGE(TAG, "A-CTU in position: %d", peer->position);
-            //if ((peer_get_NUM_AUX_CTU() != MAX_AUX_CTU) && (m_CTU_task_param.state != CTU_CONFIG_STATE))
-            //    CTU_state_change(CTU_CONFIG_STATE, (void *)peer);
+            if(peer->CRU)
+            {
+                ESP_LOGE(TAG, "CRU");
+                ble_central_kill_CRU(event->disconnect.conn.conn_handle, NULL);
+            } else {
+                ble_central_kill_AUX_CTU(peer->conn_handle, NULL);
+                if (peer->position) 
+                    ESP_LOGE(TAG, "A-CTU in position: %d", peer->position);
+                if (!peer_get_NUM_AUX_CTU())
+                    CTU_state_change(CTU_CONFIG_STATE, (void *)peer);
+            }
         }
 
         peer_delete(event->disconnect.conn.conn_handle);
@@ -1945,7 +1940,7 @@ static void ble_central_unpack_dynamic_param(const struct ble_gatt_attr *attr, u
                 sprintf(string_value, "%.02f", peer->dyn_payload.temp1.f);
                 esp_mqtt_client_publish(client, rx_temp[peer->voi_code], string_value, 0, 0, 0);
             }
-            if (peer->dyn_payload.vrect.f > VOLTAGE_FULL_THRESH)
+            if (peer->dyn_payload.vrect.f > VOLTAGE_FULL_THRESH_ON)
             {
                 // store RX power when the scooter position is found
                 peer->dyn_payload.rx_power = peer->dyn_payload.vrect.f * peer->dyn_payload.irect.f;

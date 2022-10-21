@@ -31,19 +31,22 @@
 #define PERIODIC_AMBIENT_TEMP_TIMER   10000 
 
 /* Max number of localization attempts allowed */
-#define MAX_LOC_ATTEMPTS              2     
+#define MAX_LOC_ATTEMPTS              5     
 
 /* Minimum time for the peer to wait after a failed localization attempt */
 #define MIN_TIME_AFTER_LOC            5
 
 /* Max time allowed without finding any A-CTUs*/
-#define CONF_STATE_TIMEOUT            20
+#define CONF_STATE_TIMEOUT            15
 
 /* Voltage threshold during LOW-POWER mode */
 #define VOLTAGE_LOW_THRESH            25
 
-/* Voltage threshold during FULL-POWER mode */
-#define VOLTAGE_FULL_THRESH           50
+/* Voltage threshold during FULL-POWER mode on ROLL ON */
+#define VOLTAGE_FULL_THRESH_ON           50
+
+/* Voltage threshold during FULL-POWER mode on ROLL OFF */
+#define VOLTAGE_FULL_THRESH_OFF             60
 
 /* Voltage threshold for misalignment check */
 #define VOLTAGE_MIS_THRESH            110
@@ -52,7 +55,7 @@
 #define BATTERY_REACTION_TIME         10
 
 /* Minimum time for the voltage to be received during the localization process */
-#define MIN_LOW_POWER_ON              0.09
+#define MIN_LOW_POWER_ON              0.08
 
 /* Minimum time for the Voltage check to be valid after the switching activates another pad */
 #define MIN_SWITCH_TIME               0.015

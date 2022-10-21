@@ -256,6 +256,9 @@ void connected_leds(void *arg)
     } else 
         l1++;
     }
+
+    if (l1%5 == 0)
+        FOD_counter = 0;
 }
 
 void misaligned_leds(void *arg)

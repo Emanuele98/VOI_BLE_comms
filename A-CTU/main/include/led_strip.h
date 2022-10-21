@@ -13,19 +13,20 @@ extern "C" {
 #include "freertos/task.h"
 #include "esp_err.h"
 #include "driver/rmt.h"
+#include "aux_ctu_hw.h"
 
 // LED STRIP
 #define N_LEDS                  25
 #define STRIP_PIN               13
 
 /* Default Leds connected blinking duration */
-#define CONNECTED_LEDS_TIMER_PERIOD 25
+#define CONNECTED_LEDS_TIMER_PERIOD 100
 
 /* Leds misaligned blinking duration */
-#define MISALIGNED_LEDS_TIMER_PERIOD 200
+#define MISALIGNED_LEDS_TIMER_PERIOD 300
 
 /* Leds charging timer duration*/
-#define CHARGING_LEDS_TIMER_PERIOD 100
+#define CHARGING_LEDS_TIMER_PERIOD 200
 
 
 /* virtual switch for default led mode */

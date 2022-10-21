@@ -94,7 +94,7 @@
 #define RX_RECONNECTION_OVERTEMPERATURE     300          //5 min
 #define RX_RECONNECTION_OVERVOLTAGE         300          //5 min
 
-#define TX_RECONNECTION_FOD                 300          //5 min
+#define TX_RECONNECTION_FOD                 30          //5 min
 #define TX_RECONNECTION_OVERCURRENT         300          //5 min
 #define TX_RECONNECTION_OVERTEMPERATURE     300          //5 min
 #define TX_RECONNECTION_OVERVOLTAGE         300          //5 min
@@ -105,6 +105,12 @@ uint8_t full_power_pads[4];
 
 /* for config state */
 time_t aux_found;
+
+/* remember when the scooter left the platform for 10 s in order to discard FOD */
+//bool scooter_left[4];
+
+//time_t time_scooter_left[4];
+
 
 struct ble_hs_adv_fields;
 struct ble_gap_conn_desc;
