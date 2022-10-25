@@ -37,7 +37,7 @@
 #define MIN_TIME_AFTER_LOC            5
 
 /* Max time allowed without finding any A-CTUs*/
-#define CONF_STATE_TIMEOUT            15
+#define CONF_STATE_TIMEOUT            30
 
 /* Voltage threshold during LOW-POWER mode */
 #define VOLTAGE_LOW_THRESH            25
@@ -55,10 +55,10 @@
 #define BATTERY_REACTION_TIME         10
 
 /* Minimum time for the voltage to be received during the localization process */
-#define MIN_LOW_POWER_ON              0.08
+#define MIN_LOW_POWER_ON              0.1
 
 /* Minimum time for the Voltage check to be valid after the switching activates another pad */
-#define MIN_SWITCH_TIME               0.015
+#define MIN_SWITCH_TIME               0.02
 
 /* Type definition for state task parameters */
 typedef struct CTU_task_params_s CTU_task_params_t;

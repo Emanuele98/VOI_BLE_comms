@@ -199,8 +199,8 @@ void enable_low_power_output(void)
     {
         low_power = 1;
         gpio_set_level(LOW_POWER_OUT_PIN, 1);
-        gettimeofday(&tv_stop, NULL);
-        float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
+        //gettimeofday(&tv_stop, NULL);
+        //float time_sec = tv_stop.tv_sec - tv_start.tv_sec + 1e-6f * (tv_stop.tv_usec - tv_start.tv_usec);
         //printf("---Time: %f sec\n", time_sec);
         ESP_LOGI(TAG, "SWITCHIN LOW POWER ON");
     }

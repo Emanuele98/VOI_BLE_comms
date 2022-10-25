@@ -58,16 +58,10 @@ static void gpio_task(void* arg)
             if(full_power) {
                 ESP_LOGE(TAG, "FOD!");
                 FOD_counter++;
-                if (FOD_counter > 199)
+                if (FOD_counter > 249)
                 {
                     switch_safely_off();
                     alert_payload.alert_field.FOD = 1;
-                    // RED LEDS
-                    strip_enable = false;
-                    strip_misalignment = false;
-                    strip_charging = false;
-                    set_strip(200, 0, 0);
-                    vTaskDelay(1000);
                 }
             }
         }
@@ -179,8 +173,8 @@ static void bleprph_advertise(void)
     adv_params.conn_mode = BLE_GAP_CONN_MODE_DIR;
     adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
     adv_params.high_duty_cycle = 1;
-    adv_params.itvl_min = 20;
-    adv_params.itvl_max = 40;
+    adv_params.itvl_min = 10;
+    adv_params.itvl_max = 30;
     
     //declare MASTER ADDRESS
     ble_addr_t master;
@@ -192,14 +186,7 @@ static void bleprph_advertise(void)
     master.val[3]= 0x84;
     master.val[4]= 0x21;
     master.val[5]= 0x78;
-/*
-    master.val[0]= 0xb2;
-    master.val[1]= 0xcb;
-    master.val[2]= 0x25;
-    master.val[3]= 0xfb;
-    master.val[4]= 0x0b;
-    master.val[5]= 0xac;
-*/
+
     rc = ble_gap_adv_start(own_addr_type, &master, BLE_HS_FOREVER,
                            &adv_params, bleprph_gap_event, NULL);
     if (rc != 0) {
@@ -232,6 +219,7 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
         /* A new connection was established or a connection attempt failed. */
         
         strip_enable = true;
+        connected = true;
         
         ESP_LOGI(TAG, "connection %s; status=%d; handle= %d",
                     event->connect.status == 0 ? "established" : "failed",
@@ -252,7 +240,9 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
 
         switch_safely_off();
 
-        if ((!alert) && (!charge_complete))
+        connected = false;
+
+        if ((!alert) && (!charge_comp))
         {
             strip_enable = false;
             strip_misalignment = false;
@@ -364,7 +354,9 @@ static void host_ctrl_on_sync(void)
 */
 void init_sw_timers(void)
 {
-    //
+    time(&ch_comp);
+    time(&ale);
+
     // Create timers
     dynamic_t_handle = xTimerCreate("dynamic params", DYNAMIC_PARAM_TIMER_INTERVAL, pdTRUE, NULL, dynamic_param_timeout_handler);
     alert_t_handle = xTimerCreate("alert", ALERT_PARAM_TIMER_INTERVAL, pdTRUE, NULL, alert_timeout_handler);
@@ -464,6 +456,8 @@ void init_setup(void)
 
     /* Initialize I2C semaphore */
     i2c_sem = xSemaphoreCreateMutex();
+
+    connected = false;
 }
 
 void on_reset(void)

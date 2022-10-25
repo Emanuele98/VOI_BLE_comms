@@ -230,13 +230,6 @@ void CTU_ambient_temperature(void *arg)
     }
 
 	time(&reconn_time);
-/*
-	for (int i=0; i<4; i++)
-	{
-		if (reconn_time > time_scooter_left[i] + 10)
-			scooter_left[0] = false;
-	}
-*/
 
     //NVS reading
     esp_err_t err = nvs_open("reconnection", NVS_READWRITE, &my_handle);

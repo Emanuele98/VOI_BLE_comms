@@ -9,9 +9,9 @@
 
 /* Defines what type of task the unit will run on */
 #define TASKS_CORE            0
-#define TASK_STACK_SIZE       4000
-#define CRU_TASK_PRIORITY     20
-#define AUX_CTU_TASK_PRIORITY 20
+#define TASK_STACK_SIZE       5000
+#define CRU_TASK_PRIORITY     17
+#define AUX_CTU_TASK_PRIORITY 17
 
 //A-CTUs bluetooth addresses
 
@@ -99,6 +99,8 @@ const char rx_overcurrent[4][80] =      {"warwicktrial/cru/scooter3PAU/alerts/ov
 const char rx_overtemperature[4][80] =  {"warwicktrial/cru/scooter3PAU/alerts/overtemperature", "warwicktrial/cru/scooter6F35/alerts/overtemperature",
                                          "warwicktrial/cru/scooterCE8J/alerts/overtemperature", "warwicktrial/cru/scooterD8X5/alerts/overtemperature"};
 
+const char debug[80] = {"warwicktrial/debug"};
+
 extern const char pads[4][20];
 extern const char scooters[4][20];
 
@@ -172,8 +174,8 @@ static void ble_central_unpack_dynamic_param(const struct ble_gatt_attr *attr, u
  */
 
 static const struct ble_gap_conn_params conn_params = {
-    .scan_itvl = 0x000a,
-    .scan_window = 0x0009,
+    .scan_itvl = 0x0006,
+    .scan_window = 0x0005,
     .itvl_min = BLE_WPT_INITIAL_CONN_ITVL_MIN,
     .itvl_max = BLE_WPT_INITIAL_CONN_ITVL_MAX,
     .latency = 0x0000,                              // allow to skip 5 scan_itvl times when no data to be sent
@@ -219,6 +221,27 @@ void ble_central_kill_AUX_CTU(uint16_t conn_handle, TaskHandle_t task_handle)
 
     ESP_LOGW(TAG, "Killing AUX CTU");
 
+    // kill the scooter that was charging above it
+    struct peer *peer = CRU_find(Aux_CTU->position);
+    if (peer != NULL)
+    {
+        //NVS writing
+        esp_err_t err = nvs_open("reconnection", NVS_READWRITE, &my_handle);
+        if (err != ESP_OK) 
+        {
+            ESP_LOGE(TAG, "Error (%s) opening NVS handle!\n", esp_err_to_name(err));
+        } else 
+        {
+            time(&now);
+            timeScooter[peer->voi_code] = now + RX_RECONNECTION_AFTER_PAD_KILLED;
+            nvs_set_i64(my_handle, scooters[peer->voi_code], timeScooter[peer->voi_code]);
+            nvs_commit(my_handle);
+            nvs_close(my_handle);
+        }
+        ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
+    }
+
+
     //disable realtive interface
     if(Aux_CTU != NULL) {
         if (Aux_CTU->position)
@@ -238,26 +261,6 @@ void ble_central_kill_AUX_CTU(uint16_t conn_handle, TaskHandle_t task_handle)
     ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
     // use this to avoid reconnection
     // ble_gap_terminate(conn_handle, BLE_HS_EAPP);
-    }
-
-    // kill the scooter that was charging above it
-    struct peer *peer = CRU_find(Aux_CTU->position);
-    if (peer != NULL)
-    {
-        //NVS writing
-        esp_err_t err = nvs_open("reconnection", NVS_READWRITE, &my_handle);
-        if (err != ESP_OK) 
-        {
-            ESP_LOGE(TAG, "Error (%s) opening NVS handle!\n", esp_err_to_name(err));
-        } else 
-        {
-            time(&now);
-            timeScooter[peer->voi_code] = now + RX_RECONNECTION_AFTER_PAD_KILLED;
-            nvs_set_i64(my_handle, scooters[peer->voi_code], timeScooter[peer->voi_code]);
-            nvs_commit(my_handle);
-            nvs_close(my_handle);
-        }
-        ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
     }
 }
 
@@ -378,7 +381,7 @@ static int ble_central_on_localization_process(uint16_t conn_handle,
     if (error->status != 0)
     {
         ESP_LOGE(TAG, "Unable to read (ON LOCALIZATION PROCESS): status=%d", error->status);
-        ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
+        ble_central_kill_CRU(peer->conn_handle, NULL);
         return 1;
     }
 
@@ -423,7 +426,12 @@ static int ble_central_on_localization_process(uint16_t conn_handle,
                 
                 //send which is scooter is being charged to the relative pad topic
                 if (WIFI)
+                {
                     esp_mqtt_client_publish(client, tx_scooter[peer->position-1], peer->voi_code_string, 0, 0, 0);
+                    char charging_start[80];
+                    sprintf(charging_start, "The scooter %s is being charged on pad n. %d", peer->voi_code_string, peer->position);
+                    esp_mqtt_client_publish(client, debug, charging_start, 0, 0, 0);
+                }
 
                 //store time
                 time(&loc_success);      
@@ -464,7 +472,7 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
     if (error->status != 0)
     {
         ESP_LOGE(TAG, "Unable to read (ON AUX CTU DYN): status=%d", error->status);
-        ble_central_kill_AUX_CTU(peer->conn_handle, peer->task_handle);
+        ble_central_kill_AUX_CTU(peer->conn_handle, NULL);
         return 1;
     }
    
@@ -536,7 +544,7 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
     {
         //todo: add error handling here
         ESP_LOGE(TAG, "Unable to read (ON CRU DYN): status=%d", error->status);
-        ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
+        ble_central_kill_CRU(peer->conn_handle, NULL);
         return 1;
     }
    
@@ -596,9 +604,7 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
     //DOUBLE CHECK THE IT IS STILL RECEIVING VOLTAGE
     if ((peer->dyn_payload.vrect.f < VOLTAGE_FULL_THRESH_OFF) && (time_sec > BATTERY_REACTION_TIME))
     {
-        //time(&time_scooter_left[peer->position-1]);
         peer->correct = false;
-        //scooter_left[peer->position-1] = true;
         ESP_LOGE(TAG, "Voltage no longer received! --> SCOOTER LEFT THE PLATFORM");
         //NVS writing
         esp_err_t err = nvs_open("reconnection", NVS_READWRITE, &my_handle);
@@ -719,14 +725,13 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
     //attach the baton to an existing A-CTU
     baton = peer->position;
     last_rc[peer->voi_code] = -1;
-    //scooter_left[peer->position-1] = false;
     int task_delay = CTU_TIMER_PERIOD;
     
     /* WPT task loop */
     while (1)
     {
         //check alert is fine
-        if (peer->dyn_payload.alert == 0) /*&& (!scooter_left[peer->position-1]))*/
+        if (peer->dyn_payload.alert == 0)
         {
                 /* Initiate Read procedure */        
                 rc = ble_gattc_read(peer->conn_handle, dynamic_chr->chr.val_handle,
@@ -768,7 +773,7 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
             //RC = https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/esp_err.html#_CPPv49esp_err_t
         } else if ((last_rc[peer->voi_code] != -1) && (last_rc[peer->voi_code]))
         {
-            ESP_LOGI(TAG, "Comms RECOVERY with AUX CTU %d", peer->position);
+            //ESP_LOGI(TAG, "Comms RECOVERY with AUX CTU %d", peer->position);
             ctu_comms_error = 0;
         }
         
@@ -871,7 +876,7 @@ static void ble_central_CRU_task_handle(void *arg)
                 time(&now);
                 loc_time = abs(difftime(now, peer->loc_fail));
                 // Wait 3 second if the localization process previously failed
-                if ((!n_loc[peer->voi_code]) || ((n_loc[peer->voi_code]) && (loc_time > MIN_TIME_AFTER_LOC)))
+                if (((!n_loc[peer->voi_code]) || ((n_loc[peer->voi_code]) && (loc_time > MIN_TIME_AFTER_LOC))) && (peer_get_NUM_AUX_CTU()))
                 {
                     switch (count[peer->voi_code])
                     {
@@ -1430,7 +1435,7 @@ static int ble_central_should_connect(const struct ble_gap_disc_desc *disc)
         else if ((disc->addr.val[5] == Actu_addr4[5]) && (disc->addr.val[4] == Actu_addr4[4]) && (disc->addr.val[3] == Actu_addr4[3]) && (disc->addr.val[2] == Actu_addr4[2]) && (disc->addr.val[1] == Actu_addr4[1]) && (disc->addr.val[0] == Actu_addr4[0]))
             x = 4;
 
-        if (m_CTU_task_param.state != CTU_CONFIG_STATE)
+        if ((m_CTU_task_param.state != CTU_CONFIG_STATE) && (!current_localization_process()))
         {
             if ((disc->addr.val[5] == cru_3PAU[5]) && (disc->addr.val[4] == cru_3PAU[4]) && (disc->addr.val[3] == cru_3PAU[3]) && (disc->addr.val[2] == cru_3PAU[2]) && (disc->addr.val[1] == cru_3PAU[1]) && (disc->addr.val[0] == cru_3PAU[0]))
                 x = 5;
@@ -1952,7 +1957,7 @@ static void ble_central_unpack_dynamic_param(const struct ble_gatt_attr *attr, u
                     esp_mqtt_client_publish(client, rx_power[peer->voi_code], string_value, 0, 0, 0);
                 
             }
-        } if ((!peer->CRU) && ( (!current_localization_process()) || ((current_localization_process()) && (full_power_pads[peer->position-1])) ) )
+        } if ( (!peer->CRU) && ( (!current_localization_process()) || full_power_pads[peer->position-1] ) )
         {
             if (SD_CARD)
             {

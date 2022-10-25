@@ -14,6 +14,7 @@ extern "C" {
 #include "esp_err.h"
 #include "driver/rmt.h"
 #include "aux_ctu_hw.h"
+#include "ble_wpt_aux_ctu.h"
 
 // LED STRIP
 #define N_LEDS                  25

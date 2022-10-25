@@ -12,7 +12,6 @@
 
 #include "nvs.h"
 #include "nvs_flash.h"
-
 #include "freertos/timers.h"
 #include "freertos/semphr.h"
 #include "freertos/FreeRTOS.h"
@@ -32,6 +31,7 @@
 #include "nimble/nimble_port_freertos.h"
 #include "host/util/util.h"
 #include "esp_bt.h"
+#include <sys/time.h>
 
 #include "aux_ctu_hw.h"
 
@@ -77,7 +77,10 @@ wpt_control_payload_t _value4_name;
 /* Voltage treshold for checking charging complete */
 #define CURRENT_THRESH 0.1
 
-bool alert, charge_complete;
+bool alert, charge_comp;
+time_t ch_comp, ale, now;
+// connected variable
+bool connected;
 
 union i2c{
 	float f;

@@ -72,19 +72,19 @@
 
 //todo: check these
 #define BLE_SCAN_TIMEOUT                    1000     
-#define BLE_FIRST_SCAN_ITVL                 64          /**< The scanning interval (in units of 0.625 ms). */
-#define BLE_FIRST_SCAN_WIND					62          /**< The scanning window   (in units of 0.625 ms). */
+#define BLE_FIRST_SCAN_ITVL                 20          /**< The scanning interval (in units of 0.625 ms). */
+#define BLE_FIRST_SCAN_WIND					19          /**< The scanning window   (in units of 0.625 ms). */
                                                          /**< The scan window must be less than 256 (160 ms) to coexist with WiFi */
 #define N_BYTES_IN_CTU_STATIC               17
 
-#define MINIMUM_ADV_RSSI                    -80
+#define MINIMUM_ADV_RSSI                    -100
 
 #define WPT_SVC_UUID16                      0xFFFE
 
 #define PRU_CONTROL_CHAR_SIZE               5
 
 // RECONNECTION TIMES
-#define RECONNECTION_LOC_FAIL               30           //30 sec
+#define RECONNECTION_LOC_FAIL               60           //1 sec
 #define RECONNECTION_COMMS_FAIL             60           //1 min
 #define RECONNECTION_SCOOTER_LEFT           30           //30 sec
 #define RX_RECONNECTION_AFTER_PAD_KILLED    30           //30 min
@@ -94,7 +94,7 @@
 #define RX_RECONNECTION_OVERTEMPERATURE     300          //5 min
 #define RX_RECONNECTION_OVERVOLTAGE         300          //5 min
 
-#define TX_RECONNECTION_FOD                 30          //5 min
+#define TX_RECONNECTION_FOD                 300          //5 min
 #define TX_RECONNECTION_OVERCURRENT         300          //5 min
 #define TX_RECONNECTION_OVERTEMPERATURE     300          //5 min
 #define TX_RECONNECTION_OVERVOLTAGE         300          //5 min
@@ -105,12 +105,6 @@ uint8_t full_power_pads[4];
 
 /* for config state */
 time_t aux_found;
-
-/* remember when the scooter left the platform for 10 s in order to discard FOD */
-//bool scooter_left[4];
-
-//time_t time_scooter_left[4];
-
 
 struct ble_hs_adv_fields;
 struct ble_gap_conn_desc;

@@ -144,7 +144,7 @@ static int gatt_svr_chr_read_peer_static(uint16_t conn_handle, uint16_t attr_han
     xTimerStart(dynamic_t_handle, 0);
     xTimerStart(alert_t_handle, 0);
     alert = false;
-    charge_complete = false;
+    charge_comp = false;
 
     //set alert values to initial state 0
     alert_payload.alert_field.overtemperature = 0; 
@@ -218,12 +218,20 @@ static int gatt_svr_chr_write_control(uint16_t conn_handle, uint16_t attr_handle
 	control_payload.full_power = data[1];
     control_payload.led = data[2];
 	control_payload.RFU = ((uint16_t)data[3]<<8)|data[4];
+
+    time(&now);
+    if ((now > ch_comp + 120) && (connected))
+        charge_comp = false;
+    
+    if ((now > ale + 120) && (connected))
+        alert = false;
+
   
-    if ((control_payload.led == 0) && (!alert))
+    if ((control_payload.led == 0) && (!alert) && (!charge_comp))
     {
         strip_enable = true;
         strip_misalignment = false;
-        charge_complete = false;
+        charge_comp = false;
         strip_charging = false;
     } else if (control_payload.led == 1)
         {
@@ -240,7 +248,8 @@ static int gatt_svr_chr_write_control(uint16_t conn_handle, uint16_t attr_handle
                 strip_enable = false;
                 strip_charging = false;
                 strip_misalignment = false;
-                charge_complete = true;
+                charge_comp = true;
+                time(&ch_comp);
                 vTaskDelay(100);
                 set_strip(0, 200, 0);
             }
@@ -276,6 +285,7 @@ static int gatt_svr_chr_write_control(uint16_t conn_handle, uint16_t attr_handle
             //enable OR gate
             enable_OR_output();
         }
+
     return err_code;
 }
 
@@ -311,6 +321,7 @@ static int gatt_svr_chr_notify_alert_dsc(uint16_t conn_handle, uint16_t attr_han
     alert = true;
     vTaskDelay(100);
     set_strip(200, 0, 0);
+    time(&ale);
 
     return err_code;
 }

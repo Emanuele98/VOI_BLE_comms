@@ -2407,3 +2407,8 @@
 319	376	6827158728483522	bootloader/bootloader.elf	8c06106d8c443b03
 319	376	6827158728483522	bootloader/bootloader.bin	8c06106d8c443b03
 319	376	6827158728483522	bootloader/bootloader.map	8c06106d8c443b03
+50	320	0	esp-idf/partition_table/CMakeFiles/partition_table	62d477ceec9a1a04
+322	420	6827158728483522	bootloader-prefix/src/bootloader-stamp/bootloader-build	8c06106d8c443b03
+322	420	6827158728483522	bootloader/bootloader.elf	8c06106d8c443b03
+322	420	6827158728483522	bootloader/bootloader.bin	8c06106d8c443b03
+322	420	6827158728483522	bootloader/bootloader.map	8c06106d8c443b03
