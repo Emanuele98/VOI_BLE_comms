@@ -239,12 +239,14 @@ void connected_leds(void *arg)
 {
 
     if(strip_enable)
-    {               
-        for (int j = 0; j <= l1; j++) 
-        {
-            if (blink1)
+    {   
+        if (blink1)
+        {            
+            for (int j = 0; j <= l1; j++) 
                 strip->set_pixel(strip, N_LEDS - j, 0, 150, 150);
-            else 
+        } else
+        {
+            for (int j = 0; j <= l1; j++) 
                 strip->set_pixel(strip, N_LEDS - j, 150, 150, 0);
         }
         strip->refresh(strip, 10);  
@@ -255,10 +257,7 @@ void connected_leds(void *arg)
         blink1 = !blink1;
     } else 
         l1++;
-    }
-
-    if (l1%5 == 0)
-        FOD_counter = 0;
+    }  
 }
 
 void misaligned_leds(void *arg)

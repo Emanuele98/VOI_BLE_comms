@@ -188,7 +188,8 @@ static int gatt_svr_chr_read_dynamic(uint16_t conn_handle, uint16_t attr_handle,
     //ESP_LOGW(TAG, "- DYN CHR - rx temperature = %.02f", dyn_payload.temp1.f);
     //ESP_LOGW(TAG, "- DYN CHR - rx temperature = %.02f", dyn_payload.temp2.f);
 
-    //ESP_LOGE(TAG, "power: %d",esp_ble_tx_power_get(ESP_BLE_PWR_TYPE_CONN_HDL0));
+    // reset alerts counters
+    Temp_counter = Volt_counter = Curr_counter = 0;
 
     err_code = os_mbuf_append(ctxt->om, &data,
                         sizeof data);

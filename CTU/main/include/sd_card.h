@@ -20,7 +20,6 @@
     #define SD_CARD                0
 #endif
 
-//todo: add CD?
 #define PIN_NUM_MISO    17
 #define PIN_NUM_MOSI    15
 #define PIN_NUM_CLK     14

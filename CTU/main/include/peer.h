@@ -147,7 +147,7 @@ struct peer {
 
     /* CRU VOI CODE FOR ID */
     voi_code_enum voi_code;
-    char voi_code_string[4];
+    char voi_code_string[5];
 
     /* bool to detect if localization process is currently going */
     bool localization_process;

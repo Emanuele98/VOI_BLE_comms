@@ -28,7 +28,7 @@ struct timeval tv_start;
 static const char* TAG = "MAIN";
 
 static float volt, curr, t1, t2;
-static int counter = 0, Temp_counter = 0, Volt_counter = 0, Curr_counter = 0;
+static uint8_t counter = 0;
 
 // queue to handle gpio event from isr
 xQueueHandle gpio_evt_queue = NULL;
@@ -55,13 +55,13 @@ static void gpio_task(void* arg)
     uint32_t io_num;
     for(;;) {
         if(xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
-            if(full_power) {
-                ESP_LOGE(TAG, "FOD!");
+            if ((full_power) && (gpio_get_level(io_num))) {
+                //ESP_LOGE(TAG, "FOD!");
                 FOD_counter++;
-                if (FOD_counter > 249)
+                if( FOD_counter > 100 )
                 {
-                    switch_safely_off();
                     alert_payload.alert_field.FOD = 1;
+                    switch_safely_off();
                 }
             }
         }
@@ -71,6 +71,7 @@ static void gpio_task(void* arg)
 //read dynamic parameters from I2C sensors
 void dynamic_param_timeout_handler(void *arg)
 {
+    FOD_counter = 0;
     if (xSemaphoreTake(i2c_sem, portMAX_DELAY) == pdTRUE)
     {
         switch(counter)
@@ -122,10 +123,11 @@ void alert_timeout_handler(void *arg)
 		if ((dyn_payload.temp1.f > OVER_TEMPERATURE) || (dyn_payload.temp2.f > OVER_TEMPERATURE))
 		{
             Temp_counter++;
-            if (Temp_counter > 10)
+
+            if (Temp_counter > 10) //make a window
             {
                 alert_payload.alert_field.overtemperature = 1;
-                switch_safely_off();
+                //switch_safely_off();
             } 
     	}
 
@@ -136,7 +138,7 @@ void alert_timeout_handler(void *arg)
             if (Volt_counter > 5)
             {
                 alert_payload.alert_field.overvoltage = 1;
-                switch_safely_off();
+                //switch_safely_off();
             }	
         }
 
@@ -147,7 +149,7 @@ void alert_timeout_handler(void *arg)
             if (Curr_counter > 10)
             {
                 alert_payload.alert_field.overcurrent = 1;	
-                switch_safely_off();
+                //switch_safely_off();
             }
         }
 
@@ -173,8 +175,8 @@ static void bleprph_advertise(void)
     adv_params.conn_mode = BLE_GAP_CONN_MODE_DIR;
     adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
     adv_params.high_duty_cycle = 1;
-    adv_params.itvl_min = 10;
-    adv_params.itvl_max = 30;
+    adv_params.itvl_min = 20;
+    adv_params.itvl_max = 40;
     
     //declare MASTER ADDRESS
     ble_addr_t master;
@@ -220,7 +222,9 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
         
         strip_enable = true;
         connected = true;
-        
+        // reset alerts counters
+
+        Temp_counter = Volt_counter = Curr_counter = 0;        
         ESP_LOGI(TAG, "connection %s; status=%d; handle= %d",
                     event->connect.status == 0 ? "established" : "failed",
                     event->connect.status, event->connect.conn_handle);
@@ -259,9 +263,6 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
         {
             xTimerStop(alert_t_handle, 10);
         }
-
-        // reset alerts counters
-        Temp_counter = Volt_counter = Curr_counter = 0;
 
         /* Connection terminated; resume advertising. */
         bleprph_advertise();

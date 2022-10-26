@@ -1,11 +1,11 @@
 #include "include/CTU_states.h"
 
 /* State duration constants (in ticks) */
-#define CONFIG_MAIN_ITVL            pdMS_TO_TICKS(500)
-#define LOW_POWER_MAIN_ITVL         pdMS_TO_TICKS(500)
-#define POWER_TRANSFER_MAIN_ITVL    pdMS_TO_TICKS(500)
-#define LATCHING_FAULT_MAIN_ITVL    pdMS_TO_TICKS(500)
-#define LOCAL_FAULT_MAIN_ITVL       pdMS_TO_TICKS(500)
+#define CONFIG_MAIN_ITVL            1000
+#define LOW_POWER_MAIN_ITVL         1000
+#define POWER_TRANSFER_MAIN_ITVL    1000
+#define LATCHING_FAULT_MAIN_ITVL    2000
+#define LOCAL_FAULT_MAIN_ITVL       2000
 
 static const char* TAG = "STATES";
 
@@ -22,7 +22,6 @@ static void CTU_remote_fault_state(void *arg);
 extern const ble_uuid_t *wpt_svc_uuid;
 extern const ble_uuid_t *wpt_char_CRU_dyn_uuid;
 
-time_t conf_time;
 
 /* NVS TOPICS */
 const char pads[4][20] = {"pad1", "pad2", "pad3", "pad4"};
@@ -164,20 +163,19 @@ static void CTU_configuration_state(void *arg)
     full_power_pads[2] = 0;
     full_power_pads[3] = 0;
 
-    SLIST_FOREACH(peer, &peers, next) {
+    time(&now);
+
+    SLIST_FOREACH(peer, &peers, next) 
+    {
         if(peer->CRU)
         {
             ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
         }
     }
-
-    time(&conf_time);
-    float time_sec = abs(difftime(conf_time, aux_found));
-
+        
     /* Enter low power state only when the A-CTUs are connected and no more were found in the last 10 s*/
-    if ((time_sec > CONF_STATE_TIMEOUT) && (peer_get_NUM_AUX_CTU()))
+    if (((now > conf_time + CONF_STATE_TIMEOUT) && (peer_get_NUM_AUX_CTU())) || (peer_get_NUM_AUX_CTU() == 4))
         CTU_state_change(CTU_LOW_POWER_STATE, (void *)NULL);
-
 }
 
 /**
@@ -222,7 +220,6 @@ static void CTU_power_transfer_state(void *arg)
 
 static void CTU_local_fault_state(void *arg)
 {
-    //todo: check again
     ESP_LOGE(TAG, "LOCAL FAULT STATE");
     
     struct peer *peer = (struct peer *)arg;
@@ -255,27 +252,12 @@ static void CTU_local_fault_state(void *arg)
     peer->alert_payload.alert_field.overcurrent = 0;
     peer->alert_payload.alert_field.FOD = 0;
 
-    if(peer)
-        ble_central_kill_AUX_CTU(peer->conn_handle, peer->task_handle);
+    ble_central_kill_AUX_CTU(peer->conn_handle, NULL);
 
-    /*if (!CTU_is_charging())
+    if (!peer_get_NUM_AUX_CTU())
         CTU_state_change(CTU_CONFIG_STATE, (void *)peer);
-    else */
-    CTU_state_change(CTU_POWER_TRANSFER_STATE, (void *)peer);
-
-    //todo: if no A-CTU connected anymore --> reset BLE stack and go back to configuration state
-    if (peer_get_NUM_AUX_CTU() == 0)
-    {
-        // Stop all tasks and all timers currently running
-        ble_central_kill_all_AUX_CTU();
-
-        // Idle until BLE stack resets
-        CTU_state_change(NULL_STATE,NULL);
-        
-        // Reset BLE stack
-        ble_hs_sched_reset(BLE_HS_EAPP);
-    }
-
+    else
+        CTU_state_change(CTU_POWER_TRANSFER_STATE, (void *)peer);
 }
 
 /** 
@@ -306,9 +288,7 @@ static void CTU_remote_fault_state(void *arg)
     {
         time(&now);
 
-        if (peer->alert_payload.alert_field.charge_complete)
-            timeScooter[peer->voi_code] = now + RX_RECONNECTION_CHARGE_COMPLETE;
-        else if (peer->alert_payload.alert_field.overcurrent)
+        if (peer->alert_payload.alert_field.overcurrent)
             timeScooter[peer->voi_code] = now + RX_RECONNECTION_OVERCURRENT;
         else if (peer->alert_payload.alert_field.overtemperature)
             timeScooter[peer->voi_code] = now + RX_RECONNECTION_OVERTEMPERATURE;
@@ -320,13 +300,11 @@ static void CTU_remote_fault_state(void *arg)
         nvs_close(my_handle);
     }
 
-    //peer->alert_payload.alert_field.charge_complete = 0;
     peer->alert_payload.alert_field.overcurrent = 0;
     peer->alert_payload.alert_field.overtemperature = 0;
     peer->alert_payload.alert_field.overvoltage = 0;
 
-    if (peer)
-        ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
+    ble_central_kill_CRU(peer->conn_handle, NULL);
     
     if (!CTU_is_charging())
         CTU_state_change(CTU_LOW_POWER_STATE, (void *)peer);
@@ -371,7 +349,7 @@ void pass_the_baton(void)
         peer = Aux_CTU_find(next_bat + 1);
         if (peer != NULL)
         {
-            if (!full_power_pads[peer->position-1])
+            if (!full_power_pads[peer->position-1] && !fully_charged[peer->voi_code])
             {
                 baton = peer->position;
                 //ESP_LOGI(TAG, "baton %d", baton);

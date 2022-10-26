@@ -82,6 +82,10 @@ time_t ch_comp, ale, now;
 // connected variable
 bool connected;
 
+//i2c counter
+uint8_t Temp_counter, Volt_counter, Curr_counter;
+
+
 union i2c{
 	float f;
 	uint8_t b[4];

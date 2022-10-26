@@ -5,69 +5,34 @@ static const char *TAG = "WIFI";
 
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
-static int s_retry_num = 0;
-
-/* Bool which will set true once the Real Time Clock is synced*/
-bool update = false;
-/* Bool which will set true once the MQTT broker is connected*/
-bool mqtt = false;
 
 //static const uint8_t mqtt_eclipse_org_pem_start[]  = BROKER_CERTIFICATE;
+
+static void mqtt_app_start(void);
 
 
 
 ////////////      MQTT SETUP        ////////////////////////
 
-static void do_something(void)
-{
-    ESP_LOGI(TAG, "did something");
-}
-
 static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
 {
     switch (event->event_id)
     {
+    case MQTT_EVENT_BEFORE_CONNECT:
+        ESP_LOGI(TAG, "MQTT connecting to the broker ...");
+        break;
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-        mqtt = true;
+        MQTT = true;
         break;
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
-        break;
-    case MQTT_EVENT_SUBSCRIBED:
-        ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
-        break;
-    case MQTT_EVENT_UNSUBSCRIBED:
-        ESP_LOGI(TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
-        break;
-    case MQTT_EVENT_PUBLISHED:
-        ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
-        break;
-    case MQTT_EVENT_DATA:
-        ESP_LOGI(TAG, "MQTT_EVENT_DATA");
-        printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
-        printf("DATA=%.*s\r\n", event->data_len, event->data);
-        if (strncmp(event->data, "please do something", event->data_len) == 0)
-        {
-            ESP_LOGI(TAG, "Do something");
-            do_something();
-        }
+        MQTT = false;
+        esp_mqtt_client_reconnect(client);
         break;
     case MQTT_EVENT_ERROR:
         ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
-        if (event->error_handle->error_type == MQTT_ERROR_TYPE_ESP_TLS)
-        {
-            ESP_LOGI(TAG, "Last error code reported from esp-tls: 0x%x", event->error_handle->esp_tls_last_esp_err);
-            ESP_LOGI(TAG, "Last tls stack error number: 0x%x", event->error_handle->esp_tls_stack_err);
-        }
-        else if (event->error_handle->error_type == MQTT_ERROR_TYPE_CONNECTION_REFUSED)
-        {
-            ESP_LOGI(TAG, "Connection refused error: 0x%x", event->error_handle->connect_return_code);
-        }
-        else
-        {
-            ESP_LOGW(TAG, "Unknown error type: 0x%x", event->error_handle->error_type);
-        }
+        esp_mqtt_client_disconnect(client);
         break;
     default:
         ESP_LOGI(TAG, "Other event id:%d", event->event_id);
@@ -99,11 +64,12 @@ static void mqtt_app_start(void)
  * @brief Callback function which is called once the Network Time Protocol is synced
  * 
  */
+/*
 static void sntp_callback(struct timeval *tv)
 {
     update = true;
 }
-
+*/
 /**
  * @brief Handler for WiFi and IP events
  * 
@@ -111,22 +77,16 @@ static void sntp_callback(struct timeval *tv)
 static void wifi_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
 {
-    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
-        esp_wifi_connect();
-    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        if (s_retry_num < WIFI_MAXIMUM_RETRY) {
-            esp_wifi_connect();
-            s_retry_num++;
-            ESP_LOGI(TAG, "retry to connect to the AP");
-        } else {
-            xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
-        }
-        ESP_LOGI(TAG,"connect to the AP fail");
-    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+    if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
-        s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+        // CONNECTION DONE - START MQTT
+        mqtt_app_start();
+    } else
+    {
+        esp_wifi_connect();
+        ESP_LOGI(TAG, "retry to connect to the AP");
     }
 }
 
@@ -183,24 +143,20 @@ static void wifi_init(void)
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
     }
 
-    //todo: keep them to allow reconnection?
-    esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_handler);
-    esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_handler);
-    vEventGroupDelete(s_wifi_event_group);
+    //esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_handler);
+    //esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_handler);
+    //vEventGroupDelete(s_wifi_event_group);
 }
 
 void connectivity_setup(void)
 {
-    //Initialize WiFi module
+    /* Initialize WiFi module that will start the mqtt client */
     wifi_init();
 
     //Simple Network Time Protocol
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     sntp_setservername(0, "pool.ntp.org");
     sntp_init();
-    sntp_set_time_sync_notification_cb(sntp_callback);
-
-    while(!update){}
 
     // Set timezone to Eastern Standard Time and print local time
     // with daylight saving
@@ -211,11 +167,6 @@ void connectivity_setup(void)
     time(&now);
     localtime_r(&now, &info);
     ESP_LOGE(TAG, "Time is %s", asctime(&info));
-
-    /* INTIIALIZE MQTT */
-    mqtt_app_start();
-
-    while(!mqtt){}
 
     return;
 }

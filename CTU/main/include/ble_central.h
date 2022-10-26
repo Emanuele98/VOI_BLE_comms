@@ -50,46 +50,43 @@
 #define MAX_AUX_CTU                         4
 
 //BLE
-#define COMMS_ERROR_LIMIT                   60
+#define COMMS_ERROR_LIMIT                   30
 
 #define N_CHAR_UUIDS                        5
 #define N_BYTES_IN_UUID                     16
 
-//todo: double check
-
 #define BLE_WPT_INITIAL_CONN_ITVL_MIN       (10 * 1000 / BLE_HCI_CONN_ITVL)
 #define BLE_WPT_INITIAL_CONN_ITVL_MAX       (30 * 1000 / BLE_HCI_CONN_ITVL)
-//#define BLE_WPT_INITIAL_CONN_ITVL_MIN       0x06
-//#define BLE_WPT_INITIAL_CONN_ITVL_MAX       0x20
 
 #define CTU_TIMER_PERIOD                    2000
 #define CRU_TIMER_PERIOD                    2000
 #define LOC_CTU_TIMER_PERIOD               	150 
-#define LOC_CRU_TIMER_PERIOD                45
+#define LOC_CRU_TIMER_PERIOD                80
 
 #define BLE_PERIODIC_SCAN_ITVL				100	
 #define BLE_PERIODIC_SCAN_WIND				100
 
-//todo: check these
 #define BLE_SCAN_TIMEOUT                    1000     
-#define BLE_FIRST_SCAN_ITVL                 20          /**< The scanning interval (in units of 0.625 ms). */
-#define BLE_FIRST_SCAN_WIND					19          /**< The scanning window   (in units of 0.625 ms). */
+#define BLE_FIRST_SCAN_ITVL                 30          /**< The scanning interval (in units of 0.625 ms). */
+#define BLE_FIRST_SCAN_WIND					30          /**< The scanning window   (in units of 0.625 ms). */
                                                          /**< The scan window must be less than 256 (160 ms) to coexist with WiFi */
 #define N_BYTES_IN_CTU_STATIC               17
 
-#define MINIMUM_ADV_RSSI                    -100
+#define MINIMUM_ADV_RSSI                    -90
 
 #define WPT_SVC_UUID16                      0xFFFE
 
 #define PRU_CONTROL_CHAR_SIZE               5
 
 // RECONNECTION TIMES
-#define RECONNECTION_LOC_FAIL               60           //1 sec
+#define RECONNECTION_LOC_FAIL               30           //30 sec
 #define RECONNECTION_COMMS_FAIL             60           //1 min
 #define RECONNECTION_SCOOTER_LEFT           30           //30 sec
-#define RX_RECONNECTION_AFTER_PAD_KILLED    30           //30 min
+//#define RX_RECONNECTION_AFTER_PAD_KILLED    30         //30 min
 
-#define RX_RECONNECTION_CHARGE_COMPLETE     120          //2 min
+/* ASSUMPTION - scooter is in the same pad until it is disconnected */
+//#define RX_RECONNECTION_CHARGE_COMPLETE     120          //2 min  
+
 #define RX_RECONNECTION_OVERCURRENT         300          //5 min
 #define RX_RECONNECTION_OVERTEMPERATURE     300          //5 min
 #define RX_RECONNECTION_OVERVOLTAGE         300          //5 min
@@ -102,9 +99,6 @@
 /* Keeps power outputs state in memory */
 uint8_t low_power_pads[4];
 uint8_t full_power_pads[4];
-
-/* for config state */
-time_t aux_found;
 
 struct ble_hs_adv_fields;
 struct ble_gap_conn_desc;

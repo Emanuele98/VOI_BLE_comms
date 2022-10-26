@@ -20,7 +20,6 @@ static const char* TAG = "MAIN";
  */
 void init_NVS(void)
 {
-    //TODO: SET ONLY IF ITS DOES NOT EXIST YET! -- OTHERWISE GET
     //NVS reading
     esp_err_t err = nvs_open("reconnection", NVS_READWRITE, &my_handle);
     if (err != ESP_OK) 
@@ -105,7 +104,6 @@ static void host_ctrl_on_reset(int reason)
     CTU_state_change(CTU_CONFIG_STATE, (void *)NULL);
 
     ESP_LOGW(TAG, "Resetting state; reason=%d\n", reason);
-    //todo: reset happens here (guru meditation error)
 }
 
 /** 
@@ -154,6 +152,7 @@ void init_setup(void)
         install_sd_card();
 
     /* Initialize WiFi connectivity*/
+    MQTT = false;
     if (WIFI)
         connectivity_setup();
 
@@ -162,6 +161,8 @@ void init_setup(void)
 
     /* Init values on NVS */ 
     init_NVS();
+
+    time(&conf_time);    
 }
 
 /** 
@@ -170,8 +171,6 @@ void init_setup(void)
  *          both the BLE host core (CPU0) and the main core (CPU1) start with their respective
  *          tasks and configurations.
 */
-
-//todo: use ESP_ERROR_CHECK_WITHOUT_ABORT() everywhere
 
 void app_main(void)
 {
@@ -211,7 +210,6 @@ void app_main(void)
     //SET MAX TX POWER
     esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_SCAN, ESP_PWR_LVL_P9); 
 
-    //TODO:
     //check esp_bt_sleep_enable()
  
     /* Runtime function for main context */

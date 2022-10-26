@@ -78,6 +78,8 @@ struct tm info;
 /* MQTT CLIENT */
 esp_mqtt_client_handle_t client;
 
+/* mqtt connected? */
+bool MQTT;
 
 
 /**

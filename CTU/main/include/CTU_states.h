@@ -31,7 +31,7 @@
 #define PERIODIC_AMBIENT_TEMP_TIMER   10000 
 
 /* Max number of localization attempts allowed */
-#define MAX_LOC_ATTEMPTS              5     
+#define MAX_LOC_ATTEMPTS              10     
 
 /* Minimum time for the peer to wait after a failed localization attempt */
 #define MIN_TIME_AFTER_LOC            5
@@ -55,7 +55,7 @@
 #define BATTERY_REACTION_TIME         10
 
 /* Minimum time for the voltage to be received during the localization process */
-#define MIN_LOW_POWER_ON              0.1
+#define MIN_LOW_POWER_ON              0.18
 
 /* Minimum time for the Voltage check to be valid after the switching activates another pad */
 #define MIN_SWITCH_TIME               0.02
@@ -72,8 +72,15 @@ struct peer;
 //varaible to pass between the aux ctu processes for sequential switching during the localization process
 int8_t baton;
 
+/* Store when the scooter is fully charged */
+bool fully_charged[4];
+
+
 /* All states timer handles */
 TimerHandle_t periodic_scan_t_handle, ambient_temp_handle;
+
+time_t conf_time;
+
 
 /**
  * @brief Possible states of CTU

@@ -1210,17 +1210,17 @@ int peer_delete(uint16_t conn_handle)
     int rc;
 
     peer = peer_find(conn_handle);
+    
+    if (peer == NULL) {
+        return BLE_HS_ENOTCONN;
+    }  
+    ESP_LOGW(TAG, "Deleting peer with conn_handle=%d; %d peers remaining", conn_handle, NUM_CRU + NUM_AUX_CTU);
 
     if(peer->CRU) {
         NUM_CRU--;
     } else {
         NUM_AUX_CTU--;
     }
-
-    if (peer == NULL) {
-        return BLE_HS_ENOTCONN;
-    }  
-    ESP_LOGW(TAG, "Deleting peer with conn_handle=%d; %d peers remaining", conn_handle, NUM_CRU + NUM_AUX_CTU);
 
     SLIST_REMOVE(&peers, peer, peer, next);
 
@@ -1253,7 +1253,6 @@ int peer_delete(uint16_t conn_handle)
 int peer_add(uint16_t conn_handle, bool CRU)
 {
     struct peer *peer;
-    //todo: reset fields?
 
     if ((MYNEWT_VAL(BLE_MAX_CONNECTIONS) > NUM_CRU + NUM_AUX_CTU))
     {

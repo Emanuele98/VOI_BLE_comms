@@ -220,7 +220,7 @@ void CTU_ambient_temperature(void *arg)
 			write_sd_card(temp_path, getTemperature(), &temp_time);
 			write_sd_card(hum_path, getHumidity(), &temp_time);
 		}
-		if (WIFI)
+		if (MQTT)
 		{
         	sprintf(temp, "%.1f", getTemperature());
         	esp_mqtt_client_publish(client, temp_path, temp, 0, 0, 0);
