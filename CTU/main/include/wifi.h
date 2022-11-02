@@ -30,7 +30,7 @@
 #define WIFI_SSID           CONFIG_WIFI_SSID
 #define WIFI_PASS           CONFIG_WIFI_PASSWORD
 #define WIFI_MAXIMUM_RETRY  10
-#define BROKER_URI          CONFIG_BROKER_URI
+#define BROKER_URL          CONFIG_BROKER_URL
 
 /* The event group allows multiple bits for each event, but we only care about two events:
  * - we are connected to the AP with an IP

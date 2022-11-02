@@ -50,7 +50,7 @@
 #define MAX_AUX_CTU                         4
 
 //BLE
-#define COMMS_ERROR_LIMIT                   30
+#define COMMS_ERROR_LIMIT                   60
 
 #define N_CHAR_UUIDS                        5
 #define N_BYTES_IN_UUID                     16
@@ -69,7 +69,7 @@
 #define BLE_SCAN_TIMEOUT                    1000     
 #define BLE_FIRST_SCAN_ITVL                 30          /**< The scanning interval (in units of 0.625 ms). */
 #define BLE_FIRST_SCAN_WIND					30          /**< The scanning window   (in units of 0.625 ms). */
-                                                         /**< The scan window must be less than 256 (160 ms) to coexist with WiFi */
+                                                        /**< The scan window must be less than 256 (160 ms) to coexist with WiFi */
 #define N_BYTES_IN_CTU_STATIC               17
 
 #define MINIMUM_ADV_RSSI                    -90
@@ -79,9 +79,9 @@
 #define PRU_CONTROL_CHAR_SIZE               5
 
 // RECONNECTION TIMES
-#define RECONNECTION_LOC_FAIL               30           //30 sec
-#define RECONNECTION_COMMS_FAIL             60           //1 min
-#define RECONNECTION_SCOOTER_LEFT           30           //30 sec
+#define RECONNECTION_LOC_FAIL               10           //10 sec
+#define RECONNECTION_COMMS_FAIL             30           //30 sec
+#define RECONNECTION_SCOOTER_LEFT           10           //30 sec
 //#define RX_RECONNECTION_AFTER_PAD_KILLED    30         //30 min
 
 /* ASSUMPTION - scooter is in the same pad until it is disconnected */
@@ -91,7 +91,7 @@
 #define RX_RECONNECTION_OVERTEMPERATURE     300          //5 min
 #define RX_RECONNECTION_OVERVOLTAGE         300          //5 min
 
-#define TX_RECONNECTION_FOD                 300          //5 min
+#define TX_RECONNECTION_FOD                 45           //45 sec
 #define TX_RECONNECTION_OVERCURRENT         300          //5 min
 #define TX_RECONNECTION_OVERTEMPERATURE     300          //5 min
 #define TX_RECONNECTION_OVERVOLTAGE         300          //5 min

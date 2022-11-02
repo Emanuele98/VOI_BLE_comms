@@ -30,7 +30,7 @@ static uint8_t cru_CE8J[6] = {0x86, 0x85, 0xed, 0x0c, 0x38, 0x90};
 static uint8_t cru_D8X5[6] = {0xb2, 0x6d, 0x24, 0xfb, 0x0b, 0xac};
 
 //timer 
-static time_t switch_pad_ON, switch_pad_OFF, loc_success;
+static time_t switch_pad_ON, switch_pad_OFF, loc_success, FullChargeCheck[4];
 static float time_sec, time_lowpower_on, min_switch_time, loc_time;
 
 //variable to know which pad is actually on in Low Power mode
@@ -289,16 +289,13 @@ void ble_central_kill_CRU(uint16_t conn_handle, TaskHandle_t task_handle)
             struct peer *Aux_CTU = Aux_CTU_find(peer->position);
             if(Aux_CTU != NULL)
             {
-                while (rc)
-                    rc = ble_central_update_control_enables(0, 1, 0, Aux_CTU);
                 //LEDS
                 if (peer->alert_payload.alert_field.charge_complete)
                     led_state[peer->position-1] = 3;
                 else
                     led_state[peer->position-1] = 0;
-                rc = 1;
                 while (rc)
-                    rc = ble_central_update_control_enables(0, 0, led_state[peer->position-1], Aux_CTU);
+                    rc = ble_central_update_control_enables(0, 1, led_state[peer->position-1], Aux_CTU);
             }
             time(&now);
             localtime_r(&now, &info);
@@ -313,7 +310,7 @@ void ble_central_kill_CRU(uint16_t conn_handle, TaskHandle_t task_handle)
             }
         if (!peer->alert_payload.alert_field.charge_complete) //stay connected if fully charged until the scooter leaves the platform
         {
-            fully_charged[peer->voi_code] = 0;
+            fully_charged[peer->position-1] = 0;
             ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
         }
         //DELETE THE TASK ALWAYS AT THE END
@@ -418,7 +415,7 @@ static int ble_central_on_localization_process(uint16_t conn_handle,
         //make sure to send only once
         if (full_power_pads[current_low_power-1] == 0)
         {
-            rc = ble_central_update_control_enables(1, 1, 0, Aux_CTU);
+            rc = ble_central_update_control_enables(1, 1, 1, Aux_CTU);
             //make sure the command goes through
             if (!rc)
             {
@@ -468,7 +465,7 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
 {
 
     struct peer *peer = (struct peer *) arg;
-    int rc = 0;
+    int rc = 1;
     
     // If the characteristic has not been read correctly
     if (error->status != 0)
@@ -488,21 +485,20 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
     //all_low_power_off check to make sure first it switches off and then on
 
 
-    if (current_localization_process())
+    if (current_localization_process() && !full_power_pads[peer->position-1] && !fully_charged[peer->position-1])
     {
         //SWITCH ON
         if (all_low_power_off())
         {
             if (baton == peer->position)
             {
-                rc = ble_central_update_control_enables(1, 0, 0, peer);
-                if (!rc)
-                {
-                    current_low_power = baton;
-                    time(&switch_pad_ON);
-                    //pass the baton to the next pad
-                    pass_the_baton(); 
-                }
+                while (rc)
+                    rc = ble_central_update_control_enables(1, 0, 0, peer);
+                current_low_power = baton;
+                time(&switch_pad_ON);
+                //pass the baton to the next pad
+                pass_the_baton(); 
+                
             }
         } else
         {
@@ -514,12 +510,25 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
                 if (time_lowpower_on > MIN_LOW_POWER_ON)
                 {
                     //ESP_LOGE(TAG, "Time LOW POWER ON %.02f", time_lowpower_on);
-                    ble_central_update_control_enables(0, 0, 0, peer);
+                    while (rc)
+                        rc = ble_central_update_control_enables(0, 0, 0, peer);
                 }
             }
         }
     }
-    
+
+    if(fully_charged[peer->position-1])
+    {
+        time(&now);
+        time_sec = abs(difftime(now, FullChargeCheck[peer->position-1]));
+        if ((!low_power_pads[peer->position-1]) && (time_sec > FULLY_CHARGED_CHECK_INT))
+        {
+            time(&FullChargeCheck[peer->position-1]);
+            while (rc)
+                rc = ble_central_update_control_enables(1, 0, 3, peer);
+            //ESP_LOGI(TAG, "fully charged check started");
+        }
+    }
     return rc;
 }
 
@@ -609,33 +618,34 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
         return 1;
     }
 
-    //DOUBLE CHECK THE IT IS STILL RECEIVING VOLTAGE
-    if ((peer->dyn_payload.vrect.f < VOLTAGE_FULL_THRESH_OFF) && (time_sec > BATTERY_REACTION_TIME) && (!peer->alert_payload.alert_field.charge_complete))
+    // if the charge is not complete
+    if (!peer->alert_payload.alert_field.charge_complete)
     {
-        peer->correct = false;
-        ESP_LOGE(TAG, "Voltage no longer received! --> SCOOTER LEFT THE PLATFORM");
-        //NVS writing
-        esp_err_t err = nvs_open("reconnection", NVS_READWRITE, &my_handle);
-        if (err != ESP_OK) 
+        //DOUBLE CHECK THE IT IS STILL RECEIVING VOLTAGE
+        if ((peer->dyn_payload.vrect.f < VOLTAGE_FULL_THRESH_OFF) && (time_sec > BATTERY_REACTION_TIME))
         {
-            ESP_LOGE(TAG, "Error (%s) opening NVS handle!\n", esp_err_to_name(err));
-        } else 
-        {
-            time(&now);
-            timeScooter[peer->voi_code] = now + RECONNECTION_SCOOTER_LEFT;
-            nvs_set_i64(my_handle, scooters[peer->voi_code], timeScooter[peer->voi_code]);
-            nvs_commit(my_handle);
-            nvs_close(my_handle);
-        }
-        //disconnect the aux ctu to avoid FOD on roll off
-        ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
-        ble_central_kill_AUX_CTU(Aux_CTU->conn_handle, Aux_CTU->task_handle);
-        return 1;
-    }
+            peer->correct = false;
+            ESP_LOGE(TAG, "Voltage no longer received! --> SCOOTER LEFT THE PLATFORM");
+            //NVS writing
+            esp_err_t err = nvs_open("reconnection", NVS_READWRITE, &my_handle);
+            if (err != ESP_OK) 
+            {
+                ESP_LOGE(TAG, "Error (%s) opening NVS handle!\n", esp_err_to_name(err));
+            } else 
+            {
+                time(&now);
+                timeScooter[peer->voi_code] = now + RECONNECTION_SCOOTER_LEFT;
+                nvs_set_i64(my_handle, scooters[peer->voi_code], timeScooter[peer->voi_code]);
+                nvs_commit(my_handle);
+                nvs_close(my_handle);
+            }
+            //disconnect the aux ctu to avoid FOD on roll off
+            ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
+            ble_central_kill_AUX_CTU(Aux_CTU->conn_handle, Aux_CTU->task_handle);
+            return 1;
+        } 
 
-    //send led command only if the charge is not complete
-    if (!peer->alert_payload.alert_field.charge_complete) 
-    {
+        //send led command only if the charge is not complete
         if ((peer->dyn_payload.vrect.f > VOLTAGE_MIS_THRESH) || (!peer->correct))
             led_state[peer->position-1] = 1;
         else
@@ -644,10 +654,45 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
         if (last_led[peer->voi_code] != led_state[peer->position-1])
         {
             while (rc)
-                rc = ble_central_update_control_enables(0, 0, led_state[peer->position-1], Aux_CTU);
+                rc = ble_central_update_control_enables(1, 1, led_state[peer->position-1], Aux_CTU);
             last_led[peer->voi_code] = led_state[peer->position-1];
+        } 
+
+    } else //if charge complete
+    {
+        time_sec = abs(difftime(now, FullChargeCheck[peer->position-1]));
+        // if charge complete and low power mode on the pad is on
+        if ((low_power_pads[peer->position-1]) && (time_sec > MIN_SWITCH_TIME_FULLY_CHARGED))
+        {
+            // check for a couple of times if Voltage is above 25 V (meaning scooter is still there)
+            if(peer->dyn_payload.vrect.f > VOLTAGE_LOW_THRESH) 
+            {
+                ESP_LOGW(TAG, "fully charged check!");
+                localtime_r(&now, &peer->alert_payload.alert_time);
+                char string_value[2] = "1";
+                // if yes, send the command to the leds (fully green)
+                while (rc)
+                    rc = ble_central_update_control_enables(0, 0, 3, Aux_CTU);
+                if (SD_CARD)
+                    write_sd_card(rx_charge_complete[peer->voi_code], 1.00, &peer->alert_payload.alert_time);
+                if (MQTT)
+                {
+                    esp_mqtt_client_publish(client, rx_charge_complete[peer->voi_code], string_value, 0, 0, 0);
+                    char fully_charged[80];
+                    sprintf(fully_charged, "The scooter %s on pad n. %d is FULLY CHARGED", peer->voi_code_string, peer->position);
+                    esp_mqtt_client_publish(client, debug, fully_charged, 0, 0, 0);
+                }
+            } else 
+            {
+                // if no - disconnect both pad and scooter
+                peer->alert_payload.alert_field.charge_complete = 0;
+                ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
+                ble_central_kill_AUX_CTU(Aux_CTU->conn_handle, Aux_CTU->task_handle);
+                return 1;
+            }
         }
     }
+
     return 0;
 }
 
@@ -860,7 +905,7 @@ static void ble_central_CRU_task_handle(void *arg)
     //FIRST LOCALIZATION PROCESS --> only one a time! need global variable
     //enable power of one pad 
     //wait a reasonable time to see it in the rx
-    //cycle through pads to see if which CRU has the Vrect value above the Treshold
+    //cycle through pads to see if CRU has the Vrect value above the Treshold
     //ENSURE only one localization process per time!
     //discard pad which are already on!
     //check alert is fine
@@ -901,8 +946,8 @@ static void ble_central_CRU_task_handle(void *arg)
                             ESP_LOGI(TAG, "Attempt number: %d", n_loc[peer->voi_code]);
                             break;
                         
-                        //TIMEOUT FOR DETECTING LOCALIZATION (60*80ms) -- 5s 
-                        case 60:
+                        //TIMEOUT FOR DETECTING LOCALIZATION (55*80ms) -- 4.4s 
+                        case 55:
                             ESP_LOGE(TAG, "Localization timer expires!");
                             count[peer->voi_code] = 0;
                             if (n_loc[peer->voi_code] < MAX_LOC_ATTEMPTS)
@@ -1502,6 +1547,7 @@ static void ble_central_connect_if_interesting(const struct ble_gap_disc_desc *d
     {
         ESP_LOGI(TAG, "AUX CTU found!");
         slave_type = 1;
+        time(&conf_time);    
     } else if(ble_central_should_connect(disc) == 2) 
     {
         ESP_LOGI(TAG, "CRU found!");
@@ -1813,7 +1859,8 @@ static void ble_central_unpack_CRU_alert_param(struct os_mbuf* om, uint16_t conn
                 }  else if (peer->alert_payload.alert_field.charge_complete)
                     {
                         ESP_LOGE(TAG, "ALERT -- CHARGE COMPLETE  -- cru");
-                        fully_charged[peer->voi_code] = 1;
+                        time(&FullChargeCheck[peer->position-1]);
+                        fully_charged[peer->position-1] = 1;
                         ble_central_kill_CRU(peer->conn_handle, NULL);
                         if (SD_CARD)
                             write_sd_card(rx_charge_complete[peer->voi_code], 1.00, &peer->alert_payload.alert_time);
@@ -2043,38 +2090,38 @@ uint8_t ble_central_update_control_enables(uint8_t enable, uint8_t full_power, u
         if(led)
         {
             ESP_LOGW(TAG, "SENDING LED COMMAND on pad=%d", peer->position);
-        } else {
-            if (enable == 1)
-            {
-                if(full_power)
-                {
-                    ESP_LOGW(TAG, "FULL MODE");
-                    full_power_pads[peer->position-1] = 1;
-                    
-                    char string_value[2] = "1"; 
-                    if (SD_CARD)
-                        write_sd_card(tx_status[peer->position-1], 1.00, &info);
-                    if (MQTT)
-                        esp_mqtt_client_publish(client, tx_status[peer->position-1], string_value, 0, 0, 0);
+        }
 
-                } else {
-                    ESP_LOGW(TAG, "HALF MODE");
-                    low_power_pads[peer->position-1] = 1;
-                }
-                ESP_LOGW(TAG, "Enable charge on pad=%d", peer->position);
-            }
-            else if(enable == 0)
+        if (enable == 1)
+        {
+            if(full_power)
             {
-                if(full_power)
-                {
-                    ESP_LOGW(TAG, "FULL MODE");
-                    full_power_pads[peer->position-1] = 0;
-                } else {
-                    ESP_LOGW(TAG, "HALF MODE");
-                    low_power_pads[peer->position-1] = 0;
-                }
-                ESP_LOGW(TAG, "Disable charge on pad=%d!", peer->position);
+                ESP_LOGW(TAG, "FULL MODE");
+                full_power_pads[peer->position-1] = 1;
+                
+                char string_value[2] = "1"; 
+                if (SD_CARD)
+                    write_sd_card(tx_status[peer->position-1], 1.00, &info);
+                if (MQTT)
+                    esp_mqtt_client_publish(client, tx_status[peer->position-1], string_value, 0, 0, 0);
+
+            } else {
+                ESP_LOGW(TAG, "HALF MODE");
+                low_power_pads[peer->position-1] = 1;
             }
+            ESP_LOGW(TAG, "Enable charge on pad=%d", peer->position);
+        }
+        else if(enable == 0)
+        {
+            if(full_power)
+            {
+                ESP_LOGW(TAG, "FULL MODE");
+                full_power_pads[peer->position-1] = 0;
+            } else {
+                ESP_LOGW(TAG, "HALF MODE");
+                low_power_pads[peer->position-1] = 0;
+            }
+            ESP_LOGW(TAG, "Disable charge on pad=%d!", peer->position);
         }
     }
     return rc;

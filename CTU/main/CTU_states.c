@@ -84,6 +84,14 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
 
             xTimerStart(periodic_scan_t_handle, 0);
 
+            struct peer *peer;
+            SLIST_FOREACH(peer, &peers, next) 
+            {
+                if(peer->CRU)
+                    ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
+            }
+
+
             ESP_LOGI(TAG,"Configuration State!");
         }
         else if (p_state == CTU_LOW_POWER_STATE)
@@ -152,7 +160,6 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
 */
 static void CTU_configuration_state(void *arg)
 {
-    struct peer *peer;
     //set power interfaces to 0
     low_power_pads[0] = 0;
     low_power_pads[1] = 0;
@@ -164,17 +171,9 @@ static void CTU_configuration_state(void *arg)
     full_power_pads[3] = 0;
 
     time(&now);
-
-    SLIST_FOREACH(peer, &peers, next) 
-    {
-        if(peer->CRU)
-        {
-            ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
-        }
-    }
         
     /* Enter low power state only when the A-CTUs are connected and no more were found in the last 10 s*/
-    if (((now > conf_time + CONF_STATE_TIMEOUT) && (peer_get_NUM_AUX_CTU())) || (peer_get_NUM_AUX_CTU() == 4))
+    if ( ((now > conf_time + CONF_STATE_TIMEOUT) && (peer_get_NUM_AUX_CTU())) || ((peer_get_NUM_AUX_CTU() == 4) && (all_AUX_CTU_set())) )
         CTU_state_change(CTU_LOW_POWER_STATE, (void *)NULL);
 }
 
@@ -349,7 +348,7 @@ void pass_the_baton(void)
         peer = Aux_CTU_find(next_bat + 1);
         if (peer != NULL)
         {
-            if (!full_power_pads[peer->position-1] && !fully_charged[peer->voi_code])
+            if (!full_power_pads[peer->position-1] && !fully_charged[peer->position-1])
             {
                 baton = peer->position;
                 //ESP_LOGI(TAG, "baton %d", baton);

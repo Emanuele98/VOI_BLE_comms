@@ -1,6 +1,5 @@
 make.exe all --print-data-base --no-builtin-variables --no-builtin-rules --question
 # GNU Make 3.81
- 
 # Copyright (C) 2006  Free Software Foundation, Inc.
 # This is free software; see the source for copying conditions.
 # There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A
@@ -12,7 +11,7 @@ Makefile:8: /make/project.mk: No such file or directory
 make.exe: *** No rule to make target `/make/project.mk'.  Stop.
 
 
-# Make data base, printed on Wed Oct 26 19:58:27 2022
+# Make data base, printed on Wed Nov  2 17:20:28 2022
 
 # Variables
 
@@ -50,6 +49,8 @@ ONEDRIVE = C:\Users\degan\OneDrive
 PATHEXT = .COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC
 # makefile (from `Makefile', line 1)
 MAKEFILE_LIST :=  Makefile
+# environment
+FPS_BROWSER_USER_PROFILE_STRING = Default
 # environment
 TMP = /tmp
 # environment
@@ -91,7 +92,7 @@ NRFGOSTUDIOPATH = C:\Program Files (x86)\Nordic Semiconductor\nRFgo Studio
 # automatic
 %F = $(notdir $%)
 # environment
-CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_13472_TPXFRQODOGGSEVUQ
+CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_20316_UHMLHUTDEEPCWBYJ
 # environment
 COMPUTERNAME = LAPTOP-CQUHDE6I
 # environment
@@ -215,11 +216,13 @@ PROCESSOR_LEVEL = 6
 # environment
 TERM = cygwin
 # environment
-VSCODE_PID = 13472
+FPS_BROWSER_APP_PROFILE_STRING = Internet Explorer
+# environment
+VSCODE_PID = 20316
 # environment
 USERDOMAIN_ROAMINGPROFILE = LAPTOP-CQUHDE6I
 # variable set hash-table stats:
-# Load=101/1024=10%, Rehash=0, Collisions=8/124=6%
+# Load=103/1024=10%, Rehash=0, Collisions=8/126=6%
 
 # Pattern-specific Variable Values
 
@@ -283,6 +286,6 @@ Makefile:
 # strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
 # strcache free: total = 4070 / max = 4070 / min = 4070 / avg = 4070
 
-# Finished Make data base on Wed Oct 26 19:58:27 2022
+# Finished Make data base on Wed Nov  2 17:20:28 2022
 
  

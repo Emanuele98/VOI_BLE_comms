@@ -1634,8 +1634,8 @@
                 "children": [],
                 "depends_on": null,
                 "help": null,
-                "id": "BROKER_URI",
-                "name": "BROKER_URI",
+                "id": "BROKER_URL",
+                "name": "BROKER_URL",
                 "range": null,
                 "title": "Broker URL",
                 "type": "string"

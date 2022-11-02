@@ -161,8 +161,6 @@ void init_setup(void)
 
     /* Init values on NVS */ 
     init_NVS();
-
-    time(&conf_time);    
 }
 
 /** 

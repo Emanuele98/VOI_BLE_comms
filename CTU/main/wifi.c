@@ -8,7 +8,9 @@ static EventGroupHandle_t s_wifi_event_group;
 
 //static const uint8_t mqtt_eclipse_org_pem_start[]  = BROKER_CERTIFICATE;
 
-static void mqtt_app_start(void);
+extern const char debug[80];
+
+static bool update = false;
 
 
 
@@ -23,6 +25,7 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         break;
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
+        esp_mqtt_client_publish(client, debug, "MQTT connected", 0, 0, 0);
         MQTT = true;
         break;
     case MQTT_EVENT_DISCONNECTED:
@@ -50,7 +53,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 static void mqtt_app_start(void)
 {
     const esp_mqtt_client_config_t mqtt_cfg = {
-        .uri = BROKER_URI,
+        .uri = BROKER_URL,
         //.cert_pem = (const char *)mqtt_eclipse_org_pem_start,
     };
 
@@ -60,16 +63,15 @@ static void mqtt_app_start(void)
 }
 
 ////////////      WIFI SETUP        ////////////////////////
-/**
+/*
  * @brief Callback function which is called once the Network Time Protocol is synced
  * 
  */
-/*
 static void sntp_callback(struct timeval *tv)
 {
     update = true;
 }
-*/
+
 /**
  * @brief Handler for WiFi and IP events
  * 
@@ -157,6 +159,9 @@ void connectivity_setup(void)
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     sntp_setservername(0, "pool.ntp.org");
     sntp_init();
+    sntp_set_time_sync_notification_cb(sntp_callback);
+
+    while(!update){}
 
     // Set timezone to Eastern Standard Time and print local time
     // with daylight saving
