@@ -1,4 +1,4 @@
-# Install script for directory: C:/esp/esp-idf/components/mbedtls/mbedtls/library
+# Install script for directory: C:/esp-4.2/esp-idf/components/mbedtls/mbedtls/library
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

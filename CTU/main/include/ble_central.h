@@ -79,7 +79,7 @@
 #define PRU_CONTROL_CHAR_SIZE               5
 
 // RECONNECTION TIMES
-#define RECONNECTION_LOC_FAIL               10           //10 sec
+#define RECONNECTION_LOC_FAIL               30           //30 sec
 #define RECONNECTION_COMMS_FAIL             30           //30 sec
 #define RECONNECTION_SCOOTER_LEFT           10           //30 sec
 //#define RX_RECONNECTION_AFTER_PAD_KILLED    30         //30 min

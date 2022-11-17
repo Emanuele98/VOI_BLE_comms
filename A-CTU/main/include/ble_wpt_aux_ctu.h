@@ -69,7 +69,7 @@ wpt_control_payload_t _value4_name;
 /**                   LOCAL PTU CONFIGURATIONS                    **/
 /*******************************************************************/
 
-#define OVER_CURRENT                    2.5									   /**< Maximum current tolerated for I2C measurements. Flow will change in the future to handle such alert. */
+#define OVER_CURRENT                    2.75								   /**< Maximum current tolerated for I2C measurements. Flow will change in the future to handle such alert. */
 #define OVER_VOLTAGE                    70 	    	                           /**< Maximum voltage tolerated for I2C measurements. Flow will change in the future to handle such alert. */
 #define OVER_TEMPERATURE                55									   /**< Maximum temperature tolerated for I2C measurements. */
 /*Voltage treshold during FULL-POWER mode */

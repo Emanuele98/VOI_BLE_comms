@@ -34,7 +34,7 @@
 #define MAX_LOC_ATTEMPTS              20     
 
 /* Minimum time for the peer to wait after a failed localization attempt */
-#define MIN_TIME_AFTER_LOC            3
+#define MIN_TIME_AFTER_LOC            5
 
 /* Max time allowed without finding any A-CTUs*/
 #define CONF_STATE_TIMEOUT            10
@@ -59,12 +59,6 @@
 
 /* Minimum time for the Voltage check to be valid after the switching activates another pad */
 #define MIN_SWITCH_TIME               0.02
-
-/* Minimum time for the Voltage check to be valid after the switching activates the pad after fully charged */
-#define MIN_SWITCH_TIME_FULLY_CHARGED 2
-
-/* Minimum time before checking whether the scooter is still above the pad after it was fully charged */
-#define FULLY_CHARGED_CHECK_INT       30
 
 /* Minimum time for the low power mode during the fully charged checking */
 #define LOW_POWER_FULLY_CHARGED       3

@@ -158,8 +158,8 @@ void connectivity_setup(void)
     //Simple Network Time Protocol
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     sntp_setservername(0, "pool.ntp.org");
-    sntp_init();
     sntp_set_time_sync_notification_cb(sntp_callback);
+    sntp_init();
 
     while(!update){}
 

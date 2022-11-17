@@ -1,4 +1,4 @@
-# Install script for directory: C:/esp/esp-idf/components/soc
+# Install script for directory: C:/esp-4.2/esp-idf/components/soc
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -30,5 +30,12 @@ endif()
 # Is this installation the result of a crosscompile?
 if(NOT DEFINED CMAKE_CROSSCOMPILING)
   set(CMAKE_CROSSCOMPILING "TRUE")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for each subdirectory.
+  include("C:/Users/degan/OneDrive/Desktop/VOI_comms_BLE/CRU/build/bootloader/esp-idf/soc/src/esp32/cmake_install.cmake")
+  include("C:/Users/degan/OneDrive/Desktop/VOI_comms_BLE/CRU/build/bootloader/esp-idf/soc/soc/cmake_install.cmake")
+
 endif()
 

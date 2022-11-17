@@ -1,4 +1,4 @@
-# Install script for directory: C:/esp/esp-idf/components/driver
+# Install script for directory: C:/esp-4.2/esp-idf/components/driver
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

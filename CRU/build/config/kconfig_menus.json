@@ -43,8 +43,8 @@
         "children": [],
         "depends_on": null,
         "help": null,
-        "id": "IDF_TARGET_ESP32S2BETA",
-        "name": "IDF_TARGET_ESP32S2BETA",
+        "id": "IDF_TARGET_ESP32S2",
+        "name": "IDF_TARGET_ESP32S2",
         "range": null,
         "title": null,
         "type": "bool"
@@ -133,7 +133,7 @@
                     }
                 ],
                 "depends_on": null,
-                "help": "Select the way the application is built.\n\nBy default, the application is built as a binary file in a format compatible with\nthe ESP32 bootloader. In addition to this application, 2nd stage bootloader is\nalso built. Application and bootloader binaries can be written into flash and\nloaded/executed from there.\n\nAnother option, useful for only very small and limited applications, is to only link\nthe .elf file of the application, such that it can be loaded directly into RAM over\nJTAG. Note that since IRAM and DRAM sizes are very limited, it is not possible to\nbuild any complex application this way. However for kinds of testing and debugging,\nthis option may provide faster iterations, since the application does not need to be\nwritten into flash.\nNote that at the moment, ESP-IDF does not contain all the startup code required to\ninitialize the CPUs and ROM memory (data/bss). Therefore it is necessary to execute\na bit of ROM code prior to executing the application. A gdbinit file may look as follows:\n\n    # Connect to a running instance of OpenOCD\n    target remote :3333\n    # Reset and halt the target\n    mon reset halt\n    # Run to a specific point in ROM code,\n    #  where most of initialization is complete.\n    thb *0x40007901\n    c\n    # Load the application into RAM\n    load\n    # Run till app_main\n    tb app_main\n    c\n\nExecute this gdbinit file as follows:\n\n    xtensa-esp32-elf-gdb build/app-name.elf -x gdbinit\n\nRecommended sdkconfig.defaults for building loadable ELF files is as follows.\nCONFIG_APP_BUILD_TYPE_ELF_RAM is required, other options help reduce application\nmemory footprint.\n\n    CONFIG_APP_BUILD_TYPE_ELF_RAM=y\n    CONFIG_VFS_SUPPORT_TERMIOS=\n    CONFIG_NEWLIB_NANO_FORMAT=y\n    CONFIG_ESP32_PANIC_PRINT_HALT=y\n    CONFIG_ESP32_DEBUG_STUBS_ENABLE=\n    CONFIG_ESP_ERR_TO_NAME_LOOKUP=",
+                "help": "Select the way the application is built.\n\nBy default, the application is built as a binary file in a format compatible with\nthe ESP32 bootloader. In addition to this application, 2nd stage bootloader is\nalso built. Application and bootloader binaries can be written into flash and\nloaded/executed from there.\n\nAnother option, useful for only very small and limited applications, is to only link\nthe .elf file of the application, such that it can be loaded directly into RAM over\nJTAG. Note that since IRAM and DRAM sizes are very limited, it is not possible to\nbuild any complex application this way. However for kinds of testing and debugging,\nthis option may provide faster iterations, since the application does not need to be\nwritten into flash.\nNote that at the moment, ESP-IDF does not contain all the startup code required to\ninitialize the CPUs and ROM memory (data/bss). Therefore it is necessary to execute\na bit of ROM code prior to executing the application. A gdbinit file may look as follows:\n\n    # Connect to a running instance of OpenOCD\n    target remote :3333\n    # Reset and halt the target\n    mon reset halt\n    # Run to a specific point in ROM code,\n    #  where most of initialization is complete.\n    thb *0x40007901\n    c\n    # Load the application into RAM\n    load\n    # Run till app_main\n    tb app_main\n    c\n\nExecute this gdbinit file as follows:\n\n    xtensa-esp32-elf-gdb build/app-name.elf -x gdbinit\n\nRecommended sdkconfig.defaults for building loadable ELF files is as follows.\nCONFIG_APP_BUILD_TYPE_ELF_RAM is required, other options help reduce application\nmemory footprint.\n\n    CONFIG_APP_BUILD_TYPE_ELF_RAM=y\n    CONFIG_VFS_SUPPORT_TERMIOS=\n    CONFIG_NEWLIB_NANO_FORMAT=y\n    CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y\n    CONFIG_ESP_DEBUG_STUBS_ENABLE=\n    CONFIG_ESP_ERR_TO_NAME_LOOKUP=",
                 "id": "build-type-application-build-type",
                 "name": "APP_BUILD_TYPE",
                 "title": "Application build type",
@@ -205,6 +205,27 @@
                 "name": "APP_EXCLUDE_PROJECT_NAME_VAR",
                 "range": null,
                 "title": "Exclude PROJECT_NAME from firmware image",
+                "type": "bool"
+            },
+            {
+                "children": [
+                    {
+                        "children": [],
+                        "depends_on": "APP_PROJECT_VER_FROM_CONFIG",
+                        "help": "Project version",
+                        "id": "APP_PROJECT_VER",
+                        "name": "APP_PROJECT_VER",
+                        "range": null,
+                        "title": "Project version",
+                        "type": "string"
+                    }
+                ],
+                "depends_on": null,
+                "help": "If this is enabled, then config item APP_PROJECT_VER will be used for the variable PROJECT_VER.\nOther ways to set PROJECT_VER will be ignored.",
+                "id": "APP_PROJECT_VER_FROM_CONFIG",
+                "name": "APP_PROJECT_VER_FROM_CONFIG",
+                "range": null,
+                "title": "Get the project version from Kconfig",
                 "type": "bool"
             },
             {
@@ -360,12 +381,22 @@
             },
             {
                 "children": [],
-                "depends_on": "ESPTOOLPY_FLASHMODE_QIO || ESPTOOLPY_FLASHMODE_QOUT",
-                "help": "This value is ignored unless flash mode is set to QIO or QOUT *and* the SPI flash pins have been\noverriden by setting the eFuses SPI_PAD_CONFIG_xxx.\n\nWhen this is the case, the eFuse config only defines 3 of the 4 Quad I/O data pins. The WP pin (aka ESP32\npin \"SD_DATA_3\" or SPI flash pin \"IO2\") is not specified in eFuse. That pin number is compiled into the\nbootloader instead.\n\nThe default value (GPIO 7) is correct for WP pin on ESP32-D2WD integrated flash.",
+                "depends_on": "IDF_TARGET_ESP32 && (ESPTOOLPY_FLASHMODE_QIO || ESPTOOLPY_FLASHMODE_QOUT)",
+                "help": "This setting is only used if the SPI flash pins have been overridden by setting the eFuses\nSPI_PAD_CONFIG_xxx, and the SPI flash mode is QIO or QOUT.\n\nWhen this is the case, the eFuse config only defines 3 of the 4 Quad I/O data pins. The WP pin (aka\nESP32 pin \"SD_DATA_3\" or SPI flash pin \"IO2\") is not specified in eFuse. The same pin is also used\nfor external SPIRAM if it is enabled.\n\nIf this config item is set to N (default), the correct WP pin will be automatically used for any\nEspressif chip or module with integrated flash. If a custom setting is needed, set this config item to\nY and specify the GPIO number connected to the WP.",
+                "id": "BOOTLOADER_SPI_CUSTOM_WP_PIN",
+                "name": "BOOTLOADER_SPI_CUSTOM_WP_PIN",
+                "range": null,
+                "title": "Use custom SPI Flash WP Pin when flash pins set in eFuse (read help)",
+                "type": "bool"
+            },
+            {
+                "children": [],
+                "depends_on": "IDF_TARGET_ESP32 && (ESPTOOLPY_FLASHMODE_QIO || ESPTOOLPY_FLASHMODE_QOUT)",
+                "help": "The option \"Use custom SPI Flash WP Pin\" must be set or this value is ignored\n\nIf burning a customized set of SPI flash pins in eFuse and using QIO or QOUT mode for flash, set this\nvalue to the GPIO number of the SPI flash WP pin.",
                 "id": "BOOTLOADER_SPI_WP_PIN",
                 "name": "BOOTLOADER_SPI_WP_PIN",
                 "range": null,
-                "title": "SPI Flash WP Pin when customising pins via eFuse (read help)",
+                "title": "Custom SPI Flash WP Pin",
                 "type": "int"
             },
             {
@@ -521,7 +552,7 @@
                             {
                                 "children": [],
                                 "depends_on": "BOOTLOADER_APP_ANTI_ROLLBACK",
-                                "help": "The size of the efuse secure version field.\nIts length is limited to 32 bits for ESP32 and 16 bits for ESP32S2BETA.\nThis determines how many times the security version can be increased.",
+                                "help": "The size of the efuse secure version field.\nIts length is limited to 32 bits for ESP32 and 16 bits for ESP32-S2.\nThis determines how many times the security version can be increased.",
                                 "id": "BOOTLOADER_APP_SEC_VER_SIZE_EFUSE_FIELD",
                                 "name": "BOOTLOADER_APP_SEC_VER_SIZE_EFUSE_FIELD",
                                 "range": null,
@@ -637,6 +668,26 @@
             },
             {
                 "children": [],
+                "depends_on": "ESP32_REV_MIN_3 || IDF_TARGET_ESP32S2",
+                "help": null,
+                "id": "SECURE_BOOT_SUPPORTS_RSA",
+                "name": "SECURE_BOOT_SUPPORTS_RSA",
+                "range": null,
+                "title": null,
+                "type": "bool"
+            },
+            {
+                "children": [],
+                "depends_on": "IDF_TARGET_ESP32S2",
+                "help": null,
+                "id": "SECURE_TARGET_HAS_SECURE_ROM_DL_MODE",
+                "name": "SECURE_TARGET_HAS_SECURE_ROM_DL_MODE",
+                "range": null,
+                "title": null,
+                "type": "bool"
+            },
+            {
+                "children": [],
                 "depends_on": "!SECURE_BOOT",
                 "help": "Require apps to be signed to verify their integrity.\n\nThis option uses the same app signature scheme as hardware secure boot, but unlike hardware secure boot it\ndoes not prevent the bootloader from being physically updated. This means that the device can be secured\nagainst remote network access, but not physical access. Compared to using hardware Secure Boot this option\nis much simpler to implement.",
                 "id": "SECURE_SIGNED_APPS_NO_SECURE_BOOT",
@@ -659,7 +710,7 @@
                     },
                     {
                         "children": [],
-                        "depends_on": "ESP32_REV_MIN_3 && SECURE_BOOT_V2_ENABLED && <choice SECURE_SIGNED_APPS_SCHEME>",
+                        "depends_on": "SECURE_BOOT_SUPPORTS_RSA && SECURE_BOOT_V2_ENABLED && <choice SECURE_SIGNED_APPS_SCHEME>",
                         "help": "Appends the RSA-3072 based Signature block to the application.\nRefer to <Secure Boot Version 2 documentation link> before enabling.",
                         "id": "SECURE_SIGNED_APPS_RSA_SCHEME",
                         "name": "SECURE_SIGNED_APPS_RSA_SCHEME",
@@ -711,7 +762,7 @@
                             },
                             {
                                 "children": [],
-                                "depends_on": "ESP32_REV_MIN_3 && <choice SECURE_BOOT_VERSION>",
+                                "depends_on": "SECURE_BOOT_SUPPORTS_RSA && <choice SECURE_BOOT_VERSION>",
                                 "help": "Build a bootloader which enables Secure Boot version 2 on first boot.\nRefer to Secure Boot V2 section of the ESP-IDF Programmer's Guide for this version before enabling.",
                                 "id": "SECURE_BOOT_V2_ENABLED",
                                 "name": "SECURE_BOOT_V2_ENABLED",
@@ -862,7 +913,7 @@
                                 "type": "bool"
                             }
                         ],
-                        "depends_on": "IDF_TARGET_ESP32S2BETA && SECURE_FLASH_ENC_ENABLED",
+                        "depends_on": "IDF_TARGET_ESP32S2 && SECURE_FLASH_ENC_ENABLED",
                         "help": "Size of generated AES-XTS key.\n\nAES-128 uses a 256-bit key (32 bytes) which occupies one Efuse key block.\nAES-256 uses a 512-bit key (64 bytes) which occupies two Efuse key blocks.\n\nThis setting is ignored if either type of key is already burned to Efuse before the first boot.\nIn this case, the pre-burned key is used and no new key is generated.",
                         "id": "security-features-enable-flash-encryption-on-boot-read-docs-first--size-of-generated-aes-xts-key",
                         "name": "SECURE_FLASH_ENCRYPTION_KEYSIZE",
@@ -912,7 +963,7 @@
                 "children": [
                     {
                         "children": [],
-                        "depends_on": "SECURE_BOOT_INSECURE || SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT",
+                        "depends_on": "(SECURE_BOOT_INSECURE || SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT) && IDF_TARGET_ESP32",
                         "help": "By default, the BASIC ROM Console starts on reset if no valid bootloader is\nread from the flash.\n\nWhen either flash encryption or secure boot are enabled, the default is to\ndisable this BASIC fallback mode permanently via eFuse.\n\nIf this option is set, this eFuse is not burned and the BASIC ROM Console may\nremain accessible.  Only set this option in testing environments.",
                         "id": "SECURE_BOOT_ALLOW_ROM_BASIC",
                         "name": "SECURE_BOOT_ALLOW_ROM_BASIC",
@@ -952,6 +1003,16 @@
                     },
                     {
                         "children": [],
+                        "depends_on": "SECURE_BOOT_INSECURE && SECURE_BOOT_V2_ENABLED",
+                        "help": "By default, enabling either flash encryption in release mode or secure boot will automatically\ndisable UART download mode on ESP32 ECO3, or enable secure download mode on newer chips.\nThis is recommended to reduce the attack surface of the chip.\n\nTo allow the full UART download mode to stay enabled, enable this option and ensure\nthe options SECURE_DISABLE_ROM_DL_MODE and SECURE_ENABLE_SECURE_ROM_DL_MODE are disabled as applicable.\nThis is not recommended.",
+                        "id": "SECURE_INSECURE_ALLOW_DL_MODE",
+                        "name": "SECURE_INSECURE_ALLOW_DL_MODE",
+                        "range": null,
+                        "title": "Don't automatically restrict UART download mode",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [],
                         "depends_on": "SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT",
                         "help": "If not set (default), the bootloader will permanently disable UART bootloader encryption access on\nfirst boot. If set, the UART bootloader will still be able to access hardware encryption.\n\nIt is recommended to only set this option in testing environments.",
                         "id": "SECURE_FLASH_UART_BOOTLOADER_ALLOW_ENC",
@@ -962,7 +1023,7 @@
                     },
                     {
                         "children": [],
-                        "depends_on": "SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT",
+                        "depends_on": "SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT && IDF_TARGET_ESP32",
                         "help": "If not set (default), the bootloader will permanently disable UART bootloader decryption access on\nfirst boot. If set, the UART bootloader will still be able to access hardware decryption.\n\nOnly set this option in testing environments. Setting this option allows complete bypass of flash\nencryption.",
                         "id": "SECURE_FLASH_UART_BOOTLOADER_ALLOW_DEC",
                         "name": "SECURE_FLASH_UART_BOOTLOADER_ALLOW_DEC",
@@ -998,12 +1059,22 @@
             },
             {
                 "children": [],
-                "depends_on": "ESP32_REV_MIN_3",
+                "depends_on": "!IDF_TARGET_ESP32 || ESP32_REV_MIN_3",
                 "help": "If set, during startup the app will burn an eFuse bit to permanently disable the UART ROM\nDownload Mode. This prevents any future use of esptool.py, espefuse.py and similar tools.\n\nOnce disabled, if the SoC is booted with strapping pins set for ROM Download Mode\nthen an error is printed instead.\n\nIt is recommended to enable this option in any production application where Flash\nEncryption and/or Secure Boot is enabled and access to Download Mode is not required.\n\nIt is also possible to permanently disable Download Mode by calling\nesp_efuse_disable_rom_download_mode() at runtime.",
                 "id": "SECURE_DISABLE_ROM_DL_MODE",
                 "name": "SECURE_DISABLE_ROM_DL_MODE",
                 "range": null,
                 "title": "Permanently disable ROM Download Mode",
+                "type": "bool"
+            },
+            {
+                "children": [],
+                "depends_on": "SECURE_TARGET_HAS_SECURE_ROM_DL_MODE && !SECURE_DISABLE_ROM_DL_MODE",
+                "help": "If set, during startup the app will burn an eFuse bit to permanently switch the UART ROM\nDownload Mode into a separate Secure Download mode. This option can only work if\nDownload Mode is not already disabled by eFuse.\n\nSecure Download mode limits the use of Download Mode functions to simple flash read,\nwrite and erase operations, plus a command to return a summary of currently enabled\nsecurity features.\n\nSecure Download mode is not compatible with the esptool.py flasher stub feature,\nespefuse.py, read/writing memory or registers, encrypted download, or any other\nfeatures that interact with unsupported Download Mode commands.\n\nSecure Download mode should be enabled in any application where Flash Encryption\nand/or Secure Boot is enabled. Disabling this option does not immediately cancel\nthe benefits of the security features, but it increases the potential \"attack\nsurface\" for an attacker to try and bypass them with a successful physical attack.\n\nIt is also possible to enable secure download mode at runtime by calling\nesp_efuse_enable_rom_secure_download_mode()",
+                "id": "SECURE_ENABLE_SECURE_ROM_DL_MODE",
+                "name": "SECURE_ENABLE_SECURE_ROM_DL_MODE",
+                "range": null,
+                "title": "Permanently switch to ROM UART Secure Download mode",
                 "type": "bool"
             }
         ],
@@ -1112,6 +1183,16 @@
                 "name": "ESPTOOLPY_COMPRESSED",
                 "range": null,
                 "title": "Use compressed upload",
+                "type": "bool"
+            },
+            {
+                "children": [],
+                "depends_on": "!SECURE_ENABLE_SECURE_ROM_DL_MODE",
+                "help": null,
+                "id": "ESPTOOLPY_WITH_STUB",
+                "name": "ESPTOOLPY_WITH_STUB",
+                "range": null,
+                "title": null,
                 "type": "bool"
             },
             {
@@ -1574,7 +1655,7 @@
             },
             {
                 "children": [],
-                "depends_on": null,
+                "depends_on": "!ESP32_COMPATIBLE_PRE_V3_1_BOOTLOADERS",
                 "help": "Generate an MD5 checksum for the partition table for protecting the\nintegrity of the table. The generation should be turned off for legacy\nbootloaders which cannot recognize the MD5 checksum in the partition\ntable.",
                 "id": "PARTITION_TABLE_MD5",
                 "name": "PARTITION_TABLE_MD5",
@@ -2778,28 +2859,6 @@
                                 "range": null,
                                 "title": "BLE adv report flow control supported",
                                 "type": "bool"
-                            },
-                            {
-                                "children": [
-                                    {
-                                        "children": [],
-                                        "depends_on": "BTDM_COEX_BT_OPTIONS",
-                                        "help": "Improve BLE ADV coexistence priority to make it better performance.\nFor example, BLE mesh need to enable this option to improve BLE adv performance.",
-                                        "id": "BTDM_COEX_BLE_ADV_HIGH_PRIORITY",
-                                        "name": "BTDM_COEX_BLE_ADV_HIGH_PRIORITY",
-                                        "range": null,
-                                        "title": "Improve BLE ADV priority for WiFi & BLE coexistence",
-                                        "type": "bool"
-                                    }
-                                ],
-                                "depends_on": "ESP32_WIFI_SW_COEXIST_ENABLE",
-                                "help": "Options of Bluetooth Side of WiFi and bluetooth coexistence.",
-                                "id": "BTDM_COEX_BT_OPTIONS",
-                                "is_menuconfig": true,
-                                "name": "BTDM_COEX_BT_OPTIONS",
-                                "range": null,
-                                "title": "Coexistence Bluetooth Side Options",
-                                "type": "menu"
                             }
                         ],
                         "depends_on": null,
@@ -3029,6 +3088,16 @@
                                 "name": "BT_HFP_WBS_ENABLE",
                                 "range": null,
                                 "title": "Wide Band Speech",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "BT_CLASSIC_ENABLED",
+                                "help": "This enables the BT HID Host",
+                                "id": "BT_HID_HOST_ENABLED",
+                                "name": "BT_HID_HOST_ENABLED",
+                                "range": null,
+                                "title": "Classic BT HID Host",
                                 "type": "bool"
                             },
                             {
@@ -5192,10 +5261,20 @@
                                         "range": null,
                                         "title": "Default alloc mode",
                                         "type": "bool"
+                                    },
+                                    {
+                                        "children": [],
+                                        "depends_on": "ESP32_IRAM_AS_8BIT_ACCESSIBLE_MEMORY && <choice BT_NIMBLE_MEM_ALLOC_MODE>",
+                                        "help": "Allows to use IRAM memory region as 8bit accessible region.\n\nEvery unaligned (8bit or 16bit) access will result in an exception\nand incur penalty of certain clock cycles per unaligned read/write.",
+                                        "id": "BT_NIMBLE_MEM_ALLOC_MODE_IRAM_8BIT",
+                                        "name": "BT_NIMBLE_MEM_ALLOC_MODE_IRAM_8BIT",
+                                        "range": null,
+                                        "title": "Internal IRAM",
+                                        "type": "bool"
                                     }
                                 ],
                                 "depends_on": null,
-                                "help": "Allocation strategy for NimBLE host stack, essentially provides ability to\nallocate all required dynamic allocations from,\n\n- Internal DRAM memory only\n- External SPIRAM memory only\n- Either internal or external memory based on default malloc()\n  behavior in ESP-IDF\n\nRecommended mode here is always internal, since that is most preferred\nfrom security perspective. But if application requirement does not\nallow sufficient free internal memory then alternate mode can be\nselected.",
+                                "help": "Allocation strategy for NimBLE host stack, essentially provides ability to\nallocate all required dynamic allocations from,\n\n- Internal DRAM memory only\n- External SPIRAM memory only\n- Either internal or external memory based on default malloc()\n  behavior in ESP-IDF\n- Internal IRAM memory wherever applicable else internal DRAM\n\nRecommended mode here is always internal, since that is most preferred\nfrom security perspective. But if application requirement does not\nallow sufficient free internal memory then alternate mode can be\nselected.",
                                 "id": "component-config-bluetooth-nimble-options-memory-allocation-strategy",
                                 "name": "BT_NIMBLE_MEM_ALLOC_MODE",
                                 "title": "Memory allocation strategy",
@@ -5719,10 +5798,20 @@
                                 "range": null,
                                 "title": "Default alloc mode",
                                 "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "ESP32_IRAM_AS_8BIT_ACCESSIBLE_MEMORY && <choice BLE_MESH_MEM_ALLOC_MODE>",
+                                "help": "Allows to use IRAM memory region as 8bit accessible region. Every\nunaligned (8bit or 16bit) access will result in an exception and\nincur penalty of certain clock cycles per unaligned read/write.",
+                                "id": "BLE_MESH_MEM_ALLOC_MODE_IRAM_8BIT",
+                                "name": "BLE_MESH_MEM_ALLOC_MODE_IRAM_8BIT",
+                                "range": null,
+                                "title": "Internal IRAM",
+                                "type": "bool"
                             }
                         ],
                         "depends_on": "BLE_MESH",
-                        "help": "Allocation strategy for BLE Mesh stack, essentially provides ability to\nallocate all required dynamic allocations from,\n\n- Internal DRAM memory only\n- External SPIRAM memory only\n- Either internal or external memory based on default malloc()\n  behavior in ESP-IDF\n\nRecommended mode here is always internal, since that is most preferred\nfrom security perspective. But if application requirement does not allow\nsufficient free internal memory then alternate mode can be selected.",
+                        "help": "Allocation strategy for BLE Mesh stack, essentially provides ability to\nallocate all required dynamic allocations from,\n\n- Internal DRAM memory only\n- External SPIRAM memory only\n- Either internal or external memory based on default malloc()\n  behavior in ESP-IDF\n- Internal IRAM memory wherever applicable else internal DRAM\n\nRecommended mode here is always internal, since that is most preferred\nfrom security perspective. But if application requirement does not allow\nsufficient free internal memory then alternate mode can be selected.",
                         "id": "component-config-esp-ble-mesh-support-memory-allocation-strategy",
                         "name": "BLE_MESH_MEM_ALLOC_MODE",
                         "title": "Memory allocation strategy",
@@ -5741,6 +5830,16 @@
                                         "range": null,
                                         "title": "External SPIRAM",
                                         "type": "bool"
+                                    },
+                                    {
+                                        "children": [],
+                                        "depends_on": "ESP32_IRAM_AS_8BIT_ACCESSIBLE_MEMORY && <choice BLE_MESH_FREERTOS_STATIC_ALLOC_MODE>",
+                                        "help": "If enabled, BLE Mesh allocates dynamic memory from internal IRAM for\nFreeRTOS objects, i.e. mutex, queue. Note: IRAM region cannot be used\nas task stack.",
+                                        "id": "BLE_MESH_FREERTOS_STATIC_ALLOC_IRAM_8BIT",
+                                        "name": "BLE_MESH_FREERTOS_STATIC_ALLOC_IRAM_8BIT",
+                                        "range": null,
+                                        "title": "Internal IRAM",
+                                        "type": "bool"
                                     }
                                 ],
                                 "depends_on": "BLE_MESH_FREERTOS_STATIC_ALLOC && BLE_MESH",
@@ -5751,8 +5850,8 @@
                                 "type": "choice"
                             }
                         ],
-                        "depends_on": "FREERTOS_SUPPORT_STATIC_ALLOCATION && ESP32_SPIRAM_SUPPORT && BLE_MESH",
-                        "help": "Enable this option to use FreeRTOS static allocation APIs for BLE Mesh,\nwhich provides the ability to use different dynamic memory (i.e. SPIRAM)\nfor FreeRTOS objects.\nIf this option is disabled, the FreeRTOS static allocation APIs will not\nbe used, and internal DRAM will be allocated for FreeRTOS objects.",
+                        "depends_on": "FREERTOS_SUPPORT_STATIC_ALLOCATION && (ESP32_SPIRAM_SUPPORT || ESP32_IRAM_AS_8BIT_ACCESSIBLE_MEMORY) && BLE_MESH",
+                        "help": "Enable this option to use FreeRTOS static allocation APIs for BLE Mesh,\nwhich provides the ability to use different dynamic memory (i.e. SPIRAM\nor IRAM) for FreeRTOS objects.\nIf this option is disabled, the FreeRTOS static allocation APIs will not\nbe used, and internal DRAM will be allocated for FreeRTOS objects.",
                         "id": "BLE_MESH_FREERTOS_STATIC_ALLOC",
                         "name": "BLE_MESH_FREERTOS_STATIC_ALLOC",
                         "range": null,
@@ -5768,6 +5867,45 @@
                         "range": null,
                         "title": "Support de-initialize BLE Mesh stack",
                         "type": "bool"
+                    },
+                    {
+                        "children": [
+                            {
+                                "children": [
+                                    {
+                                        "children": [],
+                                        "depends_on": "BLE_MESH_SUPPORT_BLE_ADV && BLE_MESH",
+                                        "help": "Number of advertising buffers for BLE packets available.",
+                                        "id": "BLE_MESH_BLE_ADV_BUF_COUNT",
+                                        "name": "BLE_MESH_BLE_ADV_BUF_COUNT",
+                                        "range": null,
+                                        "title": "Number of advertising buffers for BLE advertising packets",
+                                        "type": "int"
+                                    }
+                                ],
+                                "depends_on": "BLE_MESH",
+                                "help": "When selected, users can send normal BLE advertising packets\nwith specific API.",
+                                "id": "BLE_MESH_SUPPORT_BLE_ADV",
+                                "name": "BLE_MESH_SUPPORT_BLE_ADV",
+                                "range": null,
+                                "title": "Support sending normal BLE advertising packets",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "BLE_MESH",
+                                "help": "When selected, users can register a callback and receive normal BLE\nadvertising packets in the application layer.",
+                                "id": "BLE_MESH_SUPPORT_BLE_SCAN",
+                                "name": "BLE_MESH_SUPPORT_BLE_SCAN",
+                                "range": null,
+                                "title": "Support scanning normal BLE advertising packets",
+                                "type": "bool"
+                            }
+                        ],
+                        "depends_on": "BLE_MESH",
+                        "id": "component-config-esp-ble-mesh-support-ble-mesh-and-ble-coexistence-support",
+                        "title": "BLE Mesh and BLE coexistence support",
+                        "type": "menu"
                     },
                     {
                         "children": [],
@@ -5850,6 +5988,27 @@
                                 "range": null,
                                 "title": "Maximum number of application keys that can be owned by Provisioner",
                                 "type": "int"
+                            },
+                            {
+                                "children": [
+                                    {
+                                        "children": [],
+                                        "depends_on": "BLE_MESH_PROVISIONER_RECV_HB && BLE_MESH_PROVISIONER && BLE_MESH",
+                                        "help": "This option specifies how many heartbeat filter entries Provisioner supports.\nThe heartbeat filter (acceptlist or rejectlist) entries are used to store a\nlist of SRC and DST which can be used to decide if a heartbeat message will\nbe processed and notified to the application layer by Provisioner.\nNote: The filter is an empty rejectlist by default.",
+                                        "id": "BLE_MESH_PROVISIONER_RECV_HB_FILTER_SIZE",
+                                        "name": "BLE_MESH_PROVISIONER_RECV_HB_FILTER_SIZE",
+                                        "range": null,
+                                        "title": "Maximum number of filter entries for receiving Heartbeat messages",
+                                        "type": "int"
+                                    }
+                                ],
+                                "depends_on": "BLE_MESH_PROVISIONER && BLE_MESH",
+                                "help": "When this option is enabled, Provisioner can call specific functions to enable\nor disable receiving Heartbeat messages and notify them to the application layer.",
+                                "id": "BLE_MESH_PROVISIONER_RECV_HB",
+                                "name": "BLE_MESH_PROVISIONER_RECV_HB",
+                                "range": null,
+                                "title": "Support receiving Heartbeat messages",
+                                "type": "bool"
                             }
                         ],
                         "depends_on": "BLE_MESH",
@@ -5954,27 +6113,6 @@
                     {
                         "children": [
                             {
-                                "children": [
-                                    {
-                                        "children": [],
-                                        "depends_on": "BLE_MESH_SPECIFIC_PARTITION && BLE_MESH_SETTINGS && BLE_MESH",
-                                        "help": "This value defines the name of the specified NVS partition used by the\nmesh stack.",
-                                        "id": "BLE_MESH_PARTITION_NAME",
-                                        "name": "BLE_MESH_PARTITION_NAME",
-                                        "range": null,
-                                        "title": "Name of the NVS partition for BLE Mesh",
-                                        "type": "string"
-                                    }
-                                ],
-                                "depends_on": "BLE_MESH_SETTINGS && BLE_MESH",
-                                "help": "When selected, the mesh stack will use a specified NVS partition instead of\ndefault NVS partition. Note that the specified partition must be registered\nwith NVS using nvs_flash_init_partition() API, and the partition must exists\nin the csv file.\nWhen Provisioner needs to store a large amount of nodes' information in the\nflash (e.g. more than 20), this option is recommended to be enabled.",
-                                "id": "BLE_MESH_SPECIFIC_PARTITION",
-                                "name": "BLE_MESH_SPECIFIC_PARTITION",
-                                "range": null,
-                                "title": "Use a specific NVS partition for BLE Mesh",
-                                "type": "bool"
-                            },
-                            {
                                 "children": [],
                                 "depends_on": "BLE_MESH_SETTINGS && BLE_MESH",
                                 "help": "This value defines in seconds how soon any pending changes are actually\nwritten into persistent storage (flash) after a change occurs.\nThe option allows nodes to delay a certain period of time to save proper\ninformation to flash. The default value is 0, which means information\nwill be stored immediately once there are updates.",
@@ -6012,6 +6150,48 @@
                                 "name": "BLE_MESH_SETTINGS_BACKWARD_COMPATIBILITY",
                                 "range": null,
                                 "title": "A specific option for settings backward compatibility",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [
+                                    {
+                                        "children": [],
+                                        "depends_on": "BLE_MESH_SPECIFIC_PARTITION && BLE_MESH_SETTINGS && BLE_MESH",
+                                        "help": "This value defines the name of the specified NVS partition used by the\nmesh stack.",
+                                        "id": "BLE_MESH_PARTITION_NAME",
+                                        "name": "BLE_MESH_PARTITION_NAME",
+                                        "range": null,
+                                        "title": "Name of the NVS partition for BLE Mesh",
+                                        "type": "string"
+                                    }
+                                ],
+                                "depends_on": "BLE_MESH_SETTINGS && BLE_MESH",
+                                "help": "When selected, the mesh stack will use a specified NVS partition instead of\ndefault NVS partition. Note that the specified partition must be registered\nwith NVS using nvs_flash_init_partition() API, and the partition must exists\nin the csv file.\nWhen Provisioner needs to store a large amount of nodes' information in the\nflash (e.g. more than 20), this option is recommended to be enabled.",
+                                "id": "BLE_MESH_SPECIFIC_PARTITION",
+                                "name": "BLE_MESH_SPECIFIC_PARTITION",
+                                "range": null,
+                                "title": "Use a specific NVS partition for BLE Mesh",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [
+                                    {
+                                        "children": [],
+                                        "depends_on": "BLE_MESH_USE_MULTIPLE_NAMESPACE && BLE_MESH_SETTINGS && BLE_MESH",
+                                        "help": "This option specifies the maximum NVS namespaces supported by Provisioner.",
+                                        "id": "BLE_MESH_MAX_NVS_NAMESPACE",
+                                        "name": "BLE_MESH_MAX_NVS_NAMESPACE",
+                                        "range": null,
+                                        "title": "Maximum number of NVS namespaces",
+                                        "type": "int"
+                                    }
+                                ],
+                                "depends_on": "BLE_MESH_PROVISIONER && BLE_MESH_SETTINGS && BLE_MESH",
+                                "help": "When selected, Provisioner can use different NVS namespaces to store\ndifferent instances of mesh information.\nFor example, if in the first room, Provisioner uses NetKey A, AppKey\nA and provisions three devices, these information will be treated as\nmesh information instance A. When the Provisioner moves to the second\nroom, it uses NetKey B, AppKey B and provisions two devices, then the\ninformation will be treated as mesh information instance B.\nHere instance A and instance B will be stored in different namespaces.\nWith this option enabled, Provisioner needs to use specific functions\nto open the corresponding NVS namespace, restore the mesh information,\nrelease the mesh information or erase the mesh information.",
+                                "id": "BLE_MESH_USE_MULTIPLE_NAMESPACE",
+                                "name": "BLE_MESH_USE_MULTIPLE_NAMESPACE",
+                                "range": null,
+                                "title": "Support using multiple NVS namespaces by Provisioner",
                                 "type": "bool"
                             }
                         ],
@@ -6102,27 +6282,6 @@
                         "range": null,
                         "title": "Number of advertising buffers",
                         "type": "int"
-                    },
-                    {
-                        "children": [
-                            {
-                                "children": [],
-                                "depends_on": "BLE_MESH_SUPPORT_BLE_ADV && BLE_MESH",
-                                "help": "Number of advertising buffers for BLE packets available.",
-                                "id": "BLE_MESH_BLE_ADV_BUF_COUNT",
-                                "name": "BLE_MESH_BLE_ADV_BUF_COUNT",
-                                "range": null,
-                                "title": "Number of advertising buffers for BLE advertising packets",
-                                "type": "int"
-                            }
-                        ],
-                        "depends_on": "BLE_MESH",
-                        "help": "When selected, users can send normal BLE advertising packets\nwith specific API.",
-                        "id": "BLE_MESH_SUPPORT_BLE_ADV",
-                        "name": "BLE_MESH_SUPPORT_BLE_ADV",
-                        "range": null,
-                        "title": "Support sending normal BLE advertising packets",
-                        "type": "bool"
                     },
                     {
                         "children": [],
@@ -7032,7 +7191,7 @@
                         "type": "menu"
                     }
                 ],
-                "depends_on": null,
+                "depends_on": "BT_ENABLED",
                 "help": "This option enables ESP BLE Mesh support. The specific features that are\navailable may depend on other features that have been enabled in the\nstack, such as Bluetooth Support, Bluedroid Support & GATT support.",
                 "id": "BLE_MESH",
                 "is_menuconfig": true,
@@ -7273,6 +7432,24 @@
                             {
                                 "children": [],
                                 "depends_on": null,
+                                "help": "Place the TWAI ISR in to IRAM. This will allow the ISR to avoid\ncache misses, and also be able to run whilst the cache is disabled\n(such as when writing to SPI Flash).\nNote that if this option is enabled:\n- Users should also set the ESP_INTR_FLAG_IRAM in the driver\nconfiguration structure when installing the driver (see docs for\nspecifics).\n- Alert logging (i.e., setting of the TWAI_ALERT_AND_LOG flag)\nwill have no effect.",
+                                "id": "TWAI_ISR_IN_IRAM",
+                                "name": "TWAI_ISR_IN_IRAM",
+                                "range": null,
+                                "title": "Place TWAI ISR function into IRAM",
+                                "type": "bool"
+                            }
+                        ],
+                        "depends_on": null,
+                        "id": "component-config-driver-configurations-twai-configuration",
+                        "title": "TWAI configuration",
+                        "type": "menu"
+                    },
+                    {
+                        "children": [
+                            {
+                                "children": [],
+                                "depends_on": null,
                                 "help": "If this option is not selected, UART interrupt will be disabled for a long time and\nmay cause data lost when doing spi flash operation.",
                                 "id": "UART_ISR_IN_IRAM",
                                 "name": "UART_ISR_IN_IRAM",
@@ -7433,8 +7610,18 @@
                     },
                     {
                         "children": [],
-                        "depends_on": "ESP_TLS_USING_MBEDTLS",
-                        "help": "Enable support for creating server side SSL/TLS session, uses the mbedtls crypto library",
+                        "depends_on": "IDF_TARGET_ESP32 && ESP_TLS_USING_MBEDTLS",
+                        "help": "Enable use of Secure Element for ESP-TLS, this enables internal support for\nATECC608A peripheral on ESPWROOM32SE, which can be used for TLS connection.",
+                        "id": "ESP_TLS_USE_SECURE_ELEMENT",
+                        "name": "ESP_TLS_USE_SECURE_ELEMENT",
+                        "range": null,
+                        "title": "Use Secure Element (ATECC608A) with ESP-TLS",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "Enable support for creating server side SSL/TLS session, available for mbedTLS\nas well as wolfSSL TLS library.",
                         "id": "ESP_TLS_SERVER",
                         "name": "ESP_TLS_SERVER",
                         "range": null,
@@ -7443,8 +7630,8 @@
                     },
                     {
                         "children": [],
-                        "depends_on": "ESP_TLS_USING_MBEDTLS",
-                        "help": "Enable support for pre shared key ciphers, uses the mbedtls crypto library",
+                        "depends_on": null,
+                        "help": "Enable support for pre shared key ciphers, supported for both mbedTLS as well as\nwolfSSL TLS library.",
                         "id": "ESP_TLS_PSK_VERIFICATION",
                         "name": "ESP_TLS_PSK_VERIFICATION",
                         "range": null,
@@ -7623,6 +7810,16 @@
                                                 "name": "SPIRAM_TYPE_AUTO",
                                                 "range": null,
                                                 "title": "Auto-detect",
+                                                "type": "bool"
+                                            },
+                                            {
+                                                "children": [],
+                                                "depends_on": "<choice SPIRAM_TYPE>",
+                                                "help": null,
+                                                "id": "SPIRAM_TYPE_ESPPSRAM16",
+                                                "name": "SPIRAM_TYPE_ESPPSRAM16",
+                                                "range": null,
+                                                "title": "ESP-PSRAM16 or APS1604",
                                                 "type": "bool"
                                             },
                                             {
@@ -8029,12 +8226,22 @@
                                     },
                                     {
                                         "children": [],
-                                        "depends_on": "(ESPTOOLPY_FLASHMODE_DIO || ESPTOOLPY_FLASHMODE_DOUT) && ESP32_SPIRAM_SUPPORT",
-                                        "help": "This value is ignored unless flash mode is set to DIO or DOUT and the SPI flash pins have been\noverriden by setting the eFuses SPI_PAD_CONFIG_xxx.\n\nWhen this is the case, the eFuse config only defines 3 of the 4 Quad I/O data pins. The WP pin (aka\nESP32 pin \"SD_DATA_3\" or SPI flash pin \"IO2\") is not specified in eFuse. And the psram only has QPI\nmode, the WP pin is necessary, so we need to configure this value here.\n\nWhen flash mode is set to QIO or QOUT, the PSRAM WP pin will be set as the value configured in\nbootloader.\n\nFor ESP32-PICO chip, the default value of this config should be 7.",
+                                        "depends_on": "IDF_TARGET_ESP32 && (ESPTOOLPY_FLASHMODE_DIO || ESPTOOLPY_FLASHMODE_DOUT) && ESP32_SPIRAM_SUPPORT",
+                                        "help": "This setting is only used if the SPI flash pins have been overridden by setting the eFuses\nSPI_PAD_CONFIG_xxx, and the SPI flash mode is DIO or DOUT.\n\nWhen this is the case, the eFuse config only defines 3 of the 4 Quad I/O data pins. The WP pin (aka\nESP32 pin \"SD_DATA_3\" or SPI flash pin \"IO2\") is not specified in eFuse. The psram only has QPI\nmode, so a WP pin setting is necessary.\n\nIf this config item is set to N (default), the correct WP pin will be automatically used for any\nEspressif chip or module with integrated flash. If a custom setting is needed, set this config item\nto Y and specify the GPIO number connected to the WP pin.\n\nWhen flash mode is set to QIO or QOUT, the PSRAM WP pin will be set the same as the SPI Flash WP pin\nconfigured in the bootloader.",
+                                        "id": "SPIRAM_CUSTOM_SPIWP_SD3_PIN",
+                                        "name": "SPIRAM_CUSTOM_SPIWP_SD3_PIN",
+                                        "range": null,
+                                        "title": "Use custom SPI PSRAM WP(SD3) Pin when flash pins set in eFuse (read help)",
+                                        "type": "bool"
+                                    },
+                                    {
+                                        "children": [],
+                                        "depends_on": "IDF_TARGET_ESP32 && (ESPTOOLPY_FLASHMODE_DIO || ESPTOOLPY_FLASHMODE_DOUT) && ESP32_SPIRAM_SUPPORT",
+                                        "help": "The option \"Use custom SPI PSRAM WP(SD3) pin\" must be set or this value is ignored\n\nIf burning a customized set of SPI flash pins in eFuse and using DIO or DOUT mode for flash, set this\nvalue to the GPIO number of the SPIRAM WP pin.",
                                         "id": "SPIRAM_SPIWP_SD3_PIN",
                                         "name": "SPIRAM_SPIWP_SD3_PIN",
                                         "range": null,
-                                        "title": "SPI PSRAM WP(SD3) Pin when customising pins via eFuse (read help)",
+                                        "title": "Custom SPI PSRAM WP(SD3) Pin",
                                         "type": "int"
                                     },
                                     {
@@ -8137,7 +8344,7 @@
                             }
                         ],
                         "depends_on": null,
-                        "help": "Configure the number of universally administered (by IEEE) MAC addresses.\nDuring initialisation, MAC addresses for each network interface are generated or derived from a\nsingle base MAC address.\nIf the number of universal MAC addresses is four, all four interfaces (WiFi station, WiFi softap,\nBluetooth and Ethernet) receive a universally administered MAC address. These are generated\nsequentially by adding 0, 1, 2 and 3 (respectively) to the final octet of the base MAC address.\nIf the number of universal MAC addresses is two, only two interfaces (WiFi station and Bluetooth)\nreceive a universally administered MAC address. These are generated sequentially by adding 0\nand 1 (respectively) to the base MAC address. The remaining two interfaces (WiFi softap and Ethernet)\nreceive local MAC addresses. These are derived from the universal WiFi station and Bluetooth MAC\naddresses, respectively.\nWhen using the default (Espressif-assigned) base MAC address, either setting can be used. When using\na custom universal MAC address range, the correct setting will depend on the allocation of MAC\naddresses in this range (either 2 or 4 per device.)",
+                        "help": "Configure the number of universally administered (by IEEE) MAC addresses.\nDuring initialization, MAC addresses for each network interface are generated or derived from a\nsingle base MAC address.\nIf the number of universal MAC addresses is four, all four interfaces (WiFi station, WiFi softap,\nBluetooth and Ethernet) receive a universally administered MAC address. These are generated\nsequentially by adding 0, 1, 2 and 3 (respectively) to the final octet of the base MAC address.\nIf the number of universal MAC addresses is two, only two interfaces (WiFi station and Bluetooth)\nreceive a universally administered MAC address. These are generated sequentially by adding 0\nand 1 (respectively) to the base MAC address. The remaining two interfaces (WiFi softap and Ethernet)\nreceive local MAC addresses. These are derived from the universal WiFi station and Bluetooth MAC\naddresses, respectively.\nWhen using the default (Espressif-assigned) base MAC address, either setting can be used. When using\na custom universal MAC address range, the correct setting will depend on the allocation of MAC\naddresses in this range (either 2 or 4 per device.)",
                         "id": "component-config-esp32-specific-number-of-universally-administered-by-ieee-mac-address",
                         "name": "ESP32_UNIVERSAL_MAC_ADDRESSES",
                         "title": "Number of universally administered (by IEEE) MAC address",
@@ -8176,56 +8383,6 @@
                         "range": null,
                         "title": "Enable Ultra Low Power (ULP) Coprocessor",
                         "type": "bool"
-                    },
-                    {
-                        "children": [
-                            {
-                                "children": [],
-                                "depends_on": "<choice ESP32_PANIC>",
-                                "help": "Outputs the relevant registers over the serial port and halt the\nprocessor. Needs a manual reset to restart.",
-                                "id": "ESP32_PANIC_PRINT_HALT",
-                                "name": "ESP32_PANIC_PRINT_HALT",
-                                "range": null,
-                                "title": "Print registers and halt",
-                                "type": "bool"
-                            },
-                            {
-                                "children": [],
-                                "depends_on": "<choice ESP32_PANIC>",
-                                "help": "Outputs the relevant registers over the serial port and immediately\nreset the processor.",
-                                "id": "ESP32_PANIC_PRINT_REBOOT",
-                                "name": "ESP32_PANIC_PRINT_REBOOT",
-                                "range": null,
-                                "title": "Print registers and reboot",
-                                "type": "bool"
-                            },
-                            {
-                                "children": [],
-                                "depends_on": "<choice ESP32_PANIC>",
-                                "help": "Just resets the processor without outputting anything",
-                                "id": "ESP32_PANIC_SILENT_REBOOT",
-                                "name": "ESP32_PANIC_SILENT_REBOOT",
-                                "range": null,
-                                "title": "Silent reboot",
-                                "type": "bool"
-                            },
-                            {
-                                "children": [],
-                                "depends_on": "<choice ESP32_PANIC>",
-                                "help": "Invoke gdbstub on the serial port, allowing for gdb to attach to it to do a postmortem\nof the crash.",
-                                "id": "ESP32_PANIC_GDBSTUB",
-                                "name": "ESP32_PANIC_GDBSTUB",
-                                "range": null,
-                                "title": "Invoke GDBStub",
-                                "type": "bool"
-                            }
-                        ],
-                        "depends_on": null,
-                        "help": "If FreeRTOS detects unexpected behaviour or an unhandled exception, the panic handler is\ninvoked. Configure the panic handlers action here.",
-                        "id": "component-config-esp32-specific-panic-handler-behaviour",
-                        "name": "ESP32_PANIC",
-                        "title": "Panic handler behaviour",
-                        "type": "choice"
                     },
                     {
                         "children": [],
@@ -8351,7 +8508,7 @@
                     {
                         "children": [],
                         "depends_on": "ESP32_BROWNOUT_DET",
-                        "help": "When brownout reset occurs, reduce PHY TX power to keep the code running\n\n# Note about the use of \"FRC1\" name: currently FRC1 timer is not used for\n# high resolution timekeeping anymore. Instead the esp_timer API, implemented\n# using FRC2 timer, is used.\n# FRC1 name in the option name is kept for compatibility.",
+                        "help": "When brownout reset occurs, reduce PHY TX power to keep the code running\n\n# Note about the use of \"FRC1\" name: currently FRC1 timer is not used for\n# high resolution timekeeping anymore. Instead the esp_timer API is used.\n# FRC1 name in the option name is kept for compatibility.",
                         "id": "ESP32_REDUCE_PHY_TX_POWER",
                         "name": "ESP32_REDUCE_PHY_TX_POWER",
                         "range": null,
@@ -8437,7 +8594,7 @@
                                 "id": "ESP32_RTC_CLK_SRC_EXT_OSC",
                                 "name": "ESP32_RTC_CLK_SRC_EXT_OSC",
                                 "range": null,
-                                "title": "External 32kHz oscillator at 32K_XP pin",
+                                "title": "External 32kHz oscillator at 32K_XN pin",
                                 "type": "bool"
                             },
                             {
@@ -8452,7 +8609,7 @@
                             }
                         ],
                         "depends_on": null,
-                        "help": "Choose which clock is used as RTC clock source.\n\n- \"Internal 150kHz oscillator\" option provides lowest deep sleep current\n  consumption, and does not require extra external components. However\n  frequency stability with respect to temperature is poor, so time may\n  drift in deep/light sleep modes.\n- \"External 32kHz crystal\" provides better frequency stability, at the\n  expense of slightly higher (1uA) deep sleep current consumption.\n- \"External 32kHz oscillator\" allows using 32kHz clock generated by an\n  external circuit. In this case, external clock signal must be connected\n  to 32K_XP pin. Amplitude should be <1.2V in case of sine wave signal,\n  and <1V in case of square wave signal. Common mode voltage should be\n  0.1 < Vcm < 0.5Vamp, where Vamp is the signal amplitude.\n  Additionally, 1nF capacitor must be connected between 32K_XN pin and\n  ground. 32K_XN pin can not be used as a GPIO in this case.\n- \"Internal 8.5MHz oscillator divided by 256\" option results in higher\n  deep sleep current (by 5uA) but has better frequency stability than\n  the internal 150kHz oscillator. It does not require external components.",
+                        "help": "Choose which clock is used as RTC clock source.\n\n- \"Internal 150kHz oscillator\" option provides lowest deep sleep current\n  consumption, and does not require extra external components. However\n  frequency stability with respect to temperature is poor, so time may\n  drift in deep/light sleep modes.\n- \"External 32kHz crystal\" provides better frequency stability, at the\n  expense of slightly higher (1uA) deep sleep current consumption.\n- \"External 32kHz oscillator\" allows using 32kHz clock generated by an\n  external circuit. In this case, external clock signal must be connected\n  to 32K_XN pin. Amplitude should be <1.2V in case of sine wave signal,\n  and <1V in case of square wave signal. Common mode voltage should be\n  0.1 < Vcm < 0.5Vamp, where Vamp is the signal amplitude.\n  Additionally, 1nF capacitor must be connected between 32K_XP pin and\n  ground. 32K_XP pin can not be used as a GPIO in this case.\n- \"Internal 8.5MHz oscillator divided by 256\" option results in higher\n  deep sleep current (by 5uA) but has better frequency stability than\n  the internal 150kHz oscillator. It does not require external components.",
                         "id": "component-config-esp32-specific-rtc-clock-source",
                         "name": "ESP32_RTC_CLK_SRC",
                         "title": "RTC clock source",
@@ -8587,11 +8744,21 @@
                     {
                         "children": [],
                         "depends_on": null,
-                        "help": "Bootloaders before IDF v2.1 did less initialisation of the\nsystem clock. This setting needs to be enabled to build an app\nwhich can be booted by these older bootloaders.\n\nIf this setting is enabled, the app can be booted by any bootloader\nfrom IDF v1.0 up to the current version.\n\nIf this setting is disabled, the app can only be booted by bootloaders\nfrom IDF v2.1 or newer.\n\nEnabling this setting adds approximately 1KB to the app's IRAM usage.",
+                        "help": "Bootloaders before ESP-IDF v2.1 did less initialisation of the\nsystem clock. This setting needs to be enabled to build an app\nwhich can be booted by these older bootloaders.\n\nIf this setting is enabled, the app can be booted by any bootloader\nfrom IDF v1.0 up to the current version.\n\nIf this setting is disabled, the app can only be booted by bootloaders\nfrom IDF v2.1 or newer.\n\nEnabling this setting adds approximately 1KB to the app's IRAM usage.",
                         "id": "ESP32_COMPATIBLE_PRE_V2_1_BOOTLOADERS",
                         "name": "ESP32_COMPATIBLE_PRE_V2_1_BOOTLOADERS",
                         "range": null,
-                        "title": "App compatible with bootloaders before IDF v2.1",
+                        "title": "App compatible with bootloaders before ESP-IDF v2.1",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "Partition tables before ESP-IDF V3.1 do not contain an MD5 checksum\nfield, and the bootloader before ESP-IDF v3.1 cannot read a partition\ntable that contains an MD5 checksum field.\n\nEnable this option only if your app needs to boot on a bootloader and/or\npartition table that was generated from a version *before* ESP-IDF v3.1.\n\nIf this option and Flash Encryption are enabled at the same time, and any\ndata partitions in the partition table are marked Encrypted, then the\npartition encrypted flag should be manually verified in the app before accessing\nthe partition (see CVE-2021-27926).",
+                        "id": "ESP32_COMPATIBLE_PRE_V3_1_BOOTLOADERS",
+                        "name": "ESP32_COMPATIBLE_PRE_V3_1_BOOTLOADERS",
+                        "range": null,
+                        "title": "App compatible with bootloader and partition table before ESP-IDF v3.1",
                         "type": "bool"
                     },
                     {
@@ -8644,6 +8811,26 @@
                         "range": null,
                         "title": "Disable the interrupt level for the DPORT workarounds",
                         "type": "int"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": "FREERTOS_UNICORE",
+                        "help": "If enabled, application can use IRAM as byte accessible region for storing data\n(Note: IRAM region cannot be used as task stack)\n\nThis is possible due to handling of exceptions `LoadStoreError (3)` and `LoadStoreAlignmentError (9)`\nEach unaligned read/write access will incur a penalty of maximum of 167 CPU cycles.",
+                        "id": "ESP32_IRAM_AS_8BIT_ACCESSIBLE_MEMORY",
+                        "name": "ESP32_IRAM_AS_8BIT_ACCESSIBLE_MEMORY",
+                        "range": null,
+                        "title": "Enable IRAM as 8 bit accessible memory",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": "FREERTOS_UNICORE",
+                        "help": "This config option allows to add RTC fast memory region to system heap with capability\nsimilar to that of DRAM region but without DMA. This memory will be consumed first per\nheap initialization order by early startup services and scheduler related code. Speed\nwise RTC fast memory operates on APB clock and hence does not have much performance impact.\nRTC fast memory is accessible to PRO cpu only and hence this is allowed for single core\nconfiguration only for ESP32.",
+                        "id": "ESP32_ALLOW_RTC_FAST_MEM_AS_HEAP",
+                        "name": "ESP32_ALLOW_RTC_FAST_MEM_AS_HEAP",
+                        "range": null,
+                        "title": "Enable RTC fast memory for dynamic allocations",
+                        "type": "bool"
                     }
                 ],
                 "depends_on": null,
@@ -8667,7 +8854,7 @@
                             },
                             {
                                 "children": [],
-                                "depends_on": "PM_ENABLE && (ESP32_TIME_SYSCALL_USE_RTC || ESP32_TIME_SYSCALL_USE_RTC_FRC1)",
+                                "depends_on": "PM_ENABLE && ESP_TIMER_IMPL_FRC2 && (ESP32_TIME_SYSCALL_USE_RTC || ESP32_TIME_SYSCALL_USE_RTC_FRC1)",
                                 "help": "When APB clock frequency changes, high-resolution timer (esp_timer)\nscale and base value need to be adjusted. Each adjustment may cause\nsmall error, and over time such small errors may cause time drift.\nIf this option is enabled, RTC timer will be used as a reference to\ncompensate for the drift.\nIt is recommended that this option is only used if 32k XTAL is selected\nas RTC clock source.",
                                 "id": "PM_USE_RTC_TIMER_REF",
                                 "name": "PM_USE_RTC_TIMER_REF",
@@ -8714,7 +8901,7 @@
                 "children": [
                     {
                         "children": [],
-                        "depends_on": null,
+                        "depends_on": "IDF_TARGET_ESP32",
                         "help": "Some ESP32s have Two Point calibration values burned into eFuse BLOCK3.\nThis option will allow the ADC calibration component to characterize the\nADC-Voltage curve using Two Point values if they are available.",
                         "id": "ADC_CAL_EFUSE_TP_ENABLE",
                         "name": "ADC_CAL_EFUSE_TP_ENABLE",
@@ -8724,7 +8911,7 @@
                     },
                     {
                         "children": [],
-                        "depends_on": null,
+                        "depends_on": "IDF_TARGET_ESP32",
                         "help": "Some ESP32s have Vref burned into eFuse BLOCK0. This option will allow\nthe ADC calibration component to characterize the ADC-Voltage curve using\neFuse Vref if it is available.",
                         "id": "ADC_CAL_EFUSE_VREF_ENABLE",
                         "name": "ADC_CAL_EFUSE_VREF_ENABLE",
@@ -8734,7 +8921,7 @@
                     },
                     {
                         "children": [],
-                        "depends_on": null,
+                        "depends_on": "IDF_TARGET_ESP32",
                         "help": "This option will allow the ADC calibration component to use Lookup Tables\nto correct for non-linear behavior in 11db attenuation. Other attenuations\ndo not exhibit non-linear behavior hence will not be affected by this option.",
                         "id": "ADC_CAL_LUT_ENABLE",
                         "name": "ADC_CAL_LUT_ENABLE",
@@ -8750,16 +8937,6 @@
             },
             {
                 "children": [
-                    {
-                        "children": [],
-                        "depends_on": null,
-                        "help": "If enabled, esp_timer_dump will dump information such as number of times the timer was started, number of\ntimes the timer has triggered, and the total time it took for the callback to run. This option has some\neffect on timer performance and the amount of memory used for timer storage, and should only be used for\ndebugging/testing purposes.",
-                        "id": "ESP_TIMER_PROFILING",
-                        "name": "ESP_TIMER_PROFILING",
-                        "range": null,
-                        "title": "Enable esp_timer profiling features",
-                        "type": "bool"
-                    },
                     {
                         "children": [],
                         "depends_on": null,
@@ -8826,19 +9003,6 @@
                     {
                         "children": [],
                         "depends_on": null,
-                        "help": "Configure the stack size of esp_timer/ets_timer task. This task is used\nto dispatch callbacks of timers created using ets_timer and esp_timer\nAPIs. If you are seing stack overflow errors in timer task, increase\nthis value.\n\nNote that this is not the same as FreeRTOS timer task. To configure\nFreeRTOS timer task size, see \"FreeRTOS timer task stack size\" option\nin \"FreeRTOS\" menu.",
-                        "id": "ESP_TIMER_TASK_STACK_SIZE",
-                        "name": "ESP_TIMER_TASK_STACK_SIZE",
-                        "range": [
-                            2048,
-                            65536
-                        ],
-                        "title": "High-resolution timer task stack size",
-                        "type": "int"
-                    },
-                    {
-                        "children": [],
-                        "depends_on": null,
                         "help": "Minimal value of size, in bytes, accepted to execute a expression\nwith shared stack.",
                         "id": "ESP_MINIMAL_SHARED_STACK_SIZE",
                         "name": "ESP_MINIMAL_SHARED_STACK_SIZE",
@@ -8855,7 +9019,7 @@
                                 "id": "ESP_CONSOLE_UART_DEFAULT",
                                 "name": "ESP_CONSOLE_UART_DEFAULT",
                                 "range": null,
-                                "title": "Default: UART0, TX=GPIO1, RX=GPIO3",
+                                "title": "Default: UART0",
                                 "type": "bool"
                             },
                             {
@@ -8880,7 +9044,7 @@
                             }
                         ],
                         "depends_on": null,
-                        "help": "Select whether to use UART for console output (through stdout and stderr).\n\n- Default is to use UART0 on pins GPIO1(TX) and GPIO3(RX).\n- If \"Custom\" is selected, UART0 or UART1 can be chosen,\n  and any pins can be selected.\n- If \"None\" is selected, there will be no console output on any UART, except\n  for initial output from ROM bootloader. This output can be further suppressed by\n  bootstrapping GPIO13 pin to low logic level.",
+                        "help": "Select whether to use UART for console output (through stdout and stderr).\n\n- Default is to use UART0 on pre-defined GPIOs.\n- If \"Custom\" is selected, UART0 or UART1 can be chosen,\n  and any pins can be selected.\n- If \"None\" is selected, there will be no console output on any UART, except\n  for initial output from ROM bootloader. This output can be further suppressed by\n  bootstrapping GPIO13 pin to low logic level.",
                         "id": "component-config-common-esp-related-uart-for-console-output",
                         "name": "ESP_CONSOLE_UART",
                         "title": "UART for console output",
@@ -8928,21 +9092,27 @@
                     },
                     {
                         "children": [],
-                        "depends_on": "ESP_CONSOLE_UART_CUSTOM",
+                        "depends_on": null,
                         "help": null,
                         "id": "ESP_CONSOLE_UART_TX_GPIO",
                         "name": "ESP_CONSOLE_UART_TX_GPIO",
-                        "range": null,
+                        "range": [
+                            0,
+                            46
+                        ],
                         "title": "UART TX on GPIO#",
                         "type": "int"
                     },
                     {
                         "children": [],
-                        "depends_on": "ESP_CONSOLE_UART_CUSTOM",
+                        "depends_on": null,
                         "help": null,
                         "id": "ESP_CONSOLE_UART_RX_GPIO",
                         "name": "ESP_CONSOLE_UART_RX_GPIO",
-                        "range": null,
+                        "range": [
+                            0,
+                            46
+                        ],
                         "title": "UART RX on GPIO#",
                         "type": "int"
                     },
@@ -9049,7 +9219,7 @@
                     },
                     {
                         "children": [],
-                        "depends_on": "IDF_TARGET_ESP32",
+                        "depends_on": null,
                         "help": "If this option is disabled (default), the panic handler code is placed in flash not IRAM.\nThis means that if ESP-IDF crashes while flash cache is disabled, the panic handler will\nautomatically re-enable flash cache before running GDB Stub or Core Dump. This adds some minor\nrisk, if the flash cache status is also corrupted during the crash.\n\nIf this option is enabled, the panic handler code is placed in IRAM. This allows the panic\nhandler to run without needing to re-enable cache first. This may be necessary to debug some\ncomplex issues with crashes while flash cache is disabled (for example, when writing to\nSPI flash.)",
                         "id": "ESP_PANIC_HANDLER_IRAM",
                         "name": "ESP_PANIC_HANDLER_IRAM",
@@ -9063,6 +9233,56 @@
                         "help": "Debug stubs are used by OpenOCD to execute pre-compiled onboard code\nwhich does some useful debugging stuff, e.g. GCOV data dump.",
                         "id": "ESP_DEBUG_STUBS_ENABLE",
                         "name": "ESP_DEBUG_STUBS_ENABLE",
+                        "range": null,
+                        "title": null,
+                        "type": "bool"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": null,
+                        "id": "ESP_MAC_ADDR_UNIVERSE_WIFI_STA",
+                        "name": "ESP_MAC_ADDR_UNIVERSE_WIFI_STA",
+                        "range": null,
+                        "title": null,
+                        "type": "bool"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": null,
+                        "id": "ESP_MAC_ADDR_UNIVERSE_WIFI_AP",
+                        "name": "ESP_MAC_ADDR_UNIVERSE_WIFI_AP",
+                        "range": null,
+                        "title": null,
+                        "type": "bool"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": null,
+                        "id": "ESP_MAC_ADDR_UNIVERSE_BT",
+                        "name": "ESP_MAC_ADDR_UNIVERSE_BT",
+                        "range": null,
+                        "title": null,
+                        "type": "bool"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": null,
+                        "id": "ESP_MAC_ADDR_UNIVERSE_BT_OFFSET",
+                        "name": "ESP_MAC_ADDR_UNIVERSE_BT_OFFSET",
+                        "range": null,
+                        "title": null,
+                        "type": "int"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": null,
+                        "id": "ESP_MAC_ADDR_UNIVERSE_ETH",
+                        "name": "ESP_MAC_ADDR_UNIVERSE_ETH",
                         "range": null,
                         "title": null,
                         "type": "bool"
@@ -9222,7 +9442,7 @@
                             {
                                 "children": [],
                                 "depends_on": "ETH_USE_SPI_ETHERNET",
-                                "help": "DM9051 is a fast Ethernet controller with an SPI interface.\nIt's also integrated with a 10/100M PHY and MAC.\nSet true to enable DM9051 driver.",
+                                "help": "DM9051 is a fast Ethernet controller with an SPI interface.\nIt's also integrated with a 10/100M PHY and MAC.\nSelect to enable DM9051 driver.",
                                 "id": "ETH_SPI_ETHERNET_DM9051",
                                 "name": "ETH_SPI_ETHERNET_DM9051",
                                 "range": null,
@@ -9434,6 +9654,16 @@
                         "range": null,
                         "title": "Log purged content data at Debug level",
                         "type": "bool"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "This sets the WebSocket server support.",
+                        "id": "HTTPD_WS_SUPPORT",
+                        "name": "HTTPD_WS_SUPPORT",
+                        "range": null,
+                        "title": "WebSocket server support",
+                        "type": "bool"
                     }
                 ],
                 "depends_on": null,
@@ -9541,6 +9771,135 @@
             {
                 "children": [
                     {
+                        "children": [
+                            {
+                                "children": [],
+                                "depends_on": "<choice ESP_SYSTEM_PANIC>",
+                                "help": "Outputs the relevant registers over the serial port and halt the\nprocessor. Needs a manual reset to restart.",
+                                "id": "ESP_SYSTEM_PANIC_PRINT_HALT",
+                                "name": "ESP_SYSTEM_PANIC_PRINT_HALT",
+                                "range": null,
+                                "title": "Print registers and halt",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice ESP_SYSTEM_PANIC>",
+                                "help": "Outputs the relevant registers over the serial port and immediately\nreset the processor.",
+                                "id": "ESP_SYSTEM_PANIC_PRINT_REBOOT",
+                                "name": "ESP_SYSTEM_PANIC_PRINT_REBOOT",
+                                "range": null,
+                                "title": "Print registers and reboot",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice ESP_SYSTEM_PANIC>",
+                                "help": "Just resets the processor without outputting anything",
+                                "id": "ESP_SYSTEM_PANIC_SILENT_REBOOT",
+                                "name": "ESP_SYSTEM_PANIC_SILENT_REBOOT",
+                                "range": null,
+                                "title": "Silent reboot",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice ESP_SYSTEM_PANIC>",
+                                "help": "Invoke gdbstub on the serial port, allowing for gdb to attach to it to do a postmortem\nof the crash.",
+                                "id": "ESP_SYSTEM_PANIC_GDBSTUB",
+                                "name": "ESP_SYSTEM_PANIC_GDBSTUB",
+                                "range": null,
+                                "title": "Invoke GDBStub",
+                                "type": "bool"
+                            }
+                        ],
+                        "depends_on": null,
+                        "help": "If FreeRTOS detects unexpected behaviour or an unhandled exception, the panic handler is\ninvoked. Configure the panic handler's action here.",
+                        "id": "component-config-esp-system-settings-panic-handler-behaviour",
+                        "name": "ESP_SYSTEM_PANIC",
+                        "title": "Panic handler behaviour",
+                        "type": "choice"
+                    }
+                ],
+                "depends_on": null,
+                "id": "component-config-esp-system-settings",
+                "title": "ESP System Settings",
+                "type": "menu"
+            },
+            {
+                "children": [
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "If enabled, esp_timer_dump will dump information such as number of times the timer was started,\nnumber of times the timer has triggered, and the total time it took for the callback to run.\nThis option has some effect on timer performance and the amount of memory used for timer\nstorage, and should only be used for debugging/testing purposes.",
+                        "id": "ESP_TIMER_PROFILING",
+                        "name": "ESP_TIMER_PROFILING",
+                        "range": null,
+                        "title": "Enable esp_timer profiling features",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "Configure the stack size of \"timer_task\" task. This task is used\nto dispatch callbacks of timers created using ets_timer and esp_timer\nAPIs. If you are seing stack overflow errors in timer task, increase\nthis value.\n\nNote that this is not the same as FreeRTOS timer task. To configure\nFreeRTOS timer task size, see \"FreeRTOS timer task stack size\" option\nin \"FreeRTOS\" menu.",
+                        "id": "ESP_TIMER_TASK_STACK_SIZE",
+                        "name": "ESP_TIMER_TASK_STACK_SIZE",
+                        "range": [
+                            2048,
+                            65536
+                        ],
+                        "title": "High-resolution timer task stack size",
+                        "type": "int"
+                    },
+                    {
+                        "children": [
+                            {
+                                "children": [],
+                                "depends_on": "IDF_TARGET_ESP32 && <choice ESP_TIMER_IMPL>",
+                                "help": null,
+                                "id": "ESP_TIMER_IMPL_FRC2",
+                                "name": "ESP_TIMER_IMPL_FRC2",
+                                "range": null,
+                                "title": "FRC2 (legacy) timer",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "IDF_TARGET_ESP32 && <choice ESP_TIMER_IMPL>",
+                                "help": null,
+                                "id": "ESP_TIMER_IMPL_TG0_LAC",
+                                "name": "ESP_TIMER_IMPL_TG0_LAC",
+                                "range": null,
+                                "title": "LAC timer of Timer Group 0",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "IDF_TARGET_ESP32S2 && <choice ESP_TIMER_IMPL>",
+                                "help": null,
+                                "id": "ESP_TIMER_IMPL_SYSTIMER",
+                                "name": "ESP_TIMER_IMPL_SYSTIMER",
+                                "range": null,
+                                "title": "SYSTIMER",
+                                "type": "bool"
+                            }
+                        ],
+                        "depends_on": null,
+                        "help": "esp_timer APIs can be implemented using different hardware timers.\n\n- \"FRC2 (legacy)\" implementation has been used in ESP-IDF v2.x - v4.1.\n\n- \"LAC timer of Timer Group 0\" implementation is simpler, and has smaller\n  run time overhead because software handling of timer overflow is not needed.\n\n- \"SYSTIMER\" implementation is similar to \"LAC timer of Timer Group 0\" but for ESP32-S2 chip.",
+                        "id": "component-config-high-resolution-timer-esp_timer--hardware-timer-to-use-for-esp_timer",
+                        "name": "ESP_TIMER_IMPL",
+                        "title": "Hardware timer to use for esp_timer",
+                        "type": "choice"
+                    }
+                ],
+                "depends_on": null,
+                "id": "component-config-high-resolution-timer-esp_timer-",
+                "title": "High resolution timer (esp_timer)",
+                "type": "menu"
+            },
+            {
+                "children": [
+                    {
                         "children": [],
                         "depends_on": "BT_ENABLED",
                         "help": "If enabled, WiFi & Bluetooth coexistence is controlled by software rather than hardware.\nRecommended for heavy traffic scenarios. Both coexistence configuration options are\nautomatically managed, no user intervention is required.\nIf only Bluetooth is used, it is recommended to disable this option to reduce binary file\nsize.",
@@ -9624,6 +9983,16 @@
                         "name": "ESP32_WIFI_STATIC_TX_BUFFER_NUM",
                         "range": null,
                         "title": "Max number of WiFi static TX buffers",
+                        "type": "int"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": "ESP32_SPIRAM_SUPPORT || ESP32S2_SPIRAM_SUPPORT",
+                        "help": "Set the number of WiFi cache TX buffer number.\n\nFor each TX packet from uplayer, such as LWIP etc, WiFi driver needs to allocate a static TX\nbuffer and makes a copy of uplayer packet. If WiFi driver fails to allocate the static TX buffer,\nit caches the uplayer packets to a dedicated buffer queue, this option is used to configure the\nsize of the cached TX queue.",
+                        "id": "ESP32_WIFI_CACHE_TX_BUFFER_NUM",
+                        "name": "ESP32_WIFI_CACHE_TX_BUFFER_NUM",
+                        "range": null,
+                        "title": "Max number of WiFi cache TX buffers",
                         "type": "int"
                     },
                     {
@@ -9949,7 +10318,7 @@
                 "children": [
                     {
                         "children": [],
-                        "depends_on": "IDF_TARGET_ESP32",
+                        "depends_on": null,
                         "help": "If this option is enabled, NVS will be initialized and calibration data will be loaded from there.\nPHY calibration will be skipped on deep sleep wakeup. If calibration data is not found, full calibration\nwill be performed and stored in NVS. Normally, only partial calibration will be performed.\nIf this option is disabled, full calibration will be performed.\n\nIf it's easy that your board calibrate bad data, choose 'n'.\nTwo cases for example, you should choose 'n':\n1.If your board is easy to be booted up with antenna disconnected.\n2.Because of your board design, each time when you do calibration, the result are too unstable.\nIf unsure, choose 'y'.",
                         "id": "ESP32_PHY_CALIBRATION_AND_DATA_STORAGE",
                         "name": "ESP32_PHY_CALIBRATION_AND_DATA_STORAGE",
@@ -9958,14 +10327,37 @@
                         "type": "bool"
                     },
                     {
-                        "children": [],
+                        "children": [
+                            {
+                                "children": [
+                                    {
+                                        "children": [],
+                                        "depends_on": "ESP32_SUPPORT_MULTIPLE_PHY_INIT_DATA_BIN && ESP32_PHY_INIT_DATA_IN_PARTITION",
+                                        "help": "If enabled, when an error occurs while the PHY init data is updated,\nthe program will terminate and restart.\nIf not enabled, the PHY init data will not be updated when an error occurs.",
+                                        "id": "ESP32_PHY_INIT_DATA_ERROR",
+                                        "name": "ESP32_PHY_INIT_DATA_ERROR",
+                                        "range": null,
+                                        "title": "Terminate operation when PHY init data error",
+                                        "type": "bool"
+                                    }
+                                ],
+                                "depends_on": "ESP32_PHY_INIT_DATA_IN_PARTITION && ESP32_PHY_INIT_DATA_IN_PARTITION",
+                                "help": "If enabled, the corresponding PHY init data type can be automatically switched\naccording to the country code. China's PHY init data bin is used by default.\nCan be modified by country information in API esp_wifi_set_country().\nThe priority of switching the PHY init data type is:\n1. Country configured by API esp_wifi_set_country()\nand the parameter policy is WIFI_COUNTRY_POLICY_MANUAL.\n2. Country notified by the connected AP.\n3. Country configured by API esp_wifi_set_country()\nand the parameter policy is WIFI_COUNTRY_POLICY_AUTO.",
+                                "id": "ESP32_SUPPORT_MULTIPLE_PHY_INIT_DATA_BIN",
+                                "name": "ESP32_SUPPORT_MULTIPLE_PHY_INIT_DATA_BIN",
+                                "range": null,
+                                "title": "Support multiple PHY init data bin",
+                                "type": "bool"
+                            }
+                        ],
                         "depends_on": null,
                         "help": "If enabled, PHY init data will be loaded from a partition.\nWhen using a custom partition table, make sure that PHY data\npartition is included (type: 'data', subtype: 'phy').\nWith default partition tables, this is done automatically.\nIf PHY init data is stored in a partition, it has to be flashed there,\notherwise runtime error will occur.\n\nIf this option is not enabled, PHY init data will be embedded\ninto the application binary.\n\nIf unsure, choose 'n'.",
                         "id": "ESP32_PHY_INIT_DATA_IN_PARTITION",
+                        "is_menuconfig": true,
                         "name": "ESP32_PHY_INIT_DATA_IN_PARTITION",
                         "range": null,
                         "title": "Use a partition to store PHY init data",
-                        "type": "bool"
+                        "type": "menu"
                     },
                     {
                         "children": [],
@@ -10137,6 +10529,46 @@
                         "range": null,
                         "title": "Reserved stack size",
                         "type": "int"
+                    },
+                    {
+                        "children": [
+                            {
+                                "children": [],
+                                "depends_on": "<choice ESP32_CORE_DUMP_DECODE>",
+                                "help": null,
+                                "id": "ESP32_CORE_DUMP_DECODE_INFO",
+                                "name": "ESP32_CORE_DUMP_DECODE_INFO",
+                                "range": null,
+                                "title": "Decode and show summary (info_corefile)",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice ESP32_CORE_DUMP_DECODE>",
+                                "help": null,
+                                "id": "ESP32_CORE_DUMP_DECODE_DISABLE",
+                                "name": "ESP32_CORE_DUMP_DECODE_DISABLE",
+                                "range": null,
+                                "title": "Don't decode",
+                                "type": "bool"
+                            }
+                        ],
+                        "depends_on": "ESP32_ENABLE_COREDUMP_TO_UART",
+                        "help": null,
+                        "id": "component-config-core-dump-handling-of-uart-core-dumps-in-idf-monitor",
+                        "name": "ESP32_CORE_DUMP_DECODE",
+                        "title": "Handling of UART core dumps in IDF Monitor",
+                        "type": "choice"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": null,
+                        "id": "ESP32_CORE_DUMP_DECODE",
+                        "name": "ESP32_CORE_DUMP_DECODE",
+                        "range": null,
+                        "title": null,
+                        "type": "string"
                     }
                 ],
                 "depends_on": null,
@@ -10830,6 +11262,16 @@
                     },
                     {
                         "children": [],
+                        "depends_on": "FREERTOS_UNICORE",
+                        "help": "On most platforms there are instructions can speedup the ready task\nsearching. Enabling this option the FreeRTOS with this instructions\nsupport will be built.",
+                        "id": "FREERTOS_OPTIMIZED_SCHEDULER",
+                        "name": "FREERTOS_OPTIMIZED_SCHEDULER",
+                        "range": null,
+                        "title": "Enable FreeRTOS p\u013aatform optimized scheduler",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [],
                         "depends_on": null,
                         "help": "Select the tick rate at which FreeRTOS does pre-emptive context switching.",
                         "id": "FREERTOS_HZ",
@@ -11181,38 +11623,6 @@
                         "type": "bool"
                     },
                     {
-                        "children": [
-                            {
-                                "children": [],
-                                "depends_on": "FREERTOS_DEBUG_INTERNALS && FREERTOS_DEBUG_INTERNALS",
-                                "help": "If enabled, debug information (including integrity checks) will be printed\nto UART for the port-specific MUX implementation.",
-                                "id": "FREERTOS_PORTMUX_DEBUG",
-                                "name": "FREERTOS_PORTMUX_DEBUG",
-                                "range": null,
-                                "title": "Debug portMUX portENTER_CRITICAL/portEXIT_CRITICAL",
-                                "type": "bool"
-                            },
-                            {
-                                "children": [],
-                                "depends_on": "FREERTOS_PORTMUX_DEBUG && !FREERTOS_UNICORE && FREERTOS_DEBUG_INTERNALS",
-                                "help": "If enabled, additional debug information will be printed for recursive\nportMUX usage.",
-                                "id": "FREERTOS_PORTMUX_DEBUG_RECURSIVE",
-                                "name": "FREERTOS_PORTMUX_DEBUG_RECURSIVE",
-                                "range": null,
-                                "title": "Debug portMUX Recursion",
-                                "type": "bool"
-                            }
-                        ],
-                        "depends_on": null,
-                        "help": "Enable this option to show the menu with internal FreeRTOS debugging features.\nThis option does not change any code by itself, it just shows/hides some options.",
-                        "id": "FREERTOS_DEBUG_INTERNALS",
-                        "is_menuconfig": true,
-                        "name": "FREERTOS_DEBUG_INTERNALS",
-                        "range": null,
-                        "title": "Debug FreeRTOS internals",
-                        "type": "menu"
-                    },
-                    {
                         "children": [],
                         "depends_on": "COMPILER_OPTIMIZATION_DEFAULT",
                         "help": "If enabled, all FreeRTOS task functions will be enclosed in a wrapper function.\nIf a task function mistakenly returns (i.e. does not delete), the call flow will\nreturn to the wrapper function. The wrapper function will then log an error and\nabort the application. This option is also required for GDB backtraces and C++\nexceptions to work correctly inside top-level task functions.",
@@ -11250,6 +11660,16 @@
                         "name": "FREERTOS_DEBUG_OCDAWARE",
                         "range": null,
                         "title": null,
+                        "type": "bool"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": "IDF_TARGET_ESP32",
+                        "help": "When enabled, the usage of float type is allowed inside Level 1\nISRs.",
+                        "id": "FREERTOS_FPU_IN_ISR",
+                        "name": "FREERTOS_FPU_IN_ISR",
+                        "range": null,
+                        "title": "Allow use of float inside Level 1 ISR (EXPERIMENTAL)",
                         "type": "bool"
                     }
                 ],
@@ -11368,6 +11788,16 @@
                         "name": "HEAP_TASK_TRACKING",
                         "range": null,
                         "title": "Enable heap task tracking",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "When enabled, if a memory allocation operation fails it will cause a system abort.",
+                        "id": "HEAP_ABORT_WHEN_ALLOCATION_FAILS",
+                        "name": "HEAP_ABORT_WHEN_ALLOCATION_FAILS",
+                        "range": null,
+                        "title": "Abort if memory allocation fails",
                         "type": "bool"
                     }
                 ],
@@ -11555,7 +11985,7 @@
                     {
                         "children": [],
                         "depends_on": null,
-                        "help": "The name this device will report to other devices on the network",
+                        "help": "The default name this device will report to other devices on the network.\nCould be updated at runtime with esp_netif_set_hostname()",
                         "id": "LWIP_LOCAL_HOSTNAME",
                         "name": "LWIP_LOCAL_HOSTNAME",
                         "range": null,
@@ -11618,11 +12048,11 @@
                     {
                         "children": [],
                         "depends_on": null,
-                        "help": "The virtual filesystem layer of select() redirects sockets to\nlwip_select() and non-socket file descriptors to their respective driver\nimplementations. If this option is enabled then all calls of select()\nwill be redirected to lwip_select(), therefore, select can be used\nfor sockets only.",
+                        "help": "This option is deprecated. Use VFS_SUPPORT_SELECT instead, which is\nthe inverse of this option.\n\nThe virtual filesystem layer of select() redirects sockets to\nlwip_select() and non-socket file descriptors to their respective driver\nimplementations. If this option is enabled then all calls of select()\nwill be redirected to lwip_select(), therefore, select can be used\nfor sockets only.",
                         "id": "LWIP_USE_ONLY_LWIP_SELECT",
                         "name": "LWIP_USE_ONLY_LWIP_SELECT",
                         "range": null,
-                        "title": "Support LWIP socket select() only",
+                        "title": "Support LWIP socket select() only (DEPRECATED)",
                         "type": "bool"
                     },
                     {
@@ -11714,6 +12144,27 @@
                         "name": "LWIP_IP6_REASSEMBLY",
                         "range": null,
                         "title": "Enable reassembly incoming fragmented IP6 packets",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [
+                            {
+                                "children": [],
+                                "depends_on": "LWIP_IP_FORWARD",
+                                "help": "Enabling this option allows Network Address and Port Translation.",
+                                "id": "LWIP_IPV4_NAPT",
+                                "name": "LWIP_IPV4_NAPT",
+                                "range": null,
+                                "title": "Enable NAT (new/experimental)",
+                                "type": "bool"
+                            }
+                        ],
+                        "depends_on": null,
+                        "help": "Enabling this option allows packets forwarding across multiple interfaces.",
+                        "id": "LWIP_IP_FORWARD",
+                        "name": "LWIP_IP_FORWARD",
+                        "range": null,
+                        "title": "Enable IP forwarding",
                         "type": "bool"
                     },
                     {
@@ -12441,6 +12892,16 @@
                         "id": "component-config-lwip-sntp",
                         "title": "SNTP",
                         "type": "menu"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "Enable this option allows lwip to check assert.\nIt is recommended to keep it open, do not close it.",
+                        "id": "LWIP_ESP_LWIP_ASSERT",
+                        "name": "LWIP_ESP_LWIP_ASSERT",
+                        "range": null,
+                        "title": "Enable LWIP ASSERT checks",
+                        "type": "bool"
                     }
                 ],
                 "depends_on": null,
@@ -12464,7 +12925,7 @@
                             },
                             {
                                 "children": [],
-                                "depends_on": "ESP32_SPIRAM_SUPPORT && <choice MBEDTLS_MEM_ALLOC_MODE>",
+                                "depends_on": "(SPIRAM_USE_CAPS_ALLOC || SPIRAM_USE_MALLOC) && <choice MBEDTLS_MEM_ALLOC_MODE>",
                                 "help": null,
                                 "id": "MBEDTLS_EXTERNAL_MEM_ALLOC",
                                 "name": "MBEDTLS_EXTERNAL_MEM_ALLOC",
@@ -12491,10 +12952,20 @@
                                 "range": null,
                                 "title": "Custom alloc mode",
                                 "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "ESP32_IRAM_AS_8BIT_ACCESSIBLE_MEMORY && <choice MBEDTLS_MEM_ALLOC_MODE>",
+                                "help": "Allows to use IRAM memory region as 8bit accessible region.\n\nTLS input and output buffers will be allocated in IRAM section which is 32bit aligned\nmemory. Every unaligned (8bit or 16bit) access will result in an exception\nand incur penalty of certain clock cycles per unaligned read/write.",
+                                "id": "MBEDTLS_IRAM_8BIT_MEM_ALLOC",
+                                "name": "MBEDTLS_IRAM_8BIT_MEM_ALLOC",
+                                "range": null,
+                                "title": "Internal IRAM",
+                                "type": "bool"
                             }
                         ],
                         "depends_on": null,
-                        "help": "Allocation strategy for mbedTLS, essentially provides ability to\nallocate all required dynamic allocations from,\n\n- Internal DRAM memory only\n- External SPIRAM memory only\n- Either internal or external memory based on default malloc()\n  behavior in ESP-IDF\n- Custom allocation mode, by overwriting calloc()/free() using\n  mbedtls_platform_set_calloc_free() function\n\nRecommended mode here is always internal, since that is most preferred\nfrom security perspective. But if application requirement does not\nallow sufficient free internal memory then alternate mode can be\nselected.",
+                        "help": "Allocation strategy for mbedTLS, essentially provides ability to\nallocate all required dynamic allocations from,\n\n- Internal DRAM memory only\n- External SPIRAM memory only\n- Either internal or external memory based on default malloc()\n  behavior in ESP-IDF\n- Custom allocation mode, by overwriting calloc()/free() using\n  mbedtls_platform_set_calloc_free() function\n- Internal IRAM memory wherever applicable else internal DRAM\n\nRecommended mode here is always internal (*), since that is most preferred\nfrom security perspective. But if application requirement does not\nallow sufficient free internal memory then alternate mode can be\nselected.\n\n(*) In case of ESP32-S2, hardware allows encryption of external\nSPIRAM contents provided hardware flash encryption feature is enabled.\nIn that case, using external SPIRAM allocation strategy is also safe choice\nfrom security perspective.",
                         "id": "component-config-mbedtls-memory-allocation-strategy",
                         "name": "MBEDTLS_MEM_ALLOC_MODE",
                         "title": "Memory allocation strategy",
@@ -12545,6 +13016,48 @@
                         "name": "MBEDTLS_ASYMMETRIC_CONTENT_LEN",
                         "range": null,
                         "title": "Asymmetric in/out fragment length",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [
+                            {
+                                "children": [],
+                                "depends_on": "MBEDTLS_DYNAMIC_BUFFER",
+                                "help": "Free peer certificate after its usage in handshake process.",
+                                "id": "MBEDTLS_DYNAMIC_FREE_PEER_CERT",
+                                "name": "MBEDTLS_DYNAMIC_FREE_PEER_CERT",
+                                "range": null,
+                                "title": "Free SSL peer certificate after its usage",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [
+                                    {
+                                        "children": [],
+                                        "depends_on": "MBEDTLS_DYNAMIC_FREE_CONFIG_DATA",
+                                        "help": "Free ca certificate after its usage in the handshake process.\nThis option will decrease the heap footprint for the TLS handshake, but may lead to a problem:\nIf the respective ssl object needs to perform the TLS handshake again,\nthe ca certificate should once again be registered to the ssl object.",
+                                        "id": "MBEDTLS_DYNAMIC_FREE_CA_CERT",
+                                        "name": "MBEDTLS_DYNAMIC_FREE_CA_CERT",
+                                        "range": null,
+                                        "title": "Free SSL ca certificate after its usage",
+                                        "type": "bool"
+                                    }
+                                ],
+                                "depends_on": "MBEDTLS_DYNAMIC_BUFFER",
+                                "help": "Free private key and DHM data after its usage in handshake process.\n\nThe option will decrease heap cost when handshake, but also lead to problem:\n\nBecasue all certificate, private key and DHM data are freed so users should register\ncertificate and private key to ssl config object again.",
+                                "id": "MBEDTLS_DYNAMIC_FREE_CONFIG_DATA",
+                                "name": "MBEDTLS_DYNAMIC_FREE_CONFIG_DATA",
+                                "range": null,
+                                "title": "Free private key and DHM data after its usage",
+                                "type": "bool"
+                            }
+                        ],
+                        "depends_on": null,
+                        "help": "Using dynamic TX/RX buffer. After enabling this option, mbedTLS will\nallocate TX buffer when need to send data and then free it if all data\nis sent, allocate RX buffer when need to receive data and then free it\nwhen all data is used or read by upper layer.\n\nBy default, when SSL is initialized, mbedTLS also allocate TX and\nRX buffer with the default value of \"MBEDTLS_SSL_OUT_CONTENT_LEN\" or\n\"MBEDTLS_SSL_IN_CONTENT_LEN\", so to save more heap, users can set\nthe options to be an appropriate value.",
+                        "id": "MBEDTLS_DYNAMIC_BUFFER",
+                        "name": "MBEDTLS_DYNAMIC_BUFFER",
+                        "range": null,
+                        "title": "Using dynamic TX/RX buffer",
                         "type": "bool"
                     },
                     {
@@ -12619,6 +13132,86 @@
                         "type": "int"
                     },
                     {
+                        "children": [
+                            {
+                                "children": [
+                                    {
+                                        "children": [
+                                            {
+                                                "children": [],
+                                                "depends_on": "<choice MBEDTLS_DEFAULT_CERTIFICATE_BUNDLE>",
+                                                "help": null,
+                                                "id": "MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL",
+                                                "name": "MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL",
+                                                "range": null,
+                                                "title": "Use the full default certificate bundle",
+                                                "type": "bool"
+                                            },
+                                            {
+                                                "children": [],
+                                                "depends_on": "<choice MBEDTLS_DEFAULT_CERTIFICATE_BUNDLE>",
+                                                "help": "Use only the most common certificates from the default bundles, reducing the size with 50%,\nwhile still having around 99% coverage.",
+                                                "id": "MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_CMN",
+                                                "name": "MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_CMN",
+                                                "range": null,
+                                                "title": "Use only the most common certificates from the default bundles",
+                                                "type": "bool"
+                                            },
+                                            {
+                                                "children": [],
+                                                "depends_on": "<choice MBEDTLS_DEFAULT_CERTIFICATE_BUNDLE>",
+                                                "help": null,
+                                                "id": "MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_NONE",
+                                                "name": "MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_NONE",
+                                                "range": null,
+                                                "title": "Do not use the default certificate bundle",
+                                                "type": "bool"
+                                            }
+                                        ],
+                                        "depends_on": "MBEDTLS_CERTIFICATE_BUNDLE",
+                                        "help": null,
+                                        "id": "component-config-mbedtls-certificate-bundle-enable-trusted-root-certificate-bundle-default-certificate-bundle-options",
+                                        "name": "MBEDTLS_DEFAULT_CERTIFICATE_BUNDLE",
+                                        "title": "Default certificate bundle options",
+                                        "type": "choice"
+                                    },
+                                    {
+                                        "children": [
+                                            {
+                                                "children": [],
+                                                "depends_on": "MBEDTLS_CUSTOM_CERTIFICATE_BUNDLE",
+                                                "help": "Name of the custom certificate directory or file. This path is evaluated\nrelative to the project root directory.",
+                                                "id": "MBEDTLS_CUSTOM_CERTIFICATE_BUNDLE_PATH",
+                                                "name": "MBEDTLS_CUSTOM_CERTIFICATE_BUNDLE_PATH",
+                                                "range": null,
+                                                "title": "Custom certificate bundle path",
+                                                "type": "string"
+                                            }
+                                        ],
+                                        "depends_on": "MBEDTLS_CERTIFICATE_BUNDLE",
+                                        "help": null,
+                                        "id": "MBEDTLS_CUSTOM_CERTIFICATE_BUNDLE",
+                                        "name": "MBEDTLS_CUSTOM_CERTIFICATE_BUNDLE",
+                                        "range": null,
+                                        "title": "Add custom certificates to the default bundle",
+                                        "type": "bool"
+                                    }
+                                ],
+                                "depends_on": null,
+                                "help": "Enable support for large number of default root certificates\n\nWhen enabled this option allows user to store default as well\nas customer specific root certificates in compressed format rather\nthan storing full certificate. For the root certificates the public key and the subject name\nwill be stored.",
+                                "id": "MBEDTLS_CERTIFICATE_BUNDLE",
+                                "name": "MBEDTLS_CERTIFICATE_BUNDLE",
+                                "range": null,
+                                "title": "Enable trusted root certificate bundle",
+                                "type": "bool"
+                            }
+                        ],
+                        "depends_on": null,
+                        "id": "component-config-mbedtls-certificate-bundle",
+                        "title": "Certificate Bundle",
+                        "type": "menu"
+                    },
+                    {
                         "children": [],
                         "depends_on": null,
                         "help": "Enable \"non-blocking\" ECC operations that can return early and be resumed.",
@@ -12639,7 +13232,28 @@
                         "type": "bool"
                     },
                     {
-                        "children": [],
+                        "children": [
+                            {
+                                "children": [],
+                                "depends_on": "IDF_TARGET_ESP32S2 && MBEDTLS_HARDWARE_AES",
+                                "help": "Use an interrupt to coordinate long AES operations.\n\nThis allows other code to run on the CPU while an AES operation is pending.\nOtherwise the CPU busy-waits.",
+                                "id": "MBEDTLS_AES_USE_INTERRUPT",
+                                "name": "MBEDTLS_AES_USE_INTERRUPT",
+                                "range": null,
+                                "title": "Use interrupt for long AES operations",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "IDF_TARGET_ESP32S2 && MBEDTLS_HARDWARE_AES",
+                                "help": "Enable partially hardware accelerated GCM. GHASH calculation is still done\nin software.\n\nIf MBEDTLS_HARDWARE_GCM is disabled and MBEDTLS_HARDWARE_AES is enabled then\nmbedTLS will still use the hardware accelerated AES block operation, but\non a single block at a time.",
+                                "id": "MBEDTLS_HARDWARE_GCM",
+                                "name": "MBEDTLS_HARDWARE_GCM",
+                                "range": null,
+                                "title": "Enable partially hardware accelerated GCM",
+                                "type": "bool"
+                            }
+                        ],
                         "depends_on": "!SPIRAM_CACHE_WORKAROUND_STRATEGY_DUPLDST",
                         "help": "Enable hardware accelerated AES encryption & decryption.\n\nNote that if the ESP32 CPU is running at 240MHz, hardware AES does not\noffer any speed boost over software AES.",
                         "id": "MBEDTLS_HARDWARE_AES",
@@ -12661,11 +13275,31 @@
                     {
                         "children": [],
                         "depends_on": "!SPIRAM_CACHE_WORKAROUND_STRATEGY_DUPLDST",
-                        "help": "Enable hardware accelerated SHA1, SHA256, SHA384 & SHA512 in mbedTLS.\n\nDue to a hardware limitation, hardware acceleration is only\nguaranteed if SHA digests are calculated one at a time. If more\nthan one SHA digest is calculated at the same time, one will\nbe calculated fully in hardware and the rest will be calculated\n(at least partially calculated) in software. This happens automatically.\n\nSHA hardware acceleration is faster than software in some situations but\nslower in others. You should benchmark to find the best setting for you.",
+                        "help": "Enable hardware accelerated SHA1, SHA256, SHA384 & SHA512 in mbedTLS.\n\nDue to a hardware limitation, on the ESP32 hardware acceleration is only\nguaranteed if SHA digests are calculated one at a time. If more\nthan one SHA digest is calculated at the same time, one will\nbe calculated fully in hardware and the rest will be calculated\n(at least partially calculated) in software. This happens automatically.\n\nSHA hardware acceleration is faster than software in some situations but\nslower in others. You should benchmark to find the best setting for you.",
                         "id": "MBEDTLS_HARDWARE_SHA",
                         "name": "MBEDTLS_HARDWARE_SHA",
                         "range": null,
                         "title": "Enable hardware SHA acceleration",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "This option enables hardware acceleration for ECDSA sign function, only\nwhen using ATECC608A cryptoauth chip (integrated with ESP32-WROOM-32SE)",
+                        "id": "MBEDTLS_ATCA_HW_ECDSA_SIGN",
+                        "name": "MBEDTLS_ATCA_HW_ECDSA_SIGN",
+                        "range": null,
+                        "title": "Enable hardware ECDSA sign acceleration when using ATECC608A",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "This option enables hardware acceleration for ECDSA sign function, only\nwhen using ATECC608A cryptoauth chip (integrated with ESP32-WROOM-32SE)",
+                        "id": "MBEDTLS_ATCA_HW_ECDSA_VERIFY",
+                        "name": "MBEDTLS_ATCA_HW_ECDSA_VERIFY",
+                        "range": null,
+                        "title": "Enable hardware ECDSA verify acceleration when using ATECC608A",
                         "type": "bool"
                     },
                     {
@@ -12687,6 +13321,26 @@
                         "name": "MBEDTLS_HAVE_TIME",
                         "range": null,
                         "title": "Enable mbedtls time",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "Standard ECDSA is \"fragile\" in the sense that lack of entropy when signing\nmay result in a compromise of the long-term signing key.",
+                        "id": "MBEDTLS_ECDSA_DETERMINISTIC",
+                        "name": "MBEDTLS_ECDSA_DETERMINISTIC",
+                        "range": null,
+                        "title": "Enable deterministic ECDSA",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "Enable MBEDTLS_SHA512_C adds support for SHA-384 and SHA-512.",
+                        "id": "MBEDTLS_SHA512_C",
+                        "name": "MBEDTLS_SHA512_C",
+                        "range": null,
+                        "title": "Enable the SHA-384 and SHA-512 cryptographic hash algorithms",
                         "type": "bool"
                     },
                     {
@@ -12891,6 +13545,16 @@
                                 "name": "MBEDTLS_KEY_EXCHANGE_ELLIPTIC_CURVE",
                                 "range": null,
                                 "title": "Support Elliptic Curve based ciphersuites",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "MBEDTLS_ECJPAKE_C && MBEDTLS_ECP_DP_SECP256R1_ENABLED && MBEDTLS_TLS_ENABLED",
+                                "help": "Enable to support ciphersuites with prefix TLS-ECJPAKE-WITH-",
+                                "id": "MBEDTLS_KEY_EXCHANGE_ECJPAKE",
+                                "name": "MBEDTLS_KEY_EXCHANGE_ECJPAKE",
+                                "range": null,
+                                "title": "Enable ECJPAKE based ciphersuite modes",
                                 "type": "bool"
                             }
                         ],
@@ -13191,6 +13855,16 @@
                             {
                                 "children": [],
                                 "depends_on": "MBEDTLS_ECP_C",
+                                "help": "Enable ECJPAKE. Needed to use ECJPAKE-xxx TLS ciphersuites.",
+                                "id": "MBEDTLS_ECJPAKE_C",
+                                "name": "MBEDTLS_ECJPAKE_C",
+                                "range": null,
+                                "title": "Elliptic curve J-PAKE",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "MBEDTLS_ECP_C",
                                 "help": "Enable support for SECP192R1 Elliptic Curve.",
                                 "id": "MBEDTLS_ECP_DP_SECP192R1_ENABLED",
                                 "name": "MBEDTLS_ECP_DP_SECP192R1_ENABLED",
@@ -13329,6 +14003,78 @@
                         "type": "menu"
                     },
                     {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "Enable support for Poly1305 MAC algorithm.",
+                        "id": "MBEDTLS_POLY1305_C",
+                        "name": "MBEDTLS_POLY1305_C",
+                        "range": null,
+                        "title": "Poly1305 MAC algorithm",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [
+                            {
+                                "children": [],
+                                "depends_on": "MBEDTLS_CHACHA20_C && MBEDTLS_POLY1305_C",
+                                "help": "Enable support for ChaCha20-Poly1305 AEAD algorithm.",
+                                "id": "MBEDTLS_CHACHAPOLY_C",
+                                "name": "MBEDTLS_CHACHAPOLY_C",
+                                "range": null,
+                                "title": "ChaCha20-Poly1305 AEAD algorithm",
+                                "type": "bool"
+                            }
+                        ],
+                        "depends_on": null,
+                        "help": "Enable support for Chacha20 stream cipher.",
+                        "id": "MBEDTLS_CHACHA20_C",
+                        "name": "MBEDTLS_CHACHA20_C",
+                        "range": null,
+                        "title": "Chacha20 stream cipher",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "Enable support for the Hashed Message Authentication Code\n(HMAC)-based key derivation function (HKDF).",
+                        "id": "MBEDTLS_HKDF_C",
+                        "name": "MBEDTLS_HKDF_C",
+                        "range": null,
+                        "title": "HKDF algorithm (RFC 5869)",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [
+                            {
+                                "children": [],
+                                "depends_on": "MBEDTLS_THREADING_C",
+                                "help": "Enable threading alt to allow your own alternate threading implementation.",
+                                "id": "MBEDTLS_THREADING_ALT",
+                                "name": "MBEDTLS_THREADING_ALT",
+                                "range": null,
+                                "title": "Enable threading alternate implementation",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "MBEDTLS_THREADING_C",
+                                "help": "Enable the pthread wrapper layer for the threading layer.",
+                                "id": "MBEDTLS_THREADING_PTHREAD",
+                                "name": "MBEDTLS_THREADING_PTHREAD",
+                                "range": null,
+                                "title": "Enable threading pthread implementation",
+                                "type": "bool"
+                            }
+                        ],
+                        "depends_on": null,
+                        "help": "If you do intend to use contexts between threads, you will need to enable\nthis layer to prevent race conditions.",
+                        "id": "MBEDTLS_THREADING_C",
+                        "name": "MBEDTLS_THREADING_C",
+                        "range": null,
+                        "title": "Enable the threading abstraction layer",
+                        "type": "bool"
+                    },
+                    {
                         "children": [
                             {
                                 "children": [],
@@ -13382,6 +14128,16 @@
                             255
                         ],
                         "title": "mDNS task priority",
+                        "type": "int"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "Allows setting mDNS task stacksize.",
+                        "id": "MDNS_TASK_STACK_SIZE",
+                        "name": "MDNS_TASK_STACK_SIZE",
+                        "range": null,
+                        "title": "mDNS task stack size",
                         "type": "int"
                     },
                     {
@@ -13446,6 +14202,16 @@
                         ],
                         "title": "mDNS adding service timeout (ms)",
                         "type": "int"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "Configures strict mode. Set this to 1 for the mDNS library to strictly follow the RFC6762:\nCurrently the only strict feature: Do not repeat original questions in response packets\n(defined in RFC6762 sec. 6).\nDefault configuration is 0, i.e. non-strict mode, since some implementations,\nsuch as lwIP mdns resolver (used by standard POSIX API like getaddrinfo, gethostbyname)\ncould not correctly resolve advertised names.",
+                        "id": "MDNS_STRICT_MODE",
+                        "name": "MDNS_STRICT_MODE",
+                        "range": null,
+                        "title": "mDNS strict mode",
+                        "type": "bool"
                     },
                     {
                         "children": [],
@@ -14078,6 +14844,16 @@
                     },
                     {
                         "children": [],
+                        "depends_on": "!SPI_FLASH_USE_LEGACY_IMPL && !IDF_TARGET_ESP32S2",
+                        "help": "Each SPI bus needs a lock for arbitration among devices. This allows multiple\ndevices on a same bus, but may reduce the speed of esp_flash driver access to the\nmain flash chip.\n\nIf you only need to use esp_flash driver to access the main flash chip, disable\nthis option, and the lock will be bypassed on SPI1 bus. Otherwise if extra devices\nare needed to attach to SPI1 bus, enable this option.",
+                        "id": "SPI_FLASH_SHARE_SPI1_BUS",
+                        "name": "SPI_FLASH_SHARE_SPI1_BUS",
+                        "range": null,
+                        "title": "Support other devices attached to SPI1 bus",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [],
                         "depends_on": null,
                         "help": "Some flash chips can have very high \"max\" erase times, especially for block erase (32KB or 64KB).\nThis option allows to bypass \"block erase\" and always do sector erase commands.\nThis will be much slower overall in most cases, but improves latency for other code to run.",
                         "id": "SPI_FLASH_BYPASS_BLOCK_ERASE",
@@ -14118,6 +14894,16 @@
                         "type": "bool"
                     },
                     {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "SPI Flash driver uses the flash size configured in bootloader header by default.\nEnable this option to override flash size with latest ESPTOOLPY_FLASHSIZE value from\nthe app header if the size in the bootloader header is incorrect.",
+                        "id": "SPI_FLASH_SIZE_OVERRIDE",
+                        "name": "SPI_FLASH_SIZE_OVERRIDE",
+                        "range": null,
+                        "title": "Override flash size in bootloader header by ESPTOOLPY_FLASHSIZE",
+                        "type": "bool"
+                    },
+                    {
                         "children": [
                             {
                                 "children": [],
@@ -14127,6 +14913,16 @@
                                 "name": "SPI_FLASH_SUPPORT_ISSI_CHIP",
                                 "range": null,
                                 "title": "ISSI",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": "Enable this to support auto detection of MXIC chips if chip vendor not directly\ngiven by ``chip_drv`` member of the chip struct. This adds support for variant\nchips, however will extend detecting time.",
+                                "id": "SPI_FLASH_SUPPORT_MXIC_CHIP",
+                                "name": "SPI_FLASH_SUPPORT_MXIC_CHIP",
+                                "range": null,
+                                "title": "MXIC",
                                 "type": "bool"
                             },
                             {
@@ -14144,6 +14940,16 @@
                         "id": "component-config-spi-flash-driver-auto-detect-flash-chips",
                         "title": "Auto-detect flash chips",
                         "type": "menu"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "This option enables flash read/write operations to encrypted partition/s. This option\nis kept enabled irrespective of state of flash encryption feature. However, in case\napplication is not using flash encryption feature and is in need of some additional\nmemory from IRAM region (~1KB) then this config can be disabled.",
+                        "id": "SPI_FLASH_ENABLE_ENCRYPTED_READ_WRITE",
+                        "name": "SPI_FLASH_ENABLE_ENCRYPTED_READ_WRITE",
+                        "range": null,
+                        "title": "Enable encrypted partition read/write operations",
+                        "type": "bool"
                     }
                 ],
                 "depends_on": null,
@@ -14402,6 +15208,123 @@
             {
                 "children": [
                     {
+                        "children": [
+                            {
+                                "children": [],
+                                "depends_on": "USB_ENABLED",
+                                "help": "Debug mode",
+                                "id": "USB_DEBUG",
+                                "name": "USB_DEBUG",
+                                "range": null,
+                                "title": "Debug mode",
+                                "type": "bool"
+                            }
+                        ],
+                        "depends_on": "IDF_TARGET_ESP32S2",
+                        "help": "Adds support for TinyUSB",
+                        "id": "USB_ENABLED",
+                        "name": "USB_ENABLED",
+                        "range": null,
+                        "title": "Enable TinyUSB driver",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [
+                            {
+                                "children": [],
+                                "depends_on": "USB_ENABLED",
+                                "help": "Long description",
+                                "id": "USB_DESC_USE_ESPRESSIF_VID",
+                                "name": "USB_DESC_USE_ESPRESSIF_VID",
+                                "range": null,
+                                "title": "VID: Use an Espressif's default value",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "!USB_DESC_USE_ESPRESSIF_VID",
+                                "help": "Custom Vendor ID",
+                                "id": "USB_DESC_CUSTOM_VID",
+                                "name": "USB_DESC_CUSTOM_VID",
+                                "range": null,
+                                "title": "Custom VID value",
+                                "type": "hex"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "USB_ENABLED",
+                                "help": "Default TinyUSB PID assigning uses values 0x4000...0x4007",
+                                "id": "USB_DESC_USE_DEFAULT_PID",
+                                "name": "USB_DESC_USE_DEFAULT_PID",
+                                "range": null,
+                                "title": "PID: Use a default PID assigning",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "!USB_DESC_USE_DEFAULT_PID",
+                                "help": "Custom Product ID",
+                                "id": "USB_DESC_CUSTOM_PID",
+                                "name": "USB_DESC_CUSTOM_PID",
+                                "range": null,
+                                "title": "Custom PID value",
+                                "type": "hex"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "USB_ENABLED",
+                                "help": "Version of the firmware of the USB device",
+                                "id": "USB_DESC_BCDDEVICE",
+                                "name": "USB_DESC_BCDDEVICE",
+                                "range": null,
+                                "title": "bcdDevice",
+                                "type": "hex"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "USB_ENABLED",
+                                "help": "Name of the manufacturer of the USB device",
+                                "id": "USB_DESC_MANUFACTURER_STRING",
+                                "name": "USB_DESC_MANUFACTURER_STRING",
+                                "range": null,
+                                "title": "Manufacturer",
+                                "type": "string"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "USB_ENABLED",
+                                "help": "Name of the USB device",
+                                "id": "USB_DESC_PRODUCT_STRING",
+                                "name": "USB_DESC_PRODUCT_STRING",
+                                "range": null,
+                                "title": "Product",
+                                "type": "string"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "USB_ENABLED",
+                                "help": "Specify serial number of the USB device",
+                                "id": "USB_DESC_SERIAL_STRING",
+                                "name": "USB_DESC_SERIAL_STRING",
+                                "range": null,
+                                "title": "Serial string",
+                                "type": "string"
+                            }
+                        ],
+                        "depends_on": null,
+                        "id": "component-config-tinyusb-descriptor-configuration",
+                        "title": "Descriptor configuration",
+                        "type": "menu"
+                    }
+                ],
+                "depends_on": null,
+                "id": "component-config-tinyusb",
+                "title": "TinyUSB",
+                "type": "menu"
+            },
+            {
+                "children": [
+                    {
                         "children": [],
                         "depends_on": null,
                         "help": "If not set, assertions on float arguments will not be available.",
@@ -14470,52 +15393,84 @@
             {
                 "children": [
                     {
-                        "children": [],
-                        "depends_on": null,
-                        "help": "Select() related functions might produce an unconveniently lot of\ndebug outputs when one sets the default log level to DEBUG or higher.\nIt is possible to suppress these debug outputs by enabling this\noption.",
-                        "id": "VFS_SUPPRESS_SELECT_DEBUG_OUTPUT",
-                        "name": "VFS_SUPPRESS_SELECT_DEBUG_OUTPUT",
-                        "range": null,
-                        "title": "Suppress select() related debug outputs",
-                        "type": "bool"
-                    },
-                    {
-                        "children": [],
-                        "depends_on": null,
-                        "help": "Disabling this option can save memory when the support for termios.h is not required.",
-                        "id": "VFS_SUPPORT_TERMIOS",
-                        "name": "VFS_SUPPORT_TERMIOS",
-                        "range": null,
-                        "title": "Add support for termios.h",
-                        "type": "bool"
-                    },
-                    {
                         "children": [
                             {
                                 "children": [],
-                                "depends_on": null,
-                                "help": "Define maximum number of host filesystem mount points.",
-                                "id": "SEMIHOSTFS_MAX_MOUNT_POINTS",
-                                "name": "SEMIHOSTFS_MAX_MOUNT_POINTS",
+                                "depends_on": "VFS_SUPPORT_IO",
+                                "help": "If enabled, the following functions are provided by the VFS component.\n\nstat, link, unlink, rename, utime, access, truncate, rmdir, mkdir,\nopendir, closedir, readdir, readdir_r, seekdir, telldir, rewinddir\n\nFilesystem drivers can then be registered to handle these functions\nfor specific paths.\n\nDisabling this option can save memory when the support for these functions\nis not required.",
+                                "id": "VFS_SUPPORT_DIR",
+                                "name": "VFS_SUPPORT_DIR",
                                 "range": null,
-                                "title": "Maximum number of the host filesystem mount points",
-                                "type": "int"
+                                "title": "Provide directory related functions",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [
+                                    {
+                                        "children": [],
+                                        "depends_on": "VFS_SUPPORT_SELECT",
+                                        "help": "Select() related functions might produce an unconveniently lot of\ndebug outputs when one sets the default log level to DEBUG or higher.\nIt is possible to suppress these debug outputs by enabling this\noption.",
+                                        "id": "VFS_SUPPRESS_SELECT_DEBUG_OUTPUT",
+                                        "name": "VFS_SUPPRESS_SELECT_DEBUG_OUTPUT",
+                                        "range": null,
+                                        "title": "Suppress select() related debug outputs",
+                                        "type": "bool"
+                                    }
+                                ],
+                                "depends_on": "VFS_SUPPORT_IO && !LWIP_USE_ONLY_LWIP_SELECT",
+                                "help": "If enabled, select function is provided by the VFS component, and can be used\non peripheral file descriptors (such as UART) and sockets at the same time.\n\nIf disabled, the default select implementation will be provided by LWIP for\nsockets only.\n\nDisabling this option can reduce code size if support for \"select\" on UART file\ndescriptors is not required.",
+                                "id": "VFS_SUPPORT_SELECT",
+                                "name": "VFS_SUPPORT_SELECT",
+                                "range": null,
+                                "title": "Provide select function",
+                                "type": "bool"
                             },
                             {
                                 "children": [],
-                                "depends_on": null,
-                                "help": "Define maximum path length for the host base directory which is to be mounted.\nIf host path passed to esp_vfs_semihost_register() is longer than this value\nit will be truncated.",
-                                "id": "SEMIHOSTFS_HOST_PATH_MAX_LEN",
-                                "name": "SEMIHOSTFS_HOST_PATH_MAX_LEN",
+                                "depends_on": "VFS_SUPPORT_IO",
+                                "help": "Disabling this option can save memory when the support for termios.h is not required.",
+                                "id": "VFS_SUPPORT_TERMIOS",
+                                "name": "VFS_SUPPORT_TERMIOS",
                                 "range": null,
-                                "title": "Maximum path length for the host base directory",
-                                "type": "int"
+                                "title": "Provide termios.h functions",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [
+                                    {
+                                        "children": [],
+                                        "depends_on": "VFS_SUPPORT_IO",
+                                        "help": "Define maximum number of host filesystem mount points.",
+                                        "id": "VFS_SEMIHOSTFS_MAX_MOUNT_POINTS",
+                                        "name": "VFS_SEMIHOSTFS_MAX_MOUNT_POINTS",
+                                        "range": null,
+                                        "title": "Host FS: Maximum number of the host filesystem mount points",
+                                        "type": "int"
+                                    },
+                                    {
+                                        "children": [],
+                                        "depends_on": "VFS_SUPPORT_IO",
+                                        "help": "Define maximum path length for the host base directory which is to be mounted.\nIf host path passed to esp_vfs_semihost_register() is longer than this value\nit will be truncated.",
+                                        "id": "VFS_SEMIHOSTFS_HOST_PATH_MAX_LEN",
+                                        "name": "VFS_SEMIHOSTFS_HOST_PATH_MAX_LEN",
+                                        "range": null,
+                                        "title": "Host FS: Maximum path length for the host base directory",
+                                        "type": "int"
+                                    }
+                                ],
+                                "depends_on": "VFS_SUPPORT_IO",
+                                "id": "component-config-virtual-file-system-provide-basic-i-o-functions-host-file-system-i-o-semihosting-",
+                                "title": "Host File System I/O (Semihosting)",
+                                "type": "menu"
                             }
                         ],
                         "depends_on": null,
-                        "id": "component-config-virtual-file-system-host-file-system-i-o-semihosting-",
-                        "title": "Host File System I/O (Semihosting)",
-                        "type": "menu"
+                        "help": "If enabled, the following functions are provided by the VFS component.\n\nopen, close, read, write, pread, pwrite, lseek, fstat, fsync, ioctl, fcntl\n\nFilesystem drivers can then be registered to handle these functions\nfor specific paths.\n\nDisabling this option can save memory when the support for these functions\nis not required.",
+                        "id": "VFS_SUPPORT_IO",
+                        "name": "VFS_SUPPORT_IO",
+                        "range": null,
+                        "title": "Provide basic I/O functions",
+                        "type": "bool"
                     }
                 ],
                 "depends_on": null,
@@ -14660,31 +15615,31 @@
                     {
                         "children": [],
                         "depends_on": null,
-                        "help": "Select this to enable TLS v1.2 for WPA2-Enterprise Authentication.",
-                        "id": "WPA_TLS_V12",
-                        "name": "WPA_TLS_V12",
-                        "range": null,
-                        "title": "Enable TLS v1.2",
-                        "type": "bool"
-                    },
-                    {
-                        "children": [],
-                        "depends_on": null,
-                        "help": "Select this option to enable WPS related IOT fixes with\ndifferent APs. This option fixes IOT related issues with\nAPs which do not follow some of the standards of WPS-2.0\nspecification. These do not include any of the security\nrelated bypassing, just simple configuration corrections.\n\nCurrent fixes under this flag.\n1. Allow NULL-padded WPS attributes: Some APs keep NULL-padding\nat the end of some variable length WPS Attributes.\nThis is not as par the WPS2.0 specs, but to avoid interop issues,\nignore the padding by reducing the attribute length by 1.\n2. Bypass WPS-Config method validation: Some APs set display/pbc\nbutton bit without setting virtual/physical display/button bit which\nwill cause M2 validation fail, bypassing WPS-Config method validation.",
-                        "id": "WPA_WPS_WARS",
-                        "name": "WPA_WPS_WARS",
-                        "range": null,
-                        "title": "Add WPS Inter operatability Fixes",
-                        "type": "bool"
-                    },
-                    {
-                        "children": [],
-                        "depends_on": null,
                         "help": "Select this option to print logging information from WPA supplicant,\nthis includes handshake information and key hex dumps depending\non the project logging level.\n\nEnabling this could increase the build size ~60kb\ndepending on the project logging level.",
                         "id": "WPA_DEBUG_PRINT",
                         "name": "WPA_DEBUG_PRINT",
                         "range": null,
                         "title": "Print debug messages from WPA Supplicant",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "Select this to enable unity test for DPP.",
+                        "id": "WPA_TESTING_OPTIONS",
+                        "name": "WPA_TESTING_OPTIONS",
+                        "range": null,
+                        "title": "Add DPP testing code",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "Select this option to enable WPS related IOT fixes with\ndifferent APs. This option fixes IOT related issues with\nAPs which do not follow some of the standards of WPS-2.0\nspecification. These do not include any of the security\nrelated bypassing, just simple configuration corrections.\n\nCurrent fixes under this flag.\n1. Allow NULL-padded WPS attributes: Some APs keep NULL-padding\nat the end of some variable length WPS Attributes.\nThis is not as par the WPS2.0 specs, but to avoid interop issues,\nignore the padding by reducing the attribute length by 1.\n2. Bypass WPS-Config method validation: Some APs set display/pbc\nbutton bit without setting virtual/phycial display/button bit which\nwill cause M2 validation fail, bypassing WPS-Config method validation.",
+                        "id": "WPA_WPS_WARS",
+                        "name": "WPA_WPS_WARS",
+                        "range": null,
+                        "title": "Add WPS Inter operatability Fixes",
                         "type": "bool"
                     }
                 ],

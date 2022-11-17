@@ -45,11 +45,6 @@
 #define ACK_VAL 0x0                             /*!< I2C ack value */
 #define NACK_VAL 0x1                            /*!< I2C nack value */
 
-/* Critical error values (arbitrary values) */
-#define LOCAL_OTP                    60                // Local fault indicator for overtemperature (in celsius)
-#define LOCAL_OVP                    70               // Local fault indicator for overvoltage  (in V)
-#define LOCAL_OCP                    2.5             // Local fault indicator for overcurrent (in A)
-
 //todo: add local check of FPGA for Foreign Object Detection
 //todo: FOD --> switch off locally --> send through alert chr --> CTU will know the pad is off already
 

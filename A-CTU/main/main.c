@@ -58,7 +58,7 @@ static void gpio_task(void* arg)
             if ((full_power) && (gpio_get_level(io_num))) {
                 //ESP_LOGE(TAG, "FOD!");
                 FOD_counter++;
-                if( FOD_counter > 100 )
+                if( FOD_counter > 300 ) //300 on pad 3 // 100 on others
                 {
                     alert_payload.alert_field.FOD = 1;
                     switch_safely_off();
@@ -355,6 +355,7 @@ static void host_ctrl_on_sync(void)
 */
 void init_sw_timers(void)
 {
+    // initialize values
     time(&ch_comp);
     time(&ale);
 
@@ -416,7 +417,7 @@ void init_hw(void)
     io_conf.pull_up_en = 0;
     //configure GPIO with the given settings
     gpio_config(&io_conf);
-
+/*
     //INPUT PIN
     //interrupt of rising edge
     io_conf.intr_type = GPIO_INTR_HIGH_LEVEL;
@@ -429,7 +430,7 @@ void init_hw(void)
     //disable pull-down mode
     io_conf.pull_down_en = 0;
     gpio_config(&io_conf);
-
+*/
     gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
     //start gpio task
     xTaskCreate(gpio_task, "gpio_task", 2048, NULL, 10, NULL);
@@ -525,7 +526,7 @@ void app_main(void)
     uint8_t mac[6] = {0};
     esp_efuse_mac_get_default(mac);
     ESP_LOGI(TAG, "MAC Address: \n ");
-    ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x \n", mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
+    ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x \n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 */
 
 /*
@@ -535,4 +536,24 @@ void app_main(void)
         esp_restart();
     }
 */
+
+//* TESTING
+
+xTimerStart(dynamic_t_handle, 0);
+
+vTaskDelay(2000); 
+
+//disable OR gate
+disable_OR_output();
+//wait 
+vTaskDelay(OR_TIME_GAP); 
+//enable power
+disable_full_power_output();
+
+while (1)
+{
+    ESP_LOGI(TAG, "Voltage: %.02f, Current: %.02f", dyn_payload.vrect.f, dyn_payload.irect.f);
+    vTaskDelay(1000);
+}
+
 }
