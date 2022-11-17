@@ -233,7 +233,12 @@ static void CTU_local_fault_state(void *arg)
         time(&now);
 
         if (peer->alert_payload.alert_field.FOD)
-            timePad[peer->position-1] = now + TX_RECONNECTION_FOD;
+        {
+            if ((current_localization_process() || (now < loc_finish + 10))  && !full_power_pads[peer->position-1] && !fully_charged[peer->position-1])
+                timePad[peer->position-1] = now -1;
+            else
+                timePad[peer->position-1] = now + TX_RECONNECTION_FOD;
+        }
         else if (peer->alert_payload.alert_field.overcurrent)
             timePad[peer->position-1] = now + TX_RECONNECTION_OVERCURRENT;
         else if (peer->alert_payload.alert_field.overtemperature)

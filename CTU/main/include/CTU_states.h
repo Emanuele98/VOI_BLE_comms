@@ -58,7 +58,7 @@
 #define MIN_LOW_POWER_ON              0.2
 
 /* Minimum time for the Voltage check to be valid after the switching activates another pad */
-#define MIN_SWITCH_TIME               0.02
+#define MIN_SWITCH_TIME               0.025
 
 /* Minimum time for the low power mode during the fully charged checking */
 #define LOW_POWER_FULLY_CHARGED       3

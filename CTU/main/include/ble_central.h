@@ -73,6 +73,7 @@
 #define N_BYTES_IN_CTU_STATIC               17
 
 #define MINIMUM_ADV_RSSI                    -90
+#define MINIMUM_FULLY_CHARGED_RSSI          -85
 
 #define WPT_SVC_UUID16                      0xFFFE
 
