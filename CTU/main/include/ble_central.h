@@ -58,8 +58,8 @@
 #define BLE_WPT_INITIAL_CONN_ITVL_MIN       (10 * 1000 / BLE_HCI_CONN_ITVL)
 #define BLE_WPT_INITIAL_CONN_ITVL_MAX       (30 * 1000 / BLE_HCI_CONN_ITVL)
 
-#define CTU_TIMER_PERIOD                    2000
-#define CRU_TIMER_PERIOD                    2000
+#define CTU_TIMER_PERIOD                    1500
+#define CRU_TIMER_PERIOD                    1500
 #define LOC_CTU_TIMER_PERIOD               	150 
 #define LOC_CRU_TIMER_PERIOD                80
 
@@ -73,7 +73,7 @@
 #define N_BYTES_IN_CTU_STATIC               17
 
 #define MINIMUM_ADV_RSSI                    -90
-#define MINIMUM_FULLY_CHARGED_RSSI          -85
+#define MINIMUM_FULLY_CHARGED_RSSI          -80
 
 #define WPT_SVC_UUID16                      0xFFFE
 

@@ -610,7 +610,7 @@
     "RTCIO_SUPPORT_RTC_GPIO_DESC": false,
     "SDK_TOOLCHAIN_SUPPORTS_TIME_WIDE_64_BITS": false,
     "SDK_TOOLPREFIX": "xtensa-esp32-elf-",
-    "SD_CARD": true,
+    "SD_CARD": false,
     "SECURE_BOOT": false,
     "SECURE_FLASH_ENC_ENABLED": false,
     "SECURE_SIGNED_APPS_NO_SECURE_BOOT": false,

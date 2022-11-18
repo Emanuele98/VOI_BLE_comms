@@ -234,7 +234,7 @@ static void CTU_local_fault_state(void *arg)
 
         if (peer->alert_payload.alert_field.FOD)
         {
-            if ((current_localization_process() || (now < loc_finish + 10))  && !full_power_pads[peer->position-1] && !fully_charged[peer->position-1])
+            if ((current_localization_process() || (now < loc_finish + 10))  && !full_power_pads[peer->position-1] && !fully_charged[peer->voi_code])
                 timePad[peer->position-1] = now -1;
             else
                 timePad[peer->position-1] = now + TX_RECONNECTION_FOD;
@@ -353,10 +353,9 @@ void pass_the_baton(void)
         peer = Aux_CTU_find(next_bat + 1);
         if (peer != NULL)
         {
-            if (!full_power_pads[peer->position-1] && !fully_charged[peer->position-1])
+            if (!full_power_pads[peer->position-1] && !fully_charged[peer->voi_code])
             {
                 baton = peer->position;
-                //ESP_LOGI(TAG, "baton %d", baton);
                 return;
             }
         }

@@ -37,7 +37,7 @@
 #define MIN_TIME_AFTER_LOC            5
 
 /* Max time allowed without finding any A-CTUs*/
-#define CONF_STATE_TIMEOUT            10
+#define CONF_STATE_TIMEOUT            20
 
 /* Voltage threshold during LOW-POWER mode */
 #define VOLTAGE_LOW_THRESH            25
@@ -63,6 +63,9 @@
 /* Minimum time for the low power mode during the fully charged checking */
 #define LOW_POWER_FULLY_CHARGED       3
 
+/* Number of retries when RSSS is found below the threshold (fully charged)*/
+#define RSSI_ATTEMPT                  3
+
 /* Type definition for state task parameters */
 typedef struct CTU_task_params_s CTU_task_params_t;
 
@@ -76,7 +79,7 @@ struct peer;
 int8_t baton;
 
 /* Store when the scooter is fully charged */
-bool fully_charged[4];
+bool fully_charged[5];
 
 
 /* All states timer handles */

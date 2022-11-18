@@ -9,7 +9,7 @@
 
 /* Defines what type of task the unit will run on */
 #define TASKS_CORE            0
-#define TASK_STACK_SIZE       4000
+#define TASK_STACK_SIZE       4200
 #define CRU_TASK_PRIORITY     17
 #define AUX_CTU_TASK_PRIORITY 17
 
@@ -30,28 +30,33 @@ static uint8_t cru_CE8J[6] = {0x86, 0x85, 0xed, 0x0c, 0x38, 0x90};
 static uint8_t cru_D8X5[6] = {0xb2, 0x6d, 0x24, 0xfb, 0x0b, 0xac};
 
 //timer 
-static time_t switch_pad_ON, switch_pad_OFF, loc_success;
-static float time_sec, time_lowpower_on, min_switch_time, loc_time;
+time_t switch_pad_ON, switch_pad_OFF, loc_success;
+float time_sec, time_lowpower_on, min_switch_time, loc_time;
 
 //variable to know which pad is actually on in Low Power mode
-static uint8_t current_low_power = 0;
+uint8_t current_low_power = 0;
 
 /* keep count of comms_error */
-static uint8_t cru_comms_error = 0;
-static uint8_t ctu_comms_error = 0;
+static uint16_t cru_comms_error = 0;
+static uint16_t ctu_comms_error = 0;
 
 /* keep track of comms error of the peer */
-static int8_t last_rc[4];
+int16_t cru_last_rc[4];
+int16_t aux_last_rc[4];
 
 /* store last led state (1) GREEN (2) MISALIGNED */
-static uint8_t last_led[4];
+uint8_t last_led[4];
 
 /* Number of failed localization processes */
-static uint8_t n_loc[4];
+uint8_t n_loc[4];
 
 /* counters */
-static uint16_t count[4];
-static uint8_t rssi_check[4];
+uint16_t count[4];
+
+/* RSSI check during fully charged */
+int8_t rssi;
+
+int8_t rssiCheck[4];
 
 /* keep track of leds state */
 static uint8_t led_state[4] = {0, 0, 0, 0}; //default connected state
@@ -239,10 +244,10 @@ void ble_central_kill_AUX_CTU(uint16_t conn_handle, TaskHandle_t task_handle)
             }
             if (full_power_pads[Aux_CTU->position-1])
             {
+                Aux_CTU->voi_code = EMPTY;
                 while (rc)
                     rc = ble_central_update_control_enables(0, 1, 0, Aux_CTU);   
             }
-            led_state[Aux_CTU->position-1] = 0;
         }
         ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
         if (task_handle != NULL)
@@ -290,22 +295,27 @@ void ble_central_kill_CRU(uint16_t conn_handle, TaskHandle_t task_handle)
             struct peer *Aux_CTU = Aux_CTU_find(peer->position);
             if(Aux_CTU != NULL)
             {
-                led_state[peer->position-1] = 0;
+                Aux_CTU->voi_code = EMPTY;
+                if (fully_charged[peer->voi_code])
+                    led_state[peer->position-1] = 3;
+                else
+                    led_state[peer->position-1] = 0;
                 while (rc)
-                    rc = ble_central_update_control_enables(0, 1, 0, Aux_CTU);
+                    rc = ble_central_update_control_enables(0, 1, led_state[peer->position-1], Aux_CTU);
             }
             time(&now);
             localtime_r(&now, &info);
-            char string_value[2] = "0";
             if(SD_CARD)
                 write_sd_card(tx_status[peer->position-1], 0.00, &info);
             if (MQTT)
-                esp_mqtt_client_publish(client, tx_status[peer->position-1], string_value, 0, 0, 0);
-            }
+                esp_mqtt_client_publish(client, tx_status[peer->position-1], "0", 0, 0, 0);
+
+            if (!peer->alert_payload.alert_field.charge_complete)
+                peer->position = 0;
+        }
         if (!peer->alert_payload.alert_field.charge_complete) //stay connected if fully charged until the scooter leaves the platform
         {
-            fully_charged[peer->position-1] = 0;
-            peer->position = 0;
+            fully_charged[peer->voi_code] = 0;
             ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
         }
         //DELETE THE TASK ALWAYS AT THE END
@@ -426,7 +436,8 @@ static int ble_central_on_localization_process(uint16_t conn_handle,
             //make sure the command goes through
             if (!rc)
             {
-                full_power_pads[Aux_CTU->position-1] = 1;
+                //attach scooter to the aux ctu
+                Aux_CTU->voi_code = peer->voi_code;
                 //SET RX POSITION
                 peer->position = current_low_power;
                 ESP_LOGI(TAG, " CRU is in position %d", peer->position );
@@ -494,19 +505,15 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
     //all_low_power_off check to make sure first it switches off and then on
 
 
-    if (current_localization_process() && !full_power_pads[peer->position-1] && !fully_charged[peer->position-1])
+    if (current_localization_process())
     {
         //led state
         led_state[peer->position-1] = 0;
         //SWITCH ON
         if (all_low_power_off())
         {
-            //char string[20];
-            //sprintf(string, "Baton: %d", baton);
-            //esp_mqtt_client_publish(client, debug, string, 0, 0, 0);
             if (baton == peer->position)
             {
-                esp_mqtt_client_publish(client, debug, "Send loc command ON", 0, 0, 0);
                 while (rc)
                     rc = ble_central_update_control_enables(1, 0, led_state[peer->position-1], peer);
                 current_low_power = baton;
@@ -524,7 +531,6 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
                 if (time_lowpower_on > MIN_LOW_POWER_ON)
                 {
                     //ESP_LOGE(TAG, "Time LOW POWER ON %.02f", time_lowpower_on);
-                    esp_mqtt_client_publish(client, debug, "Send loc command OFF", 0, 0, 0);
                     while (rc)
                         rc = ble_central_update_control_enables(0, 0, led_state[peer->position-1], peer);
                 }
@@ -568,6 +574,7 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
         // this happens only when the fully charged scooter leaves the platform 
         peer->alert_payload.alert_field.charge_complete = 0;
         ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
+        vTaskDelay(300);
         ble_central_kill_AUX_CTU(Aux_CTU->conn_handle, Aux_CTU->task_handle);
         return 1;
     }
@@ -644,6 +651,7 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
             }
             //disconnect the aux ctu to avoid FOD on roll off
             ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
+            vTaskDelay(300);
             ble_central_kill_AUX_CTU(Aux_CTU->conn_handle, Aux_CTU->task_handle);
             return 1;
         } 
@@ -663,44 +671,52 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
 
     } else //if charge complete
     {
+        time(&now);
+        localtime_r(&now, &peer->alert_payload.alert_time);
         //RSSI CHECK
-        int8_t rssi;
-        int8_t res = ble_gap_conn_rssi(conn_handle, &rssi);
+        int res = ble_gap_conn_rssi(conn_handle, &rssi);
 
-        // check for a 3 times the RSSI (meaning scooter is still there)
-        if ((rssi > MINIMUM_FULLY_CHARGED_RSSI) && (!res))
+        if (!res)
         {
-            rssi_check[peer->voi_code] = 0;
-            //ESP_LOGW(TAG, "fully charged check!");
-            localtime_r(&now, &peer->alert_payload.alert_time);
-            // if yes, send the command to the leds (fully green)
-            led_state[peer->position-1] = 3;
-            while (rc)
-                rc = ble_central_update_control_enables(0, 0, led_state[peer->position-1], Aux_CTU);
-            if (SD_CARD)
-                write_sd_card(rx_charge_complete[peer->voi_code], 1.00, &peer->alert_payload.alert_time);
-            if (MQTT)
-                esp_mqtt_client_publish(client, rx_charge_complete[peer->voi_code], "1", 0, 0, 0);
-        } else 
-        {
-            if (rssi_check[peer->voi_code] > 2)
+            // check for a 3 times the RSSI (meaning scooter is still there)
+            if (rssi > MINIMUM_FULLY_CHARGED_RSSI)
             {
-                // if no - disconnect both pad and scooter
+                rssiCheck[peer->voi_code] = 0;
+                // if yes, send the command to the leds (fully green)
+                led_state[peer->position-1] = 3;
+                while (rc)
+                    rc = ble_central_update_control_enables(0, 0, led_state[peer->position-1], Aux_CTU);
                 if (SD_CARD)
-                    write_sd_card(rx_charge_complete[peer->voi_code], 0.00, &peer->alert_payload.alert_time);
+                    write_sd_card(rx_charge_complete[peer->voi_code], 1.00, &peer->alert_payload.alert_time);
                 if (MQTT)
+                    esp_mqtt_client_publish(client, rx_charge_complete[peer->voi_code], "1", 0, 0, 0);
+            } else 
+            {
+                char string[20];
+                sprintf(string, "RSSI low: %d", rssiCheck[peer->voi_code]);
+                if (MQTT)
+                        esp_mqtt_client_publish(client, debug, string, 0, 0, 0);
+                if (rssiCheck[peer->voi_code] >= RSSI_ATTEMPT)
                 {
-                    esp_mqtt_client_publish(client, debug, "Fully charged scooter left the platform!", 0, 0, 0);
-                    esp_mqtt_client_publish(client, rx_charge_complete[peer->voi_code], "0", 0, 0, 0);
+                    // if no - disconnect both pad and scooter
+                    if (SD_CARD)
+                        write_sd_card(rx_charge_complete[peer->voi_code], 0.00, &peer->alert_payload.alert_time);
+                    if (MQTT)
+                    {
+                        esp_mqtt_client_publish(client, debug, "Fully charged scooter left", 0, 0, 0);
+                        esp_mqtt_client_publish(client, rx_charge_complete[peer->voi_code], "0", 0, 0, 0);
+                    }
+                    peer->alert_payload.alert_field.charge_complete = 0;
+                    ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
+                    vTaskDelay(300);
+                    ble_central_kill_AUX_CTU(Aux_CTU->conn_handle, Aux_CTU->task_handle);
+                    return 1;
+                } else
+                {
+                    rssiCheck[peer->voi_code]++;
                 }
-                peer->alert_payload.alert_field.charge_complete = 0;
-                ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
-                ble_central_kill_AUX_CTU(Aux_CTU->conn_handle, Aux_CTU->task_handle);
-                return 1;
             }
-            rssi_check[peer->voi_code]++;
-            esp_mqtt_client_publish(client, debug, "RSSI is low!", 0, 0, 0);
-        }
+        } 
     }
 
     return 0;
@@ -790,9 +806,13 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
         return;
     }
 
+
     //attach the baton to an existing A-CTU
     baton = peer->position;
-    last_rc[peer->voi_code] = -1;
+    // initialize variables
+    peer->voi_code = EMPTY;
+    fully_charged[peer->voi_code] = 0;
+    aux_last_rc[peer->position-1] = -1;
     int task_delay = CTU_TIMER_PERIOD;
 
     // avoid red flags
@@ -816,7 +836,6 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
     while (1)
     {
         //check alert is fine
-        //if ((peer->dyn_payload.alert == 0) || (!full_power_pads[peer->position-1] && !fully_charged[peer->position-1]) )
         if (peer->dyn_payload.alert == 0)
         {
                 /* Initiate Read procedure */        
@@ -824,8 +843,9 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
                                 ble_central_on_AUX_CTU_dyn_read, (void *)peer);
         } else 
             {
+                //!AVOID FOD DURING LOCALIZATION
                 time(&now);
-                if ((current_localization_process() || (now < loc_finish + 10))  && !full_power_pads[peer->position-1] && !fully_charged[peer->position-1])
+                if ((current_localization_process() || (now < loc_finish + 10))  && !full_power_pads[peer->position-1] && !fully_charged[peer->voi_code])
                 {
                     peer->dyn_payload.alert = 0;
                     /* Initiate Read procedure */        
@@ -842,7 +862,7 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
         //*ERROR HANDLING - DISCONNECT ONLY AFTER 60 CONSECUTIVE COMMS ERRORS        
         if (rc != ESP_OK)
         {
-            if (last_rc[peer->voi_code] == rc)
+            if (aux_last_rc[peer->position-1] == rc)
             {
                 if (ctu_comms_error < COMMS_ERROR_LIMIT)
                 {
@@ -868,13 +888,13 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
             } 
             //ESP_LOGW(TAG, "AUX CTU in position %d, task error number %d, error code rc=%d", peer->position, ctu_comms_error, rc);
             //RC = https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/esp_err.html#_CPPv49esp_err_t
-        } else if ((last_rc[peer->voi_code] != -1) && (last_rc[peer->voi_code]))
+        } else if ((aux_last_rc[peer->position-1] != -1) && (aux_last_rc[peer->position-1]))
         {
             //ESP_LOGI(TAG, "Comms RECOVERY with AUX CTU %d", peer->position);
             ctu_comms_error = 0;
         }
         
-        last_rc[peer->voi_code] = rc;
+        aux_last_rc[peer->position-1] = rc;
 
         // set Task Delay
         if ((current_localization_process()) && (!full_power_pads[peer->position-1]))
@@ -954,10 +974,11 @@ static void ble_central_CRU_task_handle(void *arg)
     peer->localization_process = false;
     peer->correct = false;
     count[peer->voi_code] = 0;
-    rssi_check[peer->voi_code] = 0;
-    last_rc[peer->voi_code] = -1;
+    rssiCheck[peer->voi_code] = 0;
+    cru_last_rc[peer->voi_code] = -1;
     last_led[peer->voi_code] = 0;
     n_loc[peer->voi_code] = 0;
+    fully_charged[peer->voi_code] = 0;
     time(&peer->loc_fail);
 
     int task_delay = CRU_TIMER_PERIOD;
@@ -979,7 +1000,6 @@ static void ble_central_CRU_task_handle(void *arg)
                     switch (count[peer->voi_code])
                     {
                         case 0:
-                            esp_mqtt_client_publish(client, debug, "LOC PROCESS START!", 0, 0, 0);
                             low_power_pads[3] = low_power_pads[2] = low_power_pads[1] = low_power_pads[0] = 0;
                             current_low_power = 0;
                             peer->localization_process = true;
@@ -1052,7 +1072,7 @@ static void ble_central_CRU_task_handle(void *arg)
         //*ERROR HANDLING - DISCONNECT ONLY AFTER 60 CONSECUTIVE COMMS ERRORS
         if (rc != ESP_OK)
         {
-            if (last_rc[peer->voi_code] == rc)
+            if (cru_last_rc[peer->voi_code] == rc)
             {
                 if (cru_comms_error < COMMS_ERROR_LIMIT)
                 {
@@ -1078,13 +1098,13 @@ static void ble_central_CRU_task_handle(void *arg)
             } 
             //ESP_LOGW(TAG, "CRU %d task error but loop anyway rc=%d", cru_comms_error, rc);
             //RC = https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/esp_err.html#_CPPv49esp_err_t
-        } else if ((last_rc[peer->voi_code] != -1) && (last_rc[peer->voi_code]))
+        } else if ((cru_last_rc[peer->voi_code] != -1) && (cru_last_rc[peer->voi_code]))
         {
             //ESP_LOGI(TAG, "Comms RECOVERY with CRU");
             cru_comms_error = 0;
         }
 
-        last_rc[peer->voi_code] = rc;
+        cru_last_rc[peer->voi_code] = rc;
 
         // set Task Delay
         if (peer->localization_process)
@@ -1741,9 +1761,12 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
                 ESP_LOGE(TAG, "CRU");
                 //this may happen when scooter leaves the platform after being fully charged
                 peer->alert_payload.alert_field.charge_complete = 0;
-                ble_central_kill_CRU(peer->conn_handle, NULL);
-            } else {
-                ble_central_kill_AUX_CTU(peer->conn_handle, NULL);
+                if (peer->conn_handle)
+                    ble_central_kill_CRU(peer->conn_handle, NULL);
+            } else 
+            {
+                if (peer->conn_handle)
+                    ble_central_kill_AUX_CTU(peer->conn_handle, NULL);
                 if (peer->position) 
                     ESP_LOGE(TAG, "A-CTU in position: %d", peer->position);
                 if (!peer_get_NUM_AUX_CTU())
@@ -1851,7 +1874,6 @@ static void ble_central_unpack_AUX_CTU_alert_param(struct os_mbuf* om, uint16_t 
                 {
                     ESP_LOGE(TAG, "ALERT -- FOD -- aux ctu position %d", peer->position);
                     CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
-                    esp_mqtt_client_publish(client, debug, "FOD", 0, 0, 0);
                     if (SD_CARD)
                         write_sd_card(tx_fod[peer->position-1], 1.00, &peer->alert_payload.alert_time);
                     if (MQTT)
@@ -1904,7 +1926,7 @@ static void ble_central_unpack_CRU_alert_param(struct os_mbuf* om, uint16_t conn
                 }  else if (peer->alert_payload.alert_field.charge_complete)
                     {
                         ESP_LOGE(TAG, "ALERT -- CHARGE COMPLETE  -- cru");
-                        fully_charged[peer->position-1] = 1;
+                        fully_charged[peer->voi_code] = 1;
                         ble_central_kill_CRU(peer->conn_handle, NULL);
                         if (SD_CARD)
                             write_sd_card(rx_charge_complete[peer->voi_code], 1.00, &peer->alert_payload.alert_time);
@@ -1977,8 +1999,6 @@ static void ble_central_unpack_static_param(const struct ble_gatt_attr *attr, ui
             ESP_LOGI(TAG, "CE8J");
             strcpy(peer->voi_code_string, "CE8J");
             peer->voi_code = VOI_CE8J;
-            //TEST
-            esp_mqtt_client_publish(client, debug, "CE8J connected", 0, 0, 0);
         } else if ((peer->stat_payload.ble_addr5 == cru_3PAU[5]) && (peer->stat_payload.ble_addr4 == cru_3PAU[4]) && (peer->stat_payload.ble_addr3 == cru_3PAU[3]) 
             && (peer->stat_payload.ble_addr2 == cru_3PAU[2]) && (peer->stat_payload.ble_addr1 == cru_3PAU[1]) && (peer->stat_payload.ble_addr0 == cru_3PAU[0]))
         {

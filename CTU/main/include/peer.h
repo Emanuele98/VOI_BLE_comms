@@ -54,7 +54,8 @@ typedef enum {
     VOI_3PAU, 
     VOI_6F35, 
     VOI_CE8J, 
-    VOI_D8X5
+    VOI_D8X5,
+    EMPTY
 } voi_code_enum;
 
 //idea (use this for all the calls except switch on-off - need a string field)
