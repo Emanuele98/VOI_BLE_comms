@@ -6,12 +6,8 @@ make.exe all --print-data-base --no-builtin-variables --no-builtin-rules --quest
 # PARTICULAR PURPOSE.
 
 # This program built for i686-pc-msys
- 
-Makefile:8: /make/project.mk: No such file or directory
-make.exe: *** No rule to make target `/make/project.mk'.  Stop.
 
-
-# Make data base, printed on Thu Nov 17 16:04:52 2022
+# Make data base, printed on Wed Nov 30 11:04:48 2022
 
 # Variables
 
@@ -62,7 +58,7 @@ NINJA = C:\ninja
 # environment
 VSCODE_CWD = C:\Users\degan\AppData\Local\Programs\Microsoft VS Code
 # environment
-PATH = /c/Program Files/Common Files/Oracle/Java/javapath:/c/Program Files (x86)/VMware/VMware Workstation/bin/:/c/Program Files (x86)/Microsoft SDKs/Azure/CLI2/wbin:/c/WINDOWS/system32:/c/WINDOWS:/c/WINDOWS/System32/Wbem:/c/WINDOWS/System32/WindowsPowerShell/v1.0/:/c/WINDOWS/System32/OpenSSH/:/c/ProgramData/chocolatey/bin:/c/Program Files/nodejs/:/c/Program Files/MATLAB/R2021b/bin:/c/Program Files (x86)/Nordic Semiconductor/nrf-command-line-tools/bin/:/c/Program Files/PuTTY/:/c/MinGW/bin:/usr/bin:/c/Program Files/CMake/bin:/c/Program Files/Git/cmd:/c/Program Files/OpenSSL/bin:/c/Program Files/Amazon/AWSCLIV2/:/c/Program Files (x86)/GNU Tools ARM Embedded/5.4 2016q3/bin:/c/Users/degan/AppData/Local/Microsoft/WindowsApps:/c/Users/degan/AppData/Local/Programs/Microsoft VS Code/bin:/c/Users/degan/AppData/Roaming/npm:/c/Users/degan/.deno/bin:/c/Program Files/heroku/bin:/c/Users/degan/AppData/Local/GitHubDesktop/bin:/c/Program Files/snap/bin:/c/Users/degan/AppData/Local/Microsoft/WindowsApps:/c/Program Files/OpenSSL-Win64/bin:.
+PATH = /c/Program Files/Common Files/Oracle/Java/javapath:/c/Program Files (x86)/VMware/VMware Workstation/bin/:/c/Program Files (x86)/Microsoft SDKs/Azure/CLI2/wbin:/c/WINDOWS/system32:/c/WINDOWS:/c/WINDOWS/System32/Wbem:/c/WINDOWS/System32/WindowsPowerShell/v1.0/:/c/WINDOWS/System32/OpenSSH/:/c/ProgramData/chocolatey/bin:/c/Program Files/nodejs/:/c/Program Files/MATLAB/R2021b/bin:/c/Program Files/PuTTY/:/c/MinGW/bin:/usr/bin:/c/Program Files/CMake/bin:/c/Program Files/Git/cmd:/c/Program Files/OpenSSL/bin:/c/Program Files/Amazon/AWSCLIV2/:/c/Program Files (x86)/GNU Tools ARM Embedded/5.4 2016q3/bin:/c/Users/degan/AppData/Local/Microsoft/WindowsApps:/c/Users/degan/AppData/Local/Programs/Microsoft VS Code/bin:/c/Users/degan/AppData/Roaming/npm:/c/Users/degan/.deno/bin:/c/Program Files/heroku/bin:/c/Users/degan/AppData/Local/GitHubDesktop/bin:/c/Program Files/snap/bin:/c/Users/degan/AppData/Local/Microsoft/WindowsApps:/c/Program Files/OpenSSL-Win64/bin:.
 # environment
 ONLINESERVICES = Online Services
 # environment
@@ -92,7 +88,7 @@ NRFGOSTUDIOPATH = C:\Program Files (x86)\Nordic Semiconductor\nRFgo Studio
 # automatic
 %F = $(notdir $%)
 # environment
-CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_6400_ZUCJDDYWLHQXBOWA
+CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_12296_KLMQXQXJDNZNUTVA
 # environment
 COMPUTERNAME = LAPTOP-CQUHDE6I
 # environment
@@ -218,7 +214,7 @@ TERM = cygwin
 # environment
 FPS_BROWSER_APP_PROFILE_STRING = Internet Explorer
 # environment
-VSCODE_PID = 6400
+VSCODE_PID = 12296
 # environment
 USERDOMAIN_ROAMINGPROFILE = LAPTOP-CQUHDE6I
 # variable set hash-table stats:
@@ -286,6 +282,9 @@ Makefile:
 # strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
 # strcache free: total = 4070 / max = 4070 / min = 4070 / avg = 4070
 
-# Finished Make data base on Thu Nov 17 16:04:52 2022
+# Finished Make data base on Wed Nov 30 11:04:48 2022
 
  
+Makefile:8: /make/project.mk: No such file or directory
+make.exe: *** No rule to make target `/make/project.mk'.  Stop.
+

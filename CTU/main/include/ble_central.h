@@ -58,10 +58,10 @@
 #define BLE_WPT_INITIAL_CONN_ITVL_MIN       (10 * 1000 / BLE_HCI_CONN_ITVL)
 #define BLE_WPT_INITIAL_CONN_ITVL_MAX       (30 * 1000 / BLE_HCI_CONN_ITVL)
 
-#define CTU_TIMER_PERIOD                    1500
-#define CRU_TIMER_PERIOD                    1500
-#define LOC_CTU_TIMER_PERIOD               	150 
-#define LOC_CRU_TIMER_PERIOD                80
+#define CTU_TIMER_PERIOD                    pdMS_TO_TICKS(3000)
+#define CRU_TIMER_PERIOD                    pdMS_TO_TICKS(3000)
+#define LOC_CTU_TIMER_PERIOD               	pdMS_TO_TICKS(300)
+#define LOC_CRU_TIMER_PERIOD                pdMS_TO_TICKS(100)
 
 #define BLE_PERIODIC_SCAN_ITVL				100	
 #define BLE_PERIODIC_SCAN_WIND				100
@@ -73,14 +73,14 @@
 #define N_BYTES_IN_CTU_STATIC               17
 
 #define MINIMUM_ADV_RSSI                    -90
-#define MINIMUM_FULLY_CHARGED_RSSI          -80
+#define MINIMUM_FULLY_CHARGED_RSSI          -88
 
 #define WPT_SVC_UUID16                      0xFFFE
 
 #define PRU_CONTROL_CHAR_SIZE               5
 
 // RECONNECTION TIMES
-#define RECONNECTION_LOC_FAIL               30           //30 sec
+#define RECONNECTION_LOC_FAIL               300           //30 sec
 #define RECONNECTION_COMMS_FAIL             30           //30 sec
 #define RECONNECTION_SCOOTER_LEFT           10           //30 sec
 //#define RX_RECONNECTION_AFTER_PAD_KILLED    30         //30 min

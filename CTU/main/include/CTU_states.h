@@ -60,11 +60,8 @@
 /* Minimum time for the Voltage check to be valid after the switching activates another pad */
 #define MIN_SWITCH_TIME               0.025
 
-/* Minimum time for the low power mode during the fully charged checking */
-#define LOW_POWER_FULLY_CHARGED       3
-
 /* Number of retries when RSSS is found below the threshold (fully charged)*/
-#define RSSI_ATTEMPT                  3
+#define RSSI_ATTEMPT                  5
 
 /* Type definition for state task parameters */
 typedef struct CTU_task_params_s CTU_task_params_t;

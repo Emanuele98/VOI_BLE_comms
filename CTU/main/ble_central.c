@@ -10,8 +10,8 @@
 /* Defines what type of task the unit will run on */
 #define TASKS_CORE            0
 #define TASK_STACK_SIZE       4200
-#define CRU_TASK_PRIORITY     17
-#define AUX_CTU_TASK_PRIORITY 17
+#define CRU_TASK_PRIORITY     18
+#define AUX_CTU_TASK_PRIORITY 18
 
 //A-CTUs bluetooth addresses
 
@@ -574,7 +574,7 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
         // this happens only when the fully charged scooter leaves the platform 
         peer->alert_payload.alert_field.charge_complete = 0;
         ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
-        vTaskDelay(300);
+        vTaskDelay(500);
         ble_central_kill_AUX_CTU(Aux_CTU->conn_handle, Aux_CTU->task_handle);
         return 1;
     }
@@ -651,7 +651,7 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
             }
             //disconnect the aux ctu to avoid FOD on roll off
             ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
-            vTaskDelay(300);
+            vTaskDelay(500);
             ble_central_kill_AUX_CTU(Aux_CTU->conn_handle, Aux_CTU->task_handle);
             return 1;
         } 
@@ -708,7 +708,7 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
                     }
                     peer->alert_payload.alert_field.charge_complete = 0;
                     ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
-                    vTaskDelay(300);
+                    vTaskDelay(500);
                     ble_central_kill_AUX_CTU(Aux_CTU->conn_handle, Aux_CTU->task_handle);
                     return 1;
                 } else
