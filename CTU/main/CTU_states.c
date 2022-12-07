@@ -173,7 +173,7 @@ static void CTU_configuration_state(void *arg)
     time(&now);
         
     /* Enter low power state only when the A-CTUs are connected and no more were found in the last 10 s*/
-    if ( ((now > conf_time + CONF_STATE_TIMEOUT) && (peer_get_NUM_AUX_CTU())) || ((peer_get_NUM_AUX_CTU() == 4) && (all_AUX_CTU_set())) )
+    if (( ((now > conf_time + CONF_STATE_TIMEOUT) && (peer_get_NUM_AUX_CTU())) || ((peer_get_NUM_AUX_CTU() == 4) && (all_AUX_CTU_set())) ) && (!TOO_COLD) )
         CTU_state_change(CTU_LOW_POWER_STATE, (void *)NULL);
 }
 

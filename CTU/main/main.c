@@ -135,6 +135,8 @@ void init_sw_timers(void)
 
     /* Software timer for periodic temperature and humidity measurements */
     ambient_temp_handle = xTimerCreate("Temp", PERIODIC_AMBIENT_TEMP_TIMER, pdTRUE, NULL, CTU_ambient_temperature);
+    /* Initialize variable */
+    TOO_COLD = false;
 
     // start periodic temperature and humidity measurements
     xTimerStart(ambient_temp_handle, 100);

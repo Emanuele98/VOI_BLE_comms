@@ -25,6 +25,8 @@
 #define DHT_CHECKSUM_ERROR 	-1
 #define DHT_TIMEOUT_ERROR 	-2
 
+#define MIN_TEMP_LIMIT 		5
+
 time_t reconn_time;
 
 /* Non-Volatile-Storage */
@@ -32,6 +34,9 @@ nvs_handle_t my_handle;
 /* Waiting times after disconnection */
 int64_t timePad[4];
 int64_t timeScooter[4];
+
+/* brrrrrr */
+bool TOO_COLD;
 
 
 // == function prototypes =======================================

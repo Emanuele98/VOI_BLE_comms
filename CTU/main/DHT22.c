@@ -19,6 +19,8 @@ struct tm temp_time;
 const char* temp_path = "warwicktrial/ambient/temperature";
 const char* hum_path = "warwicktrial/ambient/humidity";
 
+extern const char debug[80];
+
 // == set the DHT used pin=========================================
 
 void setDHTgpio( int gpio )
@@ -227,6 +229,30 @@ void CTU_ambient_temperature(void *arg)
 			sprintf(hum, "%.1f", getHumidity());
         	esp_mqtt_client_publish(client, hum_path, hum, 0, 0, 0);
 		}
+
+		TOO_COLD = false;
+
+		if ( ( getTemperature() < MIN_TEMP_LIMIT ) && ( m_CTU_task_param.state == CTU_POWER_TRANSFER_STATE ) )
+		{
+			//switch all pads off
+			struct peer *peer;
+			SLIST_FOREACH(peer, &peers, next) {
+				if (!peer->CRU) 
+				{
+					if(full_power_pads[peer->position-1])
+						ble_central_update_control_enables(0, 1, 0, peer);
+					else if(low_power_pads[peer->position-1])
+							ble_central_update_control_enables(0, 0, 0, peer); 
+				}
+			}
+
+			TOO_COLD = true;
+			if (m_CTU_task_param.state != CTU_CONFIG_STATE )
+				CTU_state_change( CTU_CONFIG_STATE, NULL );
+			
+			esp_mqtt_client_publish(client, debug, "TOO COLD", 0, 0, 0);
+		}
+
     }
 
 	time(&reconn_time);

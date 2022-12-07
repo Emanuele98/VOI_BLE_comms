@@ -1844,7 +1844,7 @@ static void ble_central_unpack_AUX_CTU_alert_param(struct os_mbuf* om, uint16_t 
         time(&now);
         localtime_r(&now, &peer->alert_payload.alert_time);
 
-        char string_value[2] = "1";
+        const char string_value[2] = "1";
 
         if(peer->alert_payload.alert_field.overvoltage)
         {
@@ -1897,7 +1897,7 @@ static void ble_central_unpack_CRU_alert_param(struct os_mbuf* om, uint16_t conn
         time(&now);
         localtime_r(&now, &peer->alert_payload.alert_time);
 
-        char string_value[2] = "1";
+        const char string_value[2] = "1";
 
         if(peer->alert_payload.alert_field.overvoltage)
         {
@@ -2167,7 +2167,7 @@ uint8_t ble_central_update_control_enables(uint8_t enable, uint8_t full_power, u
                 ESP_LOGW(TAG, "FULL MODE");
                 full_power_pads[peer->position-1] = 1;
                 
-                char string_value[2] = "1"; 
+                const char string_value[2] = "1"; 
                 if (SD_CARD)
                     write_sd_card(tx_status[peer->position-1], 1.00, &info);
                 if (MQTT)
