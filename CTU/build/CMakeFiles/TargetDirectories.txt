@@ -131,6 +131,7 @@ C:/Users/degan/OneDrive/Desktop/VOI_comms_BLE/CTU/build/esp-idf/esp_system/port/
 C:/Users/degan/OneDrive/Desktop/VOI_comms_BLE/CTU/build/esp-idf/esp_system/port/esp32/CMakeFiles/list_install_components.dir
 C:/Users/degan/OneDrive/Desktop/VOI_comms_BLE/CTU/build/esp-idf/esp_system/port/esp32/CMakeFiles/install/strip.dir
 C:/Users/degan/OneDrive/Desktop/VOI_comms_BLE/CTU/build/esp-idf/esp_rom/CMakeFiles/list_install_components.dir
+C:/Users/degan/OneDrive/Desktop/VOI_comms_BLE/CTU/build/esp-idf/esp_rom/CMakeFiles/__idf_esp_rom.dir
 C:/Users/degan/OneDrive/Desktop/VOI_comms_BLE/CTU/build/esp-idf/esp_rom/CMakeFiles/install/local.dir
 C:/Users/degan/OneDrive/Desktop/VOI_comms_BLE/CTU/build/esp-idf/esp_rom/CMakeFiles/install.dir
 C:/Users/degan/OneDrive/Desktop/VOI_comms_BLE/CTU/build/esp-idf/esp_rom/CMakeFiles/edit_cache.dir
@@ -311,8 +312,8 @@ C:/Users/degan/OneDrive/Desktop/VOI_comms_BLE/CTU/build/esp-idf/newlib/CMakeFile
 C:/Users/degan/OneDrive/Desktop/VOI_comms_BLE/CTU/build/esp-idf/newlib/CMakeFiles/list_install_components.dir
 C:/Users/degan/OneDrive/Desktop/VOI_comms_BLE/CTU/build/esp-idf/newlib/CMakeFiles/install/strip.dir
 C:/Users/degan/OneDrive/Desktop/VOI_comms_BLE/CTU/build/esp-idf/cxx/CMakeFiles/__idf_cxx.dir
-C:/Users/degan/OneDrive/Desktop/VOI_comms_BLE/CTU/build/esp-idf/cxx/CMakeFiles/install/local.dir
 C:/Users/degan/OneDrive/Desktop/VOI_comms_BLE/CTU/build/esp-idf/cxx/CMakeFiles/install.dir
+C:/Users/degan/OneDrive/Desktop/VOI_comms_BLE/CTU/build/esp-idf/cxx/CMakeFiles/install/local.dir
 C:/Users/degan/OneDrive/Desktop/VOI_comms_BLE/CTU/build/esp-idf/cxx/CMakeFiles/edit_cache.dir
 C:/Users/degan/OneDrive/Desktop/VOI_comms_BLE/CTU/build/esp-idf/cxx/CMakeFiles/rebuild_cache.dir
 C:/Users/degan/OneDrive/Desktop/VOI_comms_BLE/CTU/build/esp-idf/cxx/CMakeFiles/list_install_components.dir

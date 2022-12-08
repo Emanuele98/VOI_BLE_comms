@@ -6,6 +6,7 @@ $<TARGET_FILE:__idf_app_update>
 $<TARGET_FILE:__idf_esp_ipc>
 $<TARGET_FILE:__idf_spi_flash>
 $<TARGET_FILE:__idf_esp_system>
+$<TARGET_FILE:__idf_esp_rom>
 $<TARGET_FILE:__idf_soc>
 $<TARGET_FILE:__idf_vfs>
 $<TARGET_FILE:__idf_tcpip_adapter>

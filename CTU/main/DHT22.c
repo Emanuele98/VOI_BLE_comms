@@ -234,6 +234,7 @@ void CTU_ambient_temperature(void *arg)
 
 		if ( ( getTemperature() < MIN_TEMP_LIMIT ) && ( m_CTU_task_param.state == CTU_POWER_TRANSFER_STATE ) )
 		{
+			/*
 			//switch all pads off
 			struct peer *peer;
 			SLIST_FOREACH(peer, &peers, next) {
@@ -249,8 +250,9 @@ void CTU_ambient_temperature(void *arg)
 			TOO_COLD = true;
 			if (m_CTU_task_param.state != CTU_CONFIG_STATE )
 				CTU_state_change( CTU_CONFIG_STATE, NULL );
-			
-			esp_mqtt_client_publish(client, debug, "TOO COLD", 0, 0, 0);
+			*/
+			if (MQTT)
+				esp_mqtt_client_publish(client, debug, "TOO COLD", 0, 0, 0);
 		}
 
     }

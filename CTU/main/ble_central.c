@@ -20,7 +20,10 @@
 
 static uint8_t Actu_addr1[6] = {0x72, 0x81, 0x24, 0xfb, 0x0b, 0xac};
 static uint8_t Actu_addr2[6] = {0x86, 0x68, 0x24, 0xfb, 0x0b, 0xac};
-static uint8_t Actu_addr3[6] = {0x46, 0x0b, 0x27, 0xfb, 0x0b, 0xac};
+//broken inverter board
+//static uint8_t Actu_addr3[6] = {0x46, 0x0b, 0x27, 0xfb, 0x0b, 0xac};
+//new inverter board
+static uint8_t Actu_addr3[6] = {0x5a, 0xe3, 0x26, 0xfb, 0x0b, 0xac};
 static uint8_t Actu_addr4[6] = {0x9a, 0xbb, 0x25, 0xfb, 0x0b, 0xac};
 
 //CRUs bluetooth addresses
@@ -845,7 +848,9 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
             {
                 //!AVOID FOD DURING LOCALIZATION
                 time(&now);
-                if ((current_localization_process() || (now < loc_finish + 10))  && !full_power_pads[peer->position-1] && !fully_charged[peer->voi_code])
+                if (((current_localization_process() || (now < loc_finish + 10))  && !full_power_pads[peer->position-1] && !fully_charged[peer->voi_code])
+                //!AVOID OV ALERTS FOR PAD 3
+                    || ((peer->position == 3) && (peer->dyn_payload.vrect.f > 70) && (peer->dyn_payload.irect.f < 2.75) && (peer->dyn_payload.temp1.f < 55) && (peer->dyn_payload.temp2.f < 55)) )
                 {
                     peer->dyn_payload.alert = 0;
                     /* Initiate Read procedure */        

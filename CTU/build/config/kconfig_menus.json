@@ -133,7 +133,7 @@
                     }
                 ],
                 "depends_on": null,
-                "help": "Select the way the application is built.\n\nBy default, the application is built as a binary file in a format compatible with\nthe ESP32 bootloader. In addition to this application, 2nd stage bootloader is\nalso built. Application and bootloader binaries can be written into flash and\nloaded/executed from there.\n\nAnother option, useful for only very small and limited applications, is to only link\nthe .elf file of the application, such that it can be loaded directly into RAM over\nJTAG. Note that since IRAM and DRAM sizes are very limited, it is not possible to\nbuild any complex application this way. However for kinds of testing and debugging,\nthis option may provide faster iterations, since the application does not need to be\nwritten into flash.\nNote that at the moment, ESP-IDF does not contain all the startup code required to\ninitialize the CPUs and ROM memory (data/bss). Therefore it is necessary to execute\na bit of ROM code prior to executing the application. A gdbinit file may look as follows:\n\n    # Connect to a running instance of OpenOCD\n    target remote :3333\n    # Reset and halt the target\n    mon reset halt\n    # Run to a specific point in ROM code,\n    #  where most of initialization is complete.\n    thb *0x40007901\n    c\n    # Load the application into RAM\n    load\n    # Run till app_main\n    tb app_main\n    c\n\nExecute this gdbinit file as follows:\n\n    xtensa-esp32-elf-gdb build/app-name.elf -x gdbinit\n\nRecommended sdkconfig.defaults for building loadable ELF files is as follows.\nCONFIG_APP_BUILD_TYPE_ELF_RAM is required, other options help reduce application\nmemory footprint.\n\n    CONFIG_APP_BUILD_TYPE_ELF_RAM=y\n    CONFIG_VFS_SUPPORT_TERMIOS=\n    CONFIG_NEWLIB_NANO_FORMAT=y\n    CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y\n    CONFIG_ESP_DEBUG_STUBS_ENABLE=\n    CONFIG_ESP_ERR_TO_NAME_LOOKUP=",
+                "help": "Select the way the application is built.\n\nBy default, the application is built as a binary file in a format compatible with\nthe ESP32 bootloader. In addition to this application, 2nd stage bootloader is\nalso built. Application and bootloader binaries can be written into flash and\nloaded/executed from there.\n\nAnother option, useful for only very small and limited applications, is to only link\nthe .elf file of the application, such that it can be loaded directly into RAM over\nJTAG. Note that since IRAM and DRAM sizes are very limited, it is not possible to\nbuild any complex application this way. However for kinds of testing and debugging,\nthis option may provide faster iterations, since the application does not need to be\nwritten into flash.\nNote that at the moment, ESP-IDF does not contain all the startup code required to\ninitialize the CPUs and ROM memory (data/bss). Therefore it is necessary to execute\na bit of ROM code prior to executing the application. A gdbinit file may look as follows:\n\n    # Connect to a running instance of OpenOCD\n    target remote :3333\n    # Reset and halt the target\n    mon reset halt\n    # Run to a specific point in ROM code,\n    #  where most of initialization is complete.\n    thb *0x40007d54\n    c\n    # Load the application into RAM\n    load\n    # Run till app_main\n    tb app_main\n    c\n\nExecute this gdbinit file as follows:\n\n    xtensa-esp32-elf-gdb build/app-name.elf -x gdbinit\n\nRecommended sdkconfig.defaults for building loadable ELF files is as follows.\nCONFIG_APP_BUILD_TYPE_ELF_RAM is required, other options help reduce application\nmemory footprint.\n\n    CONFIG_APP_BUILD_TYPE_ELF_RAM=y\n    CONFIG_VFS_SUPPORT_TERMIOS=\n    CONFIG_NEWLIB_NANO_FORMAT=y\n    CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y\n    CONFIG_ESP_DEBUG_STUBS_ENABLE=\n    CONFIG_ESP_ERR_TO_NAME_LOOKUP=",
                 "id": "build-type-application-build-type",
                 "name": "APP_BUILD_TYPE",
                 "title": "Application build type",
@@ -627,6 +627,16 @@
                 "range": null,
                 "title": "Reserve RTC FAST memory for custom purposes",
                 "type": "bool"
+            },
+            {
+                "children": [],
+                "depends_on": null,
+                "help": "Perform the startup flow recommended by XMC. Please consult XMC for the details of this flow.\nXMC chips will be forbidden to be used, when this option is disabled.\n\nDON'T DISABLE THIS UNLESS YOU KNOW WHAT YOU ARE DOING.",
+                "id": "BOOTLOADER_FLASH_XMC_SUPPORT",
+                "name": "BOOTLOADER_FLASH_XMC_SUPPORT",
+                "range": null,
+                "title": "Enable the support for flash chips of XMC (READ HELP FIRST)",
+                "type": "bool"
             }
         ],
         "depends_on": null,
@@ -994,7 +1004,7 @@
                     {
                         "children": [],
                         "depends_on": "SECURE_BOOT_INSECURE && SECURE_BOOT_V2_ENABLED",
-                        "help": "If not set (default, recommended), on first boot the bootloader will burn the WR_DIS_RD_DIS\nefuse when Secure Boot is enabled. This prevents any more efuses from being read protected.\n\nIf this option is set, it will remain possible to write the EFUSE_RD_DIS efuse field after Secure\nBoot is enabled. This may allow an attacker to read-protect the BLK2 efuse holding the public\nkey digest, causing an immediate denial of service and possibly allowing an additional fault\ninjection attack to bypass the signature protection.",
+                        "help": "If not set (default, recommended), on first boot the bootloader will burn the WR_DIS_RD_DIS\nefuse when Secure Boot is enabled. This prevents any more efuses from being read protected.\n\nIf this option is set, it will remain possible to write the EFUSE_RD_DIS efuse field after Secure\nBoot is enabled. This may allow an attacker to read-protect the BLK2 efuse (for ESP32) and\nBLOCK4-BLOCK10 (i.e. BLOCK_KEY0-BLOCK_KEY5)(for other chips) holding the public key digest, causing an\nimmediate denial of service and possibly allowing an additional fault injection attack to\nbypass the signature protection.\n\nNOTE: Once a BLOCK is read-protected, the application will read all zeros from that block\n\nNOTE: If \"UART ROM download mode (Permanently disabled (recommended))\" or\n\"UART ROM download mode (Permanently switch to Secure mode (recommended))\" is set,\nthen it is __NOT__ possible to read/write efuses using espefuse.py utility.\nHowever, efuse can be read/written from the application",
                         "id": "SECURE_BOOT_V2_ALLOW_EFUSE_RD_DIS",
                         "name": "SECURE_BOOT_V2_ALLOW_EFUSE_RD_DIS",
                         "range": null,
@@ -6088,7 +6098,18 @@
                         "type": "bool"
                     },
                     {
-                        "children": [],
+                        "children": [
+                            {
+                                "children": [],
+                                "depends_on": "BLE_MESH_NODE && BLE_MESH_PB_ADV && BLE_MESH",
+                                "help": "This option specifies the interval of sending two consecutive unprovisioned\ndevice beacon, users can use this option to change the frequency of sending\nunprovisioned device beacon. For example, if the value is 5, it means the\nunprovisioned device beacon will send every 5 seconds. When the option of\nBLE_MESH_FAST_PROV is selected, the value is better to be 3 seconds, or less.",
+                                "id": "BLE_MESH_UNPROVISIONED_BEACON_INTERVAL",
+                                "name": "BLE_MESH_UNPROVISIONED_BEACON_INTERVAL",
+                                "range": null,
+                                "title": "Interval between two consecutive Unprovisioned Device Beacon",
+                                "type": "int"
+                            }
+                        ],
                         "depends_on": "BLE_MESH",
                         "help": "Enable this option to allow the device to be provisioned over the\nadvertising bearer. This option should be enabled if PB-ADV is\ngoing to be used during provisioning procedure.",
                         "id": "BLE_MESH_PB_ADV",
@@ -7079,6 +7100,16 @@
                         "type": "bool"
                     },
                     {
+                        "children": [],
+                        "depends_on": "BLE_MESH",
+                        "help": "This option is used to decide whether discarding the old SeqAuth when\nreceiving a segmented message.",
+                        "id": "BLE_MESH_DISCARD_OLD_SEQ_AUTH",
+                        "name": "BLE_MESH_DISCARD_OLD_SEQ_AUTH",
+                        "range": null,
+                        "title": null,
+                        "type": "bool"
+                    },
+                    {
                         "children": [
                             {
                                 "children": [
@@ -7495,6 +7526,46 @@
                                 "name": "TWAI_ISR_IN_IRAM",
                                 "range": null,
                                 "title": "Place TWAI ISR function into IRAM",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "IDF_TARGET_ESP32",
+                                "help": "When the bus-off condition is reached, the REC should be reset to 0 and frozen (via LOM) by the\ndriver's ISR. However on the ESP32, there is an edge case where the REC will increase before the\ndriver's ISR can respond in time (e.g., due to the rapid occurrence of bus errors), thus causing the\nREC to be non-zero after bus-off. A non-zero REC can prevent bus-off recovery as the bus-off recovery\ncondition is that both TEC and REC become 0. Enabling this option will add a workaround in the driver\nto forcibly reset REC to zero on reaching bus-off.",
+                                "id": "TWAI_ERRATA_FIX_BUS_OFF_REC",
+                                "name": "TWAI_ERRATA_FIX_BUS_OFF_REC",
+                                "range": null,
+                                "title": "Add SW workaround for REC change during bus-off",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "IDF_TARGET_ESP32",
+                                "help": "On the ESP32, when a transmit interrupt occurs, and interrupt register is read on the same APB clock\ncycle, the transmit interrupt could be lost. Enabling this option will add a workaround that checks the\ntransmit buffer status bit to recover any lost transmit interrupt.",
+                                "id": "TWAI_ERRATA_FIX_TX_INTR_LOST",
+                                "name": "TWAI_ERRATA_FIX_TX_INTR_LOST",
+                                "range": null,
+                                "title": "Add SW workaround for TX interrupt lost errata",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "IDF_TARGET_ESP32",
+                                "help": "On the ESP32, when receiving a data or remote frame, if a bus error occurs in the data or CRC field,\nthe data of the next received frame could be invalid. Enabling this option will add a workaround that\nwill reset the peripheral on detection of this errata condition. Note that if a frame is transmitted on\nthe bus whilst the reset is ongoing, the message will not be receive by the peripheral sent on the bus\nduring the reset, the message will be lost.",
+                                "id": "TWAI_ERRATA_FIX_RX_FRAME_INVALID",
+                                "name": "TWAI_ERRATA_FIX_RX_FRAME_INVALID",
+                                "range": null,
+                                "title": "Add SW workaround for invalid RX frame errata",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "IDF_TARGET_ESP32",
+                                "help": "On the ESP32, when the RX FIFO overruns and the RX message counter maxes out at 64 messages, the entire\nRX FIFO is no longer recoverable. Enabling this option will add a workaround that resets the peripheral\non detection of this errata condition. Note that if a frame is being sent on the bus during the reset\nbus during the reset, the message will be lost.",
+                                "id": "TWAI_ERRATA_FIX_RX_FIFO_CORRUPT",
+                                "name": "TWAI_ERRATA_FIX_RX_FIFO_CORRUPT",
+                                "range": null,
+                                "title": "Add SW workaround for RX FIFO corruption errata",
                                 "type": "bool"
                             }
                         ],
@@ -8061,7 +8132,7 @@
                                     },
                                     {
                                         "children": [],
-                                        "depends_on": "SPIRAM && ESP32_SPIRAM_SUPPORT",
+                                        "depends_on": "SPIRAM && IDF_TARGET_ESP32 && ESP32_SPIRAM_SUPPORT",
                                         "help": "If enabled the option,and add EXT_RAM_ATTR defined your variable,then your variable will be placed in\nPSRAM instead of internal memory, and placed most of variables of lwip,net802.11,pp,bluedroid library\nto external memory defaultly.",
                                         "id": "SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY",
                                         "name": "SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY",
@@ -8674,14 +8745,44 @@
                         "type": "choice"
                     },
                     {
-                        "children": [],
-                        "depends_on": "ESP32_RTC_CLK_SRC_EXT_CRYS",
-                        "help": "Choose which additional current is used for rtc external crystal.\n\n- With some 32kHz crystal configurations, the X32N and X32P pins may not\n  have enough drive strength to keep the crystal oscillating during deep sleep.\n  If this option is enabled, additional current from touchpad 9 is provided\n  internally to drive the 32kHz crystal. If this option is enabled, deep sleep current\n  is slightly higher (4-5uA) and the touchpad and ULP wakeup sources are not available.",
-                        "id": "ESP32_RTC_EXT_CRYST_ADDIT_CURRENT",
-                        "name": "ESP32_RTC_EXT_CRYST_ADDIT_CURRENT",
-                        "range": null,
+                        "children": [
+                            {
+                                "children": [],
+                                "depends_on": "<choice ESP32_RTC_EXT_CRYST_ADDIT_CURRENT_METHOD>",
+                                "help": null,
+                                "id": "ESP32_RTC_EXT_CRYST_ADDIT_CURRENT_NONE",
+                                "name": "ESP32_RTC_EXT_CRYST_ADDIT_CURRENT_NONE",
+                                "range": null,
+                                "title": "None",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice ESP32_RTC_EXT_CRYST_ADDIT_CURRENT_METHOD>",
+                                "help": null,
+                                "id": "ESP32_RTC_EXT_CRYST_ADDIT_CURRENT",
+                                "name": "ESP32_RTC_EXT_CRYST_ADDIT_CURRENT",
+                                "range": null,
+                                "title": "Method 1",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice ESP32_RTC_EXT_CRYST_ADDIT_CURRENT_METHOD>",
+                                "help": null,
+                                "id": "ESP32_RTC_EXT_CRYST_ADDIT_CURRENT_V2",
+                                "name": "ESP32_RTC_EXT_CRYST_ADDIT_CURRENT_V2",
+                                "range": null,
+                                "title": "Method 2",
+                                "type": "bool"
+                            }
+                        ],
+                        "depends_on": "ESP32_RTC_CLK_SRC_EXT_CRYS && ESP32_REV_MIN <= 1",
+                        "help": "With some 32kHz crystal configurations, the X32N and X32P pins may not have enough\ndrive strength to keep the crystal oscillating. Choose the method to provide\nadditional current from touchpad 9 to the external 32kHz crystal. Note that\nthe deep sleep current is slightly high (4-5uA) and the touchpad and the\nwakeup sources of both touchpad and ULP are not available in method 1 and method 2.\n\nThis problem is fixed in ESP32 ECO 3, so this workaround is not needed. Setting the\nproject configuration to minimum revision ECO3 will disable this option, , allow\nall wakeup sources, and save some code size.\n\n- \"None\" option will not provide additional current to external crystal\n- \"Method 1\" option can't ensure 100% to solve the external 32k crystal start failed\n  issue, but the touchpad can work in this method.\n- \"Method 2\" option can solve the external 32k issue, but the touchpad can't work\n  in this method.",
+                        "id": "component-config-esp32-specific-additional-current-for-external-32khz-crystal",
+                        "name": "ESP32_RTC_EXT_CRYST_ADDIT_CURRENT_METHOD",
                         "title": "Additional current for external 32kHz crystal",
-                        "type": "bool"
+                        "type": "choice"
                     },
                     {
                         "children": [],
@@ -10387,6 +10488,16 @@
                     {
                         "children": [
                             {
+                                "children": [],
+                                "depends_on": "ESP32_PHY_INIT_DATA_IN_PARTITION",
+                                "help": "If enabled, PHY init data will be restored to default if\nit cannot be verified successfully to avoid endless bootloops.\n\nIf unsure, choose 'n'.",
+                                "id": "ESP32_PHY_DEFAULT_INIT_IF_INVALID",
+                                "name": "ESP32_PHY_DEFAULT_INIT_IF_INVALID",
+                                "range": null,
+                                "title": "Reset default PHY init data if invalid",
+                                "type": "bool"
+                            },
+                            {
                                 "children": [
                                     {
                                         "children": [],
@@ -11121,7 +11232,7 @@
                     {
                         "children": [],
                         "depends_on": "FMB_COMM_MODE_ASCII_EN",
-                        "help": "This option defines response timeout of slave in milliseconds for ASCII communication mode.\nThus the timeout will expire and allow the master\u2019s program to handle the error.",
+                        "help": "This option defines response timeout of slave in milliseconds for ASCII communication mode.\nThus the timeout will expire and allow the master program to handle the error.",
                         "id": "FMB_SERIAL_ASCII_TIMEOUT_RESPOND_MS",
                         "name": "FMB_SERIAL_ASCII_TIMEOUT_RESPOND_MS",
                         "range": [
@@ -11139,10 +11250,60 @@
                         "name": "FMB_SERIAL_TASK_PRIO",
                         "range": [
                             3,
-                            10
+                            23
                         ],
                         "title": "Modbus serial task priority",
                         "type": "int"
+                    },
+                    {
+                        "children": [
+                            {
+                                "children": [],
+                                "depends_on": "<choice FMB_PORT_TASK_AFFINITY>",
+                                "help": null,
+                                "id": "FMB_PORT_TASK_AFFINITY_NO_AFFINITY",
+                                "name": "FMB_PORT_TASK_AFFINITY_NO_AFFINITY",
+                                "range": null,
+                                "title": "No affinity",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice FMB_PORT_TASK_AFFINITY>",
+                                "help": null,
+                                "id": "FMB_PORT_TASK_AFFINITY_CPU0",
+                                "name": "FMB_PORT_TASK_AFFINITY_CPU0",
+                                "range": null,
+                                "title": "CPU0",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice FMB_PORT_TASK_AFFINITY>",
+                                "help": null,
+                                "id": "FMB_PORT_TASK_AFFINITY_CPU1",
+                                "name": "FMB_PORT_TASK_AFFINITY_CPU1",
+                                "range": null,
+                                "title": "CPU1",
+                                "type": "bool"
+                            }
+                        ],
+                        "depends_on": "!FREERTOS_UNICORE",
+                        "help": "Allows setting the core affinity of the Modbus controller task, i.e. whether the task is pinned to\nparticular CPU, or allowed to run on any CPU.",
+                        "id": "component-config-modbus-configuration-modbus-task-affinity",
+                        "name": "FMB_PORT_TASK_AFFINITY",
+                        "title": "Modbus task affinity",
+                        "type": "choice"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": null,
+                        "id": "FMB_PORT_TASK_AFFINITY",
+                        "name": "FMB_PORT_TASK_AFFINITY",
+                        "range": null,
+                        "title": null,
+                        "type": "hex"
                     },
                     {
                         "children": [
@@ -11224,33 +11385,59 @@
                         "id": "FMB_TIMER_PORT_ENABLED",
                         "name": "FMB_TIMER_PORT_ENABLED",
                         "range": null,
-                        "title": "Modbus slave stack use timer for 3.5T symbol time measurement",
+                        "title": "Modbus stack use timer for 3.5T symbol time measurement",
                         "type": "bool"
                     },
                     {
                         "children": [],
                         "depends_on": null,
-                        "help": "Modbus Timer group number that is used for timeout measurement.",
+                        "help": "Modbus slave Timer group number that is used for timeout measurement.",
                         "id": "FMB_TIMER_GROUP",
                         "name": "FMB_TIMER_GROUP",
                         "range": [
                             0,
                             1
                         ],
-                        "title": "Modbus Timer group number",
+                        "title": "Slave Timer group number",
                         "type": "int"
                     },
                     {
                         "children": [],
                         "depends_on": null,
-                        "help": "Modbus Timer Index in the group that is used for timeout measurement.",
+                        "help": "Modbus slave Timer Index in the group that is used for timeout measurement.",
                         "id": "FMB_TIMER_INDEX",
                         "name": "FMB_TIMER_INDEX",
                         "range": [
                             0,
                             1
                         ],
-                        "title": "Modbus Timer index in the group",
+                        "title": "Slave Timer index in the group",
+                        "type": "int"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "Modbus master Timer group number that is used for timeout measurement.",
+                        "id": "FMB_MASTER_TIMER_GROUP",
+                        "name": "FMB_MASTER_TIMER_GROUP",
+                        "range": [
+                            0,
+                            1
+                        ],
+                        "title": "Master Timer group number",
+                        "type": "int"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "Modbus master Timer Index in the group that is used for timeout measurement.\nNote: Modbus master and slave should have different timer index to be able to work simultaneously.",
+                        "id": "FMB_MASTER_TIMER_INDEX",
+                        "name": "FMB_MASTER_TIMER_INDEX",
+                        "range": [
+                            0,
+                            1
+                        ],
+                        "title": "Master Timer index",
                         "type": "int"
                     },
                     {
@@ -12295,6 +12482,16 @@
                     {
                         "children": [],
                         "depends_on": null,
+                        "help": "This option could be used to disable DHCP client identification with its MAC address.\n(Client id is used by DHCP servers to uniquely identify clients and are included\nin the DHCP packets as an option 61)\nSet this option to \"y\" in order to exclude option 61 from DHCP packets.",
+                        "id": "LWIP_DHCP_DISABLE_CLIENT_ID",
+                        "name": "LWIP_DHCP_DISABLE_CLIENT_ID",
+                        "range": null,
+                        "title": "DHCP: Disable Use of HW address as client identification",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
                         "help": "When this option is enabled, DHCP client tries to re-obtain last valid IP address obtained from DHCP\nserver. Last valid DHCP configuration is stored in nvs and restored after reset/power-up. If IP is still\navailable, there is no need for sending discovery message to DHCP server and save some time.",
                         "id": "LWIP_DHCP_RESTORE_LAST_IP",
                         "name": "LWIP_DHCP_RESTORE_LAST_IP",
@@ -13096,11 +13293,11 @@
                                     {
                                         "children": [],
                                         "depends_on": "MBEDTLS_DYNAMIC_FREE_CONFIG_DATA",
-                                        "help": "Free ca certificate after its usage in the handshake process.\nThis option will decrease the heap footprint for the TLS handshake, but may lead to a problem:\nIf the respective ssl object needs to perform the TLS handshake again,\nthe ca certificate should once again be registered to the ssl object.",
+                                        "help": "Free CA certificate after its usage in the handshake process.\nThis option will decrease the heap footprint for the TLS handshake, but may lead to a problem:\nIf the respective ssl object needs to perform the TLS handshake again,\nthe CA certificate should once again be registered to the ssl object.",
                                         "id": "MBEDTLS_DYNAMIC_FREE_CA_CERT",
                                         "name": "MBEDTLS_DYNAMIC_FREE_CA_CERT",
                                         "range": null,
-                                        "title": "Free SSL ca certificate after its usage",
+                                        "title": "Free SSL CA certificate after its usage",
                                         "type": "bool"
                                     }
                                 ],
@@ -14846,7 +15043,7 @@
                     {
                         "children": [],
                         "depends_on": null,
-                        "help": "Enable this flag to use patched versions of SPI flash ROM driver functions.\nThis option is needed to write to flash on ESP32-D2WD, and any configuration\nwhere external SPI flash is connected to non-default pins.",
+                        "help": "Enable this flag to use patched versions of SPI flash ROM driver functions.\nThis option should be enabled, if any one of the following is true: (1) need to write\nto flash on ESP32-D2WD; (2) main SPI flash is connected to non-default pins; (3) main\nSPI flash chip is manufactured by ISSI.",
                         "id": "SPI_FLASH_ROM_DRIVER_PATCH",
                         "name": "SPI_FLASH_ROM_DRIVER_PATCH",
                         "range": null,
@@ -15696,11 +15893,11 @@
                     {
                         "children": [],
                         "depends_on": null,
-                        "help": "Select this option to enable WPS related IOT fixes with\ndifferent APs. This option fixes IOT related issues with\nAPs which do not follow some of the standards of WPS-2.0\nspecification. These do not include any of the security\nrelated bypassing, just simple configuration corrections.\n\nCurrent fixes under this flag.\n1. Allow NULL-padded WPS attributes: Some APs keep NULL-padding\nat the end of some variable length WPS Attributes.\nThis is not as par the WPS2.0 specs, but to avoid interop issues,\nignore the padding by reducing the attribute length by 1.\n2. Bypass WPS-Config method validation: Some APs set display/pbc\nbutton bit without setting virtual/phycial display/button bit which\nwill cause M2 validation fail, bypassing WPS-Config method validation.",
-                        "id": "WPA_WPS_WARS",
-                        "name": "WPA_WPS_WARS",
+                        "help": "Select this option to enable validate each WPS attribute\nrigorously. Disabling this add the workaorunds with various APs.\nEnabling this may cause inter operability issues with some APs.",
+                        "id": "WPA_WPS_STRICT",
+                        "name": "WPA_WPS_STRICT",
                         "range": null,
-                        "title": "Add WPS Inter operatability Fixes",
+                        "title": "Strictly validate all WPS attributes",
                         "type": "bool"
                     }
                 ],

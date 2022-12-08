@@ -133,7 +133,7 @@
                     }
                 ],
                 "depends_on": null,
-                "help": "Select the way the application is built.\n\nBy default, the application is built as a binary file in a format compatible with\nthe ESP32 bootloader. In addition to this application, 2nd stage bootloader is\nalso built. Application and bootloader binaries can be written into flash and\nloaded/executed from there.\n\nAnother option, useful for only very small and limited applications, is to only link\nthe .elf file of the application, such that it can be loaded directly into RAM over\nJTAG. Note that since IRAM and DRAM sizes are very limited, it is not possible to\nbuild any complex application this way. However for kinds of testing and debugging,\nthis option may provide faster iterations, since the application does not need to be\nwritten into flash.\nNote that at the moment, ESP-IDF does not contain all the startup code required to\ninitialize the CPUs and ROM memory (data/bss). Therefore it is necessary to execute\na bit of ROM code prior to executing the application. A gdbinit file may look as follows:\n\n    # Connect to a running instance of OpenOCD\n    target remote :3333\n    # Reset and halt the target\n    mon reset halt\n    # Run to a specific point in ROM code,\n    #  where most of initialization is complete.\n    thb *0x40007901\n    c\n    # Load the application into RAM\n    load\n    # Run till app_main\n    tb app_main\n    c\n\nExecute this gdbinit file as follows:\n\n    xtensa-esp32-elf-gdb build/app-name.elf -x gdbinit\n\nRecommended sdkconfig.defaults for building loadable ELF files is as follows.\nCONFIG_APP_BUILD_TYPE_ELF_RAM is required, other options help reduce application\nmemory footprint.\n\n    CONFIG_APP_BUILD_TYPE_ELF_RAM=y\n    CONFIG_VFS_SUPPORT_TERMIOS=\n    CONFIG_NEWLIB_NANO_FORMAT=y\n    CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y\n    CONFIG_ESP_DEBUG_STUBS_ENABLE=\n    CONFIG_ESP_ERR_TO_NAME_LOOKUP=",
+                "help": "Select the way the application is built.\n\nBy default, the application is built as a binary file in a format compatible with\nthe ESP32 bootloader. In addition to this application, 2nd stage bootloader is\nalso built. Application and bootloader binaries can be written into flash and\nloaded/executed from there.\n\nAnother option, useful for only very small and limited applications, is to only link\nthe .elf file of the application, such that it can be loaded directly into RAM over\nJTAG. Note that since IRAM and DRAM sizes are very limited, it is not possible to\nbuild any complex application this way. However for kinds of testing and debugging,\nthis option may provide faster iterations, since the application does not need to be\nwritten into flash.\nNote that at the moment, ESP-IDF does not contain all the startup code required to\ninitialize the CPUs and ROM memory (data/bss). Therefore it is necessary to execute\na bit of ROM code prior to executing the application. A gdbinit file may look as follows:\n\n    # Connect to a running instance of OpenOCD\n    target remote :3333\n    # Reset and halt the target\n    mon reset halt\n    # Run to a specific point in ROM code,\n    #  where most of initialization is complete.\n    thb *0x40007d54\n    c\n    # Load the application into RAM\n    load\n    # Run till app_main\n    tb app_main\n    c\n\nExecute this gdbinit file as follows:\n\n    xtensa-esp32-elf-gdb build/app-name.elf -x gdbinit\n\nRecommended sdkconfig.defaults for building loadable ELF files is as follows.\nCONFIG_APP_BUILD_TYPE_ELF_RAM is required, other options help reduce application\nmemory footprint.\n\n    CONFIG_APP_BUILD_TYPE_ELF_RAM=y\n    CONFIG_VFS_SUPPORT_TERMIOS=\n    CONFIG_NEWLIB_NANO_FORMAT=y\n    CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y\n    CONFIG_ESP_DEBUG_STUBS_ENABLE=\n    CONFIG_ESP_ERR_TO_NAME_LOOKUP=",
                 "id": "build-type-application-build-type",
                 "name": "APP_BUILD_TYPE",
                 "title": "Application build type",
@@ -555,6 +555,16 @@
                 "range": null,
                 "title": "Reserve RTC FAST memory for custom purposes",
                 "type": "bool"
+            },
+            {
+                "children": [],
+                "depends_on": null,
+                "help": "Perform the startup flow recommended by XMC. Please consult XMC for the details of this flow.\nXMC chips will be forbidden to be used, when this option is disabled.\n\nDON'T DISABLE THIS UNLESS YOU KNOW WHAT YOU ARE DOING.",
+                "id": "BOOTLOADER_FLASH_XMC_SUPPORT",
+                "name": "BOOTLOADER_FLASH_XMC_SUPPORT",
+                "range": null,
+                "title": "Enable the support for flash chips of XMC (READ HELP FIRST)",
+                "type": "bool"
             }
         ],
         "depends_on": null,
@@ -922,7 +932,7 @@
                     {
                         "children": [],
                         "depends_on": "SECURE_BOOT_INSECURE && SECURE_BOOT_V2_ENABLED",
-                        "help": "If not set (default, recommended), on first boot the bootloader will burn the WR_DIS_RD_DIS\nefuse when Secure Boot is enabled. This prevents any more efuses from being read protected.\n\nIf this option is set, it will remain possible to write the EFUSE_RD_DIS efuse field after Secure\nBoot is enabled. This may allow an attacker to read-protect the BLK2 efuse holding the public\nkey digest, causing an immediate denial of service and possibly allowing an additional fault\ninjection attack to bypass the signature protection.",
+                        "help": "If not set (default, recommended), on first boot the bootloader will burn the WR_DIS_RD_DIS\nefuse when Secure Boot is enabled. This prevents any more efuses from being read protected.\n\nIf this option is set, it will remain possible to write the EFUSE_RD_DIS efuse field after Secure\nBoot is enabled. This may allow an attacker to read-protect the BLK2 efuse (for ESP32) and\nBLOCK4-BLOCK10 (i.e. BLOCK_KEY0-BLOCK_KEY5)(for other chips) holding the public key digest, causing an\nimmediate denial of service and possibly allowing an additional fault injection attack to\nbypass the signature protection.\n\nNOTE: Once a BLOCK is read-protected, the application will read all zeros from that block\n\nNOTE: If \"UART ROM download mode (Permanently disabled (recommended))\" or\n\"UART ROM download mode (Permanently switch to Secure mode (recommended))\" is set,\nthen it is __NOT__ possible to read/write efuses using espefuse.py utility.\nHowever, efuse can be read/written from the application",
                         "id": "SECURE_BOOT_V2_ALLOW_EFUSE_RD_DIS",
                         "name": "SECURE_BOOT_V2_ALLOW_EFUSE_RD_DIS",
                         "range": null,
@@ -2237,7 +2247,7 @@
                                     },
                                     {
                                         "children": [],
-                                        "depends_on": "SPIRAM && ESP32_SPIRAM_SUPPORT",
+                                        "depends_on": "SPIRAM && IDF_TARGET_ESP32 && ESP32_SPIRAM_SUPPORT",
                                         "help": "If enabled the option,and add EXT_RAM_ATTR defined your variable,then your variable will be placed in\nPSRAM instead of internal memory, and placed most of variables of lwip,net802.11,pp,bluedroid library\nto external memory defaultly.",
                                         "id": "SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY",
                                         "name": "SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY",
@@ -2850,14 +2860,44 @@
                         "type": "choice"
                     },
                     {
-                        "children": [],
-                        "depends_on": "ESP32_RTC_CLK_SRC_EXT_CRYS",
-                        "help": "Choose which additional current is used for rtc external crystal.\n\n- With some 32kHz crystal configurations, the X32N and X32P pins may not\n  have enough drive strength to keep the crystal oscillating during deep sleep.\n  If this option is enabled, additional current from touchpad 9 is provided\n  internally to drive the 32kHz crystal. If this option is enabled, deep sleep current\n  is slightly higher (4-5uA) and the touchpad and ULP wakeup sources are not available.",
-                        "id": "ESP32_RTC_EXT_CRYST_ADDIT_CURRENT",
-                        "name": "ESP32_RTC_EXT_CRYST_ADDIT_CURRENT",
-                        "range": null,
+                        "children": [
+                            {
+                                "children": [],
+                                "depends_on": "<choice ESP32_RTC_EXT_CRYST_ADDIT_CURRENT_METHOD>",
+                                "help": null,
+                                "id": "ESP32_RTC_EXT_CRYST_ADDIT_CURRENT_NONE",
+                                "name": "ESP32_RTC_EXT_CRYST_ADDIT_CURRENT_NONE",
+                                "range": null,
+                                "title": "None",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice ESP32_RTC_EXT_CRYST_ADDIT_CURRENT_METHOD>",
+                                "help": null,
+                                "id": "ESP32_RTC_EXT_CRYST_ADDIT_CURRENT",
+                                "name": "ESP32_RTC_EXT_CRYST_ADDIT_CURRENT",
+                                "range": null,
+                                "title": "Method 1",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice ESP32_RTC_EXT_CRYST_ADDIT_CURRENT_METHOD>",
+                                "help": null,
+                                "id": "ESP32_RTC_EXT_CRYST_ADDIT_CURRENT_V2",
+                                "name": "ESP32_RTC_EXT_CRYST_ADDIT_CURRENT_V2",
+                                "range": null,
+                                "title": "Method 2",
+                                "type": "bool"
+                            }
+                        ],
+                        "depends_on": "ESP32_RTC_CLK_SRC_EXT_CRYS && ESP32_REV_MIN <= 1",
+                        "help": "With some 32kHz crystal configurations, the X32N and X32P pins may not have enough\ndrive strength to keep the crystal oscillating. Choose the method to provide\nadditional current from touchpad 9 to the external 32kHz crystal. Note that\nthe deep sleep current is slightly high (4-5uA) and the touchpad and the\nwakeup sources of both touchpad and ULP are not available in method 1 and method 2.\n\nThis problem is fixed in ESP32 ECO 3, so this workaround is not needed. Setting the\nproject configuration to minimum revision ECO3 will disable this option, , allow\nall wakeup sources, and save some code size.\n\n- \"None\" option will not provide additional current to external crystal\n- \"Method 1\" option can't ensure 100% to solve the external 32k crystal start failed\n  issue, but the touchpad can work in this method.\n- \"Method 2\" option can solve the external 32k issue, but the touchpad can't work\n  in this method.",
+                        "id": "component-config-esp32-specific-additional-current-for-external-32khz-crystal",
+                        "name": "ESP32_RTC_EXT_CRYST_ADDIT_CURRENT_METHOD",
                         "title": "Additional current for external 32kHz crystal",
-                        "type": "bool"
+                        "type": "choice"
                     },
                     {
                         "children": [],
@@ -3663,7 +3703,7 @@
                     {
                         "children": [],
                         "depends_on": null,
-                        "help": "Enable this flag to use patched versions of SPI flash ROM driver functions.\nThis option is needed to write to flash on ESP32-D2WD, and any configuration\nwhere external SPI flash is connected to non-default pins.",
+                        "help": "Enable this flag to use patched versions of SPI flash ROM driver functions.\nThis option should be enabled, if any one of the following is true: (1) need to write\nto flash on ESP32-D2WD; (2) main SPI flash is connected to non-default pins; (3) main\nSPI flash chip is manufactured by ISSI.",
                         "id": "SPI_FLASH_ROM_DRIVER_PATCH",
                         "name": "SPI_FLASH_ROM_DRIVER_PATCH",
                         "range": null,

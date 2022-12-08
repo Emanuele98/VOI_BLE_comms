@@ -1,4 +1,4 @@
-# Install script for directory: C:/esp-4.2/esp-idf/components/spi_flash
+# Install script for directory: C:/Espressif/frameworks/esp-idf-v4.2.4/components/spi_flash
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
