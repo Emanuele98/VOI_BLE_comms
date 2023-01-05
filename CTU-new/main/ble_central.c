@@ -213,6 +213,52 @@ const ble_uuid_t *wpt_char_CRU_stat_uuid =
 const ble_uuid_t *wpt_char_CRU_dyn_uuid = 
     BLE_UUID128_DECLARE(0x67, 0x9A, 0x0C, 0x20, 0x00, 0x08, 0x96, 0x9E, 0xE2, 0x11, 0x46, 0xA1, 0x74, 0xE6, 0x55, 0x64);
 
+
+/**********************************************************************************/
+/**                         BLE AGENT                                            **/
+/**********************************************************************************/
+
+static void BLEAgent_Task(void)
+{
+    //should do SCAN and READ/WRITE and DISCONNECT
+    //--> let's start with only READ/WRITE and later add others
+
+}
+
+void BLEAgent_Init(void)
+{
+    //create queue
+
+    struct BLEAgentCommand BLEAgentCommand_t;
+
+    /*
+    // STATIC MEMORY ALLOCATION
+    static uint8_t StaticQueueStorageArea[ BLE_AGENT_COMMAND_QUEUE_LENGTH * sizeof( BLEAgentCommand * ) ];
+    static StaticQueue_t StaticQueueStructure;
+
+    BLE_QueueHandle = xQueueCreateStatic( BLE_AGENT_COMMAND_QUEUE_LENGTH,
+                                          sizeof( BLEAgentCommand_t * ), 
+                                          StaticQueueStorageArea,
+                                          &StaticQueueStructure );
+    */
+
+    // DYNAMIC MEMORY ALLOCATION
+    BLE_QueueHandle = xQueueCreate( BLE_AGENT_COMMAND_QUEUE_LENGTH,
+                                    sizeof( BLEAgentCommand_t )); 
+                  
+    //create task 
+    BLEAgent_Task();
+}
+
+/*
+QUEUE ITEM:
+(uint16_t conn_handle, uint16_t attr_handle, ble_gatt_attr_fn *cb, void *cb_arg)
+{
+    
+}
+*/
+
+
 /**********************************************************************************/
 /**                         Misc function definitions                            **/
 /**********************************************************************************/
