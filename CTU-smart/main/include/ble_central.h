@@ -32,7 +32,6 @@
 
 #include <assert.h>
 #include "freertos/FreeRTOS.h"
-#include "freertos/queue.h"
 
 #include "esp_system.h"
 #include "nvs_flash.h"
@@ -51,7 +50,6 @@
 #define MAX_AUX_CTU                         4
 
 //BLE
-#define BLE_AGENT_COMMAND_QUEUE_LENGTH      50
 #define COMMS_ERROR_LIMIT                   60
 
 #define N_CHAR_UUIDS                        5
@@ -99,16 +97,6 @@
 #define TX_RECONNECTION_OVERTEMPERATURE     300          //5 min
 #define TX_RECONNECTION_OVERVOLTAGE         300          //5 min
 
-//BLE Agent
-QueueHandle_t BLE_QueueHandle;
-
-struct BLEAgentCommand {
-    uint16_t conn_handle;
-    uint16_t attr_handle;
-    ble_gatt_attr_fn *cb;
-    void *cb_arg;
-};
-
 /* Keeps power outputs state in memory */
 uint8_t low_power_pads[4];
 uint8_t full_power_pads[4];
@@ -128,7 +116,5 @@ void ble_central_kill_all_CRU(void);
 void ble_central_kill_all_AUX_CTU(void);
 void ble_central_kill_CRU(uint16_t conn_handle, TaskHandle_t task_handle);
 void ble_central_kill_AUX_CTU(uint16_t conn_handle, TaskHandle_t task_handle);
-void BLEAgent_Init(void);
-
 
 #endif
