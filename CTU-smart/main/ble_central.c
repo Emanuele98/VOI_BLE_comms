@@ -26,7 +26,7 @@ static uint8_t Actu_addr2[6] = {0x86, 0x68, 0x24, 0xfb, 0x0b, 0xac};
 //broken inverter board
 //static uint8_t Actu_addr3[6] = {0x46, 0x0b, 0x27, 0xfb, 0x0b, 0xac};
 //new inverter board
-static uint8_t Actu_addr3[6] = {0x5a, 0xe3, 0x26, 0xfb, 0x0b, 0xac};
+static uint8_t Actu_addr3[6] = {0xda, 0x62, 0x25, 0xfb, 0x0b, 0xac};
 static uint8_t Actu_addr4[6] = {0x9a, 0xbb, 0x25, 0xfb, 0x0b, 0xac};
 
 //CRUs bluetooth addresses
@@ -36,7 +36,7 @@ static uint8_t cru_CE8J[6] = {0x86, 0x85, 0xed, 0x0c, 0x38, 0x90};
 static uint8_t cru_D8X5[6] = {0xb2, 0x6d, 0x24, 0xfb, 0x0b, 0xac};
 
 //timer 
-static time_t switch_pad_ON = 0, loc_success = 0, loc_fail = 0;
+static time_t switch_pad_ON = 0, loc_success = 0;
 static float time_sec = 0, min_switch_time = 0;
 
 //variable to know which pad is actually on in Low Power mode
@@ -239,6 +239,7 @@ void ble_central_kill_AUX_CTU(uint16_t conn_handle, TaskHandle_t task_handle)
     {
         if (Aux_CTU->position)
         {
+            Aux_CTU->voi_code = EMPTY;
             if (low_power_pads[Aux_CTU->position-1])
             {
                 while (rc)
@@ -246,7 +247,6 @@ void ble_central_kill_AUX_CTU(uint16_t conn_handle, TaskHandle_t task_handle)
             }
             if (full_power_pads[Aux_CTU->position-1])
             {
-                Aux_CTU->voi_code = EMPTY;
                 while (rc)
                     rc = ble_central_update_control_enables(0, 1, 0, Aux_CTU);   
             }
@@ -297,7 +297,7 @@ void ble_central_kill_CRU(uint16_t conn_handle, TaskHandle_t task_handle)
             struct peer *Aux_CTU = Aux_CTU_find(peer->position);
             if(Aux_CTU != NULL)
             {
-                Aux_CTU->voi_code = EMPTY;
+                //CHANGE
                 if (fully_charged[peer->voi_code])
                     led_state[peer->position-1] = 3;
                 else
@@ -419,21 +419,16 @@ static int ble_central_on_localization_process(uint16_t conn_handle,
     }
     */
 
-    if( (min_switch_time > MIN_SWITCH_TIME) && (!scooter_check[peer->voi_code]) )
+    if( (min_switch_time > MIN_SWITCH_TIME) && (!scooter_check[peer->voi_code]) && (current_low_power) )
     { 
         scooter_check[peer->voi_code] = true;
         n_loc_checks[peer->voi_code]++;
-
-        /*
+        
         //TEST LOC PROTOCOL
         char string_value[50];
-        sprintf(string_value, "Scooter %d checked with pad: %d", peer->voi_code, current_low_power);
-        prvMqttPublish( debug,
-                            strlen ( debug ),
-                            string_value,
-                            strlen( string_value ),
-                            0 );
-        */
+        sprintf(string_value, "Scooter %s checked with pad: %d", peer->voi_code_string, current_low_power);
+        esp_mqtt_client_publish( client, debug, string_value, 0, 0, 0);
+        
 
         // CHECK VOLTAGE ONCE
         if (peer->dyn_payload.vrect.f > VOLTAGE_LOW_THRESH)
@@ -827,7 +822,7 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
         return;
     }
 
-    time(&loc_finish);
+    time(&loc_fail);
     
     /* WPT task loop */
     while (1)
@@ -841,10 +836,10 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
         } else 
             {
                 //!AVOID FOD DURING LOCALIZATION
-                time(&now);
-                if (((current_localization_process() || (now < loc_finish + 10))  && !full_power_pads[peer->position-1] && !fully_charged[peer->voi_code])
+                time(&now);                                 //CHANGE
+                if (((current_localization_process() || (now < loc_fail + 10))  && !full_power_pads[peer->position-1] && !fully_charged[peer->voi_code])
                 //!AVOID OV ALERTS FOR PAD 3
-                   /* || ((peer->position == 3) && (peer->dyn_payload.vrect.f > 68) && (peer->dyn_payload.irect.f < 2.75) && (peer->dyn_payload.temp1.f < 55) && (peer->dyn_payload.temp2.f < 55)) */ )
+                    || ((peer->position == 3) && (peer->dyn_payload.vrect.f > 68) && (peer->dyn_payload.irect.f < 2.75) && (peer->dyn_payload.temp1.f < 55) && (peer->dyn_payload.temp2.f < 55)) )
                 {
                     peer->dyn_payload.alert = 0;
                     /* Initiate Read procedure */        
@@ -898,7 +893,7 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
         //ESP_LOGW(TAG, "AUX-CTU high water mark: %d", uxTaskGetStackHighWaterMark( NULL ));
 
         // set Task Delay
-        if ((current_localization_process()) && (!full_power_pads[peer->position-1]))
+        if ( current_localization_process() && !full_power_pads[peer->position-1] && !fully_charged[peer->voi_code] )
             task_delay = LOC_CTU_TIMER_PERIOD;
         else 
             task_delay = CTU_TIMER_PERIOD;
@@ -980,11 +975,6 @@ static void ble_central_CRU_task_handle(void *arg)
         {
             if (peer->position == 0)
             {
-                //reset variable after Min time
-                time(&now);
-                if (now > (loc_fail + MIN_TIME_AFTER_LOC))
-                    n_loc_checks[peer->voi_code] = 0;
-
                 //check how many times the scooter has been checked - pause it for while to allow connection to other scooters
                 if (n_loc_checks[peer->voi_code] < MAX_LOC_CHECKS)
                 {
@@ -993,8 +983,15 @@ static void ble_central_CRU_task_handle(void *arg)
                                ble_central_on_localization_process, (void *)peer);
                 } else
                     {
-                        time(&loc_fail);
-                        peer->localization_process = false;
+                        if(peer->localization_process)
+                        {
+                            time(&loc_fail);
+                            peer->localization_process = false;
+                        }
+                        //reset variable after Min time //CHANGE
+                        time(&now);
+                        if (now > (loc_fail + MIN_TIME_AFTER_LOC))
+                            n_loc_checks[peer->voi_code] = 0;
                         rc = 0;
                     }
             } else
@@ -1869,7 +1866,8 @@ static void ble_central_unpack_CRU_alert_param(struct os_mbuf* om, uint16_t conn
                 }  else if (peer->alert_payload.alert_field.charge_complete)
                     {
                         //ESP_LOGE(TAG, "ALERT -- CHARGE COMPLETE  -- cru");
-                        fully_charged[peer->voi_code] = 1;
+                        fully_charged[peer->voi_code] = true;
+
                         ble_central_kill_CRU(peer->conn_handle, NULL);
                         if (SD_CARD)
                             write_sd_card(rx_charge_complete[peer->voi_code], 1.00, &peer->alert_payload.alert_time);
@@ -1959,6 +1957,9 @@ static void ble_central_unpack_static_param(const struct ble_gatt_attr *attr, ui
             ESP_LOGE(TAG, "ERROR - SCOOTER NOT IDENTIFIED");
             ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
         }
+        char string[50];
+        sprintf(string, "Scooter %s connected", peer->voi_code_string);
+        esp_mqtt_client_publish( client, debug, string, 0, 0, 0);
     }
 }
 

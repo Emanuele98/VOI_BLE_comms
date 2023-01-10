@@ -84,7 +84,7 @@ bool scooter_check[4];
 /* All states timer handles */
 TimerHandle_t periodic_scan_t_handle, ambient_temp_handle;
 
-time_t conf_time;
+time_t conf_time, loc_fail;
 
 
 /**
