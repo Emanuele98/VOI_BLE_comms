@@ -149,6 +149,7 @@ void init_sw_timers(void)
 */
 void init_setup(void)
 {   
+    //todo: add err_code to check wheter the conf are successfull
     /* Install SD card */
     if (SD_CARD)
         install_sd_card();

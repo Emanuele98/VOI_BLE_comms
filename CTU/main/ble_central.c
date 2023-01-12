@@ -16,7 +16,7 @@
 //A-CTUs bluetooth addresses
 
 /* TESTING N 5 */
-//uint8_t Actu_addr1[6] = {0x32, 0x8c, 0x25, 0xfb, 0x0b, 0xac};
+//static uint8_t Actu_addr1[6] = {0xb2, 0xcb, 0x25, 0xfb, 0x0b, 0xac};
 
 static uint8_t Actu_addr1[6] = {0x72, 0x81, 0x24, 0xfb, 0x0b, 0xac};
 static uint8_t Actu_addr2[6] = {0x86, 0x68, 0x24, 0xfb, 0x0b, 0xac};
@@ -1488,8 +1488,8 @@ void ble_central_scan_start(uint32_t timeout, uint16_t scan_itvl, uint16_t scan_
         return;
     }
     //ESP_LOGI(TAG, "Address type: %d", own_addr_type);
-    //remove semaphores and leds // use only ble addresses
-/*  uint8_t out_id_addr[6] = {0};
+    /*
+    uint8_t out_id_addr[6] = {0};
 
     rc = ble_hs_id_copy_addr(BLE_ADDR_PUBLIC, out_id_addr, NULL);
     if (rc != ESP_OK)
@@ -1498,7 +1498,7 @@ void ble_central_scan_start(uint32_t timeout, uint16_t scan_itvl, uint16_t scan_
         return;
     }
     ESP_LOGI(TAG, "Address: %02x:%02x:%02x:%02x:%02x:%02x", out_id_addr[5], out_id_addr[4], out_id_addr[3], out_id_addr[2], out_id_addr[1], out_id_addr[0]);
-*/
+    */
     /* Tell the controller to do not filter duplicates; 
        we want to connect only when the device is close enough to the platform.
      */
@@ -1691,11 +1691,13 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
         {
             //SET MAX TX POWER
             esp_ble_tx_power_set(event->connect.conn_handle, ESP_PWR_LVL_P9); 
-            
-            //time(&now);
-            //localtime_r(&now, &info);
-            //ESP_LOGI(TAG, "Time is %s", asctime(&info));
-            
+
+/*
+            ESP_LOGE(TAG, "Connection - Free memory: %d bytes", esp_get_free_heap_size());
+            char string_value[50];    
+            sprintf(string_value, "Connection - free memory: %d", esp_get_free_heap_size());
+            esp_mqtt_client_publish(client, debug, string_value, 0, 0, 0);
+*/          
             const uint8_t* slave_type = (const uint8_t *)arg;
 
             //convert pointer to integer
@@ -1779,7 +1781,12 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
         }
 
         peer_delete(event->disconnect.conn.conn_handle);
-    
+/*
+        ESP_LOGE(TAG, "Disconnection - Free memory: %d bytes", esp_get_free_heap_size());
+        char string_value[50];    
+        sprintf(string_value, "Disconnection - free memory: %d", esp_get_free_heap_size());
+        esp_mqtt_client_publish(client, debug, string_value, 0, 0, 0);
+*/  
         if ((peer_get_NUM_AUX_CTU() + peer_get_NUM_CRU()) == 0)
         {
             /* Reinitialize the whole peer structure */

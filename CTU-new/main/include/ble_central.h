@@ -102,12 +102,20 @@
 //BLE Agent
 QueueHandle_t BLE_QueueHandle;
 
-struct BLEAgentCommand {
-    uint16_t conn_handle;
+typedef enum{
+    SCAN,
+    CONNECT,
+    READ,
+    WRITE,
+    DISCONNECT
+} BLEAgentCommandType;
+
+typedef struct {
+    BLEAgentCommandType BLEAgentCommandType_t;
     uint16_t attr_handle;
+    struct peer *peer;
     ble_gatt_attr_fn *cb;
-    void *cb_arg;
-};
+} BLEAgentCommand;
 
 /* Keeps power outputs state in memory */
 uint8_t low_power_pads[4];
@@ -128,7 +136,7 @@ void ble_central_kill_all_CRU(void);
 void ble_central_kill_all_AUX_CTU(void);
 void ble_central_kill_CRU(uint16_t conn_handle, TaskHandle_t task_handle);
 void ble_central_kill_AUX_CTU(uint16_t conn_handle, TaskHandle_t task_handle);
-void BLEAgent_Init(void);
+uint8_t BLEAgent_Init(void);
 
 
 #endif

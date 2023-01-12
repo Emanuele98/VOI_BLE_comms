@@ -10,15 +10,18 @@
 /* Defines what type of task the unit will run on */
 #define TASKS_CORE            0
 #define TASK_STACK_SIZE       4200
+#define BLE_AGENT_PRIORITY    18
 #define CRU_TASK_PRIORITY     18
 #define AUX_CTU_TASK_PRIORITY 18
+
+static TaskHandle_t task_handle_BLEAgent = NULL;
 
 //A-CTUs bluetooth addresses
 
 /* TESTING N 5 */
-//uint8_t Actu_addr1[6] = {0x32, 0x8c, 0x25, 0xfb, 0x0b, 0xac};
+uint8_t Actu_addr1[6] = {0x4e, 0x7b, 0x26, 0xfb, 0x0b, 0xac};
 
-static uint8_t Actu_addr1[6] = {0x72, 0x81, 0x24, 0xfb, 0x0b, 0xac};
+//static uint8_t Actu_addr1[6] = {0x72, 0x81, 0x24, 0xfb, 0x0b, 0xac};
 static uint8_t Actu_addr2[6] = {0x86, 0x68, 0x24, 0xfb, 0x0b, 0xac};
 //broken inverter board
 //static uint8_t Actu_addr3[6] = {0x46, 0x0b, 0x27, 0xfb, 0x0b, 0xac};
@@ -122,48 +125,39 @@ static const char* TAG = "BLE_CENTRAL";
 
 /* Starts task that handles a peer connection */
 static void ble_central_CRU_task_handle(void *arg);
-
 /* Function handling subscription completion */
 static int ble_central_on_subscribe(uint16_t conn_handle, void *arg);
-
 /* Function handling static read completion */
 static int ble_central_on_static_chr_read(uint16_t conn_handle,
                 const struct ble_gatt_error *error,
                 struct ble_gatt_attr *attr,
                 void *arg);
-
 /* Function handling write cccd completion */
 static int ble_central_on_write_cccd(uint16_t conn_handle, void *arg);
-
 /* Function handling first dynamic read completion */
 static int ble_central_on_control_enable(uint16_t conn_handle,
                 const struct ble_gatt_error *error,
                 struct ble_gatt_attr *attr,
                 void *arg);
-
 /* Function handling localization process (dynamic readings) */
 static int ble_central_on_localization_process(uint16_t conn_handle,
                 const struct ble_gatt_error *error,
                 struct ble_gatt_attr *attr,
                 void *arg);
-
 /* Starts the WPT Service for a specified peer */
 static int ble_central_wpt_start(uint16_t conn_handle, void *arg);
-
 /* Function handling the completion of a discovery event */
 static void ble_central_on_disc_complete(const struct peer *peer, int status, void *arg);
 /* Function determining if a connection should happen with a specified peer */
 static int ble_central_should_connect(const struct ble_gap_disc_desc *disc);
 /* Function enabling a connection if the peer device corresponds to peer framework */
 static void ble_central_connect_if_interesting(const struct ble_gap_disc_desc *disc);
-
 /* Unpacks the CRU static parameter */
 static void ble_central_unpack_static_param(const struct ble_gatt_attr *attr, uint16_t conn_handle);
 /* Unpacks the alert parameter for CRU */
 static void ble_central_unpack_CRU_alert_param(struct os_mbuf* om, uint16_t conn_handle);
 /* Unpacks the alert parameter for Auxiliary CTU */
 static void ble_central_unpack_AUX_CTU_alert_param(struct os_mbuf* om, uint16_t conn_handle);
-
 /* Unpacks the CRU dynamic parameter */
 static void ble_central_unpack_dynamic_param(const struct ble_gatt_attr *attr, uint16_t conn_handle);
 
@@ -201,6 +195,7 @@ const ble_uuid_t *wpt_svc_uuid =
 const ble_uuid_t *wpt_char_control_uuid = 
     BLE_UUID128_DECLARE(0x67, 0x9A, 0x0C, 0x20, 0x00, 0x08, 0x96, 0x9E, 0xE2, 0x11, 0x46, 0xA1, 0x70, 0xE6, 0x55, 0x64);
 
+//TODO: CHECK THIS OUT
 //const ble_uuid_t *wpt_char_CTU_stat_uuid = 
 //    BLE_UUID128_DECLARE(0x67, 0x9A, 0x0C, 0x20, 0x00, 0x08, 0x96, 0x9E, 0xE2, 0x11, 0x46, 0xA1, 0x71, 0xE6, 0x55, 0x64);
 
@@ -220,30 +215,74 @@ const ble_uuid_t *wpt_char_CRU_dyn_uuid =
 
 static void BLEAgent_Task(void)
 {
-    /*
-    -->scan 
-    ble_gap_disc(uint8_t own_addr_type, int32_t duration_ms, const struct ble_gap_disc_params *disc_params, ble_gap_event_fn *cb, void *cb_arg)
-    -->read
-    ble_gattc_read(uint16_t conn_handle, uint16_t attr_handle, ble_gatt_attr_fn *cb, void *cb_arg)
-    -->write
-    int ble_gattc_write_no_rsp_flat(uint16_t conn_handle, uint16_t attr_handle, const void *data, uint16_t data_len)
-    -->delete
-    ble_gap_terminate(uint16_t conn_handle, uint8_t hci_reason)
-    */
-    
-    //should do SCAN and READ/WRITE and DISCONNECT
-    //--> let's start with only READ and later add others
-    //read the first item of the queue and execute command
-    
+    //watchdog?
+
+    int rc = 0;
+    BaseType_t queueStatus = pdFAIL;
+    BLEAgentCommand BLEAgentCommand_t;
+
+    ESP_LOGI(TAG, "BLE Agent start");
+
+    //add error handling for reading? prob not necessary with the agent
+
+    //loop
+    while (1)
+    {
+        //receive the command
+        queueStatus = xQueueReceive(BLE_QueueHandle, &BLEAgentCommand_t, pdMS_TO_TICKS(100) );
+
+        //process the command
+        if ( queueStatus == pdPASS)
+        {   
+            switch (BLEAgentCommand_t.BLEAgentCommandType_t)
+            {
+                case SCAN:
+                    //ble_gap_disc(uint8_t own_addr_type, int32_t duration_ms, const struct ble_gap_disc_params *disc_params, ble_gap_event_fn *cb, void *cb_arg)
+                    break;
+
+                case CONNECT:
+                    //ble_gap_connect(own_addr_type, &disc->addr, 1000, &conn_params,
+                    //     ble_central_gap_event, (void *)slave_type);
+                    break;
+
+                case READ:
+                    rc = ble_gattc_read(BLEAgentCommand_t.peer->conn_handle, BLEAgentCommand_t.attr_handle,
+                                BLEAgentCommand_t.cb, (void *)BLEAgentCommand_t.peer);
+                    // if procedure was completed successfully, we must wait the notification from the callback function
+                    if (rc == ESP_OK)
+                    {
+                        ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
+                        //ESP_LOGI(TAG, "notification arrived");
+                    }
+                    break;
+                
+                case WRITE:
+                    //int ble_gattc_write_no_rsp_flat(uint16_t conn_handle, uint16_t attr_handle, const void *data, uint16_t data_len)
+
+                    break;
+
+                case DISCONNECT:
+                    //ble_gap_terminate(uint16_t conn_handle, uint8_t hci_reason)
+
+                    break;
+
+                default:
+                    rc = 1;
+                    break;
+            }
+
+        }
+    }
+
+    vTaskDelete(NULL);    
 
 }
 
-void BLEAgent_Init(void)
+uint8_t BLEAgent_Init(void)
 {
+    esp_err_t err_code;
+
     //create queue
-
-    struct BLEAgentCommand BLEAgentCommand_t;
-
     /*
     // STATIC MEMORY ALLOCATION
     static uint8_t StaticQueueStorageArea[ BLE_AGENT_COMMAND_QUEUE_LENGTH * sizeof( BLEAgentCommand * ) ];
@@ -257,10 +296,22 @@ void BLEAgent_Init(void)
 
     // DYNAMIC MEMORY ALLOCATION
     BLE_QueueHandle = xQueueCreate( BLE_AGENT_COMMAND_QUEUE_LENGTH,
-                                    sizeof( BLEAgentCommand_t )); 
+                                    sizeof( BLEAgentCommand )); 
+
+    char task_name[] = "BLE Agent";
                   
     //create task 
-    BLEAgent_Task();
+    err_code = xTaskCreatePinnedToCore((void *)BLEAgent_Task,
+                        task_name, TASK_STACK_SIZE, NULL, BLE_AGENT_PRIORITY,
+                        &task_handle_BLEAgent, TASKS_CORE);
+    
+    if ((err_code != pdPASS))
+    {
+        ESP_LOGE(TAG, "ERROR creating BLE Agent task!");
+        return 0;
+    }
+    
+    return 1;
 }
 
 
@@ -539,6 +590,10 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
 
     struct peer *peer = (struct peer *) arg;
     int rc = 1;
+
+    //notify the Agent that the BLE procedure has been completed!
+    xTaskNotifyGive( task_handle_BLEAgent );
+    ESP_LOGI(TAG, "notification sent");
     
     // If the characteristic has not been read correctly
     if (error->status != 0)
@@ -551,6 +606,7 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
     // Unpack peer Static Characteristic
     ble_central_unpack_dynamic_param(attr, conn_handle);
 
+    ESP_LOGI(TAG, "callback - Voltage: %.2f", peer->dyn_payload.vrect.f);
 
     //SEND SWITCH COMMAND THROUGH CONTROL CHR DURING A LOCALIZATION PROCESS
     //LOW POWER mode
@@ -884,14 +940,17 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
     }
 
     time(&loc_finish);
+
+    BLEAgentCommand BLEAgentCommand_t;
     
     /* WPT task loop */
     while (1)
     {
+    /*
         //check alert is fine
         if (peer->dyn_payload.alert == 0)
         {
-                /* Initiate Read procedure */        
+                // Initiate Read procedure       
                 rc = ble_gattc_read(peer->conn_handle, dynamic_chr->chr.val_handle,
                                 ble_central_on_AUX_CTU_dyn_read, (void *)peer);
         } else 
@@ -903,7 +962,7 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
                     || ((peer->position == 3) && (peer->dyn_payload.vrect.f > 68) && (peer->dyn_payload.irect.f < 2.75) && (peer->dyn_payload.temp1.f < 55) && (peer->dyn_payload.temp2.f < 55)) )
                 {
                     peer->dyn_payload.alert = 0;
-                    /* Initiate Read procedure */        
+                    // Initiate Read procedure       
                     rc = ble_gattc_read(peer->conn_handle, static_chr->chr.val_handle,
                         ble_central_on_alert_read, (void *)peer);
                 }
@@ -914,7 +973,7 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
                 }
             }
 
-        //*ERROR HANDLING - DISCONNECT ONLY AFTER 60 CONSECUTIVE COMMS ERRORS        
+        //ERROR HANDLING - DISCONNECT ONLY AFTER 60 CONSECUTIVE COMMS ERRORS        
         if (rc != ESP_OK)
         {
             if (aux_last_rc[peer->position-1] == rc)
@@ -950,6 +1009,15 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
         }
         
         aux_last_rc[peer->position-1] = rc;
+
+    */
+
+        BLEAgentCommand_t.BLEAgentCommandType_t = READ;
+        BLEAgentCommand_t.attr_handle = dynamic_chr->chr.val_handle; 
+        BLEAgentCommand_t.cb = ble_central_on_AUX_CTU_dyn_read;
+        BLEAgentCommand_t.peer = peer;
+
+        xQueueSendToBack( BLE_QueueHandle, &BLEAgentCommand_t, 0);
 
         // set Task Delay
         if ((current_localization_process()) && (!full_power_pads[peer->position-1]))
