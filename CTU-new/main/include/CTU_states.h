@@ -27,8 +27,8 @@
 #include "peer.h"
 
 /* timer durations */
-#define PERIODIC_SCAN_TIMER_PERIOD    1000 
-#define PERIODIC_AMBIENT_TEMP_TIMER   10000 
+#define PERIODIC_SCAN_TIMER_PERIOD    pdMS_TO_TICKS(500) 
+#define PERIODIC_AMBIENT_TEMP_TIMER   pdMS_TO_TICKS(10000) 
 
 /* Max number of localization attempts allowed */
 #define MAX_LOC_ATTEMPTS              20     

@@ -68,7 +68,7 @@
 #define BLE_PERIODIC_SCAN_ITVL				100	
 #define BLE_PERIODIC_SCAN_WIND				100
 
-#define BLE_SCAN_TIMEOUT                    1000     
+#define BLE_SCAN_TIMEOUT                    pdMS_TO_TICKS(300)     
 #define BLE_FIRST_SCAN_ITVL                 30          /**< The scanning interval (in units of 0.625 ms). */
 #define BLE_FIRST_SCAN_WIND					30          /**< The scanning window   (in units of 0.625 ms). */
                                                         /**< The scan window must be less than 256 (160 ms) to coexist with WiFi */
@@ -114,7 +114,10 @@ typedef struct {
     BLEAgentCommandType BLEAgentCommandType_t;
     uint16_t attr_handle;
     struct peer *peer;
-    ble_gatt_attr_fn *cb;
+    void *cb;
+    uint8_t value[PRU_CONTROL_CHAR_SIZE];
+    uint8_t sizeOfValue;
+    ble_addr_t peer_addr;
 } BLEAgentCommand;
 
 /* Keeps power outputs state in memory */
@@ -130,7 +133,6 @@ uint8_t peer_addr[6];
 
 struct peer;
 
-void ble_central_scan_start(uint32_t timeout, uint16_t scan_itvl, uint16_t scan_wind);
 uint8_t ble_central_update_control_enables(uint8_t enable, uint8_t full_power, uint8_t led, struct peer *peer);
 void ble_central_kill_all_CRU(void);
 void ble_central_kill_all_AUX_CTU(void);

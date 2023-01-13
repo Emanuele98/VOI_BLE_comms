@@ -327,18 +327,20 @@ static void CTU_remote_fault_state(void *arg)
  */
 void CTU_periodic_scan_timeout(void *arg)
 {    
+    BLEAgentCommand BLEAgentCommand_t;
+
     if ((peer_get_NUM_CRU() + peer_get_NUM_AUX_CTU()) < 9)
     {
-        ble_gap_disc_cancel();
-        ble_central_scan_start(BLE_SCAN_TIMEOUT, BLE_FIRST_SCAN_ITVL, BLE_FIRST_SCAN_WIND);
+        BLEAgentCommand_t.BLEAgentCommandType_t = SCAN;
+        BLEAgentCommand_t.value[0] = BLE_SCAN_TIMEOUT;
+        BLEAgentCommand_t.value[1] = BLE_FIRST_SCAN_ITVL;
+        BLEAgentCommand_t.value[2] = BLE_FIRST_SCAN_WIND;
+        xQueueSendToBack( BLE_QueueHandle, &BLEAgentCommand_t, 0);
     }
     else
     {
         if (ble_gap_disc_active())
-        {
             ble_gap_disc_cancel();
-        }
-        xTimerStop(periodic_scan_t_handle, 0);
     }
 }
 

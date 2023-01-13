@@ -118,6 +118,9 @@ static void host_ctrl_on_sync(void)
     /* Make sure we have proper identity address set (public preferred) */
     ble_hs_util_ensure_addr(0);
 
+    /* Init BLE Agent */
+    BLEAgent_Init();
+
     /* Initialize configuration state */
     CTU_state_change(CTU_CONFIG_STATE, (void *)NULL);
 }
@@ -183,11 +186,21 @@ void init_setup(void)
     esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_SCAN, ESP_PWR_LVL_P9); 
 
     /* Init BLE Agent */
-    BLEAgent_Init();
+    //BLEAgent_Init();
 
     /* Initialize data structures to track connected peers. */
     peer_init(MYNEWT_VAL(BLE_MAX_CONNECTIONS), 64, 64, 64);
 
+    //print MAC address
+    /*  uint8_t out_id_addr[6] = {0};
+    rc = ble_hs_id_copy_addr(BLE_ADDR_PUBLIC, out_id_addr, NULL);
+    if (rc != ESP_OK)
+    {
+        ESP_LOGE(TAG, "error retrieving address");
+        return;
+    }
+    ESP_LOGI(TAG, "Address: %02x:%02x:%02x:%02x:%02x:%02x", out_id_addr[5], out_id_addr[4], out_id_addr[3], out_id_addr[2], out_id_addr[1], out_id_addr[0]);
+    */
     //check esp_bt_sleep_enable()
 }
 
