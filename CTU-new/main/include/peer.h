@@ -134,7 +134,7 @@ struct peer {
     peer_disc_fn *disc_cb;
     void *disc_cb_arg;
 
-    /** Task handle for dynamic char read */
+    /** Task handle */
     TaskHandle_t task_handle;
 
     /** Peripheral payloads. */

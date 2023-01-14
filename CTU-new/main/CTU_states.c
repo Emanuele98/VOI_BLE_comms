@@ -256,7 +256,7 @@ static void CTU_local_fault_state(void *arg)
     peer->alert_payload.alert_field.overcurrent = 0;
     peer->alert_payload.alert_field.FOD = 0;
 
-    ble_central_kill_AUX_CTU(peer->conn_handle, NULL);
+    ble_central_kill_AUX_CTU(peer->conn_handle);
 
     if (!peer_get_NUM_AUX_CTU())
         CTU_state_change(CTU_CONFIG_STATE, (void *)peer);
@@ -308,7 +308,7 @@ static void CTU_remote_fault_state(void *arg)
     peer->alert_payload.alert_field.overtemperature = 0;
     peer->alert_payload.alert_field.overvoltage = 0;
 
-    ble_central_kill_CRU(peer->conn_handle, NULL);
+    ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
     
     if (!CTU_is_charging())
         CTU_state_change(CTU_LOW_POWER_STATE, (void *)peer);
