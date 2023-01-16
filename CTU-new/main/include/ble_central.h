@@ -113,7 +113,7 @@ typedef enum{
 typedef struct {
     BLEAgentCommandType BLEAgentCommandType_t;
     uint16_t attr_handle;
-    struct peer *peer;
+    const struct peer *peer;
     void *cb;
     uint8_t value[PRU_CONTROL_CHAR_SIZE];
     uint8_t sizeOfValue;
@@ -133,7 +133,7 @@ uint8_t peer_addr[6];
 
 struct peer;
 
-uint8_t ble_central_update_control_enables(uint8_t enable, uint8_t full_power, uint8_t led, struct peer *peer);
+void ble_central_update_control_enables(uint8_t enable, uint8_t full_power, uint8_t led, struct peer *peer);
 void ble_central_kill_all_CRU(void);
 void ble_central_kill_all_AUX_CTU(void);
 void ble_central_kill_CRU(uint16_t conn_handle, TaskHandle_t task_handle);

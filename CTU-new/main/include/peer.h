@@ -189,6 +189,9 @@ bool CTU_is_charging(void);
 uint8_t loc_pad_find(void);
 bool all_low_power_off(void);
 bool low_power_alone(uint8_t pos);
+void set_scooters_tobechecked(void);
+bool all_scooters_checked(void);
+bool isOnePadEmpty(void);
 
 // find the aux CTU
 struct peer *Aux_CTU_find(uint16_t pos);

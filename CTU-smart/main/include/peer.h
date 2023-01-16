@@ -153,9 +153,6 @@ struct peer {
     /* bool to detect if localization process is currently going */
     bool localization_process;
 
-    /* Save time after a localization attempt failed for prioritize others peers waiting*/
-    time_t loc_fail;
-
     /* bool to check wheter the power is received correctly */
     bool correct;
 

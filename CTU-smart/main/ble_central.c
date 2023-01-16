@@ -429,11 +429,10 @@ static int ble_central_on_localization_process(uint16_t conn_handle,
         sprintf(string_value, "Scooter %s checked with pad: %d", peer->voi_code_string, current_low_power);
         esp_mqtt_client_publish( client, debug, string_value, 0, 0, 0);
         
-
         // CHECK VOLTAGE ONCE
         if (peer->dyn_payload.vrect.f > VOLTAGE_LOW_THRESH)
         {
-            //ESP_LOGE(TAG, " VOLTAGE TRESHOLD PASSED!");
+            ESP_LOGE(TAG, " VOLTAGE TRESHOLD PASSED!");
             
             struct peer *Aux_CTU = Aux_CTU_find(current_low_power);
             if ((Aux_CTU == NULL) && (peer->conn_handle))
@@ -456,7 +455,7 @@ static int ble_central_on_localization_process(uint16_t conn_handle,
                     //SET RX POSITION
                     peer->position = current_low_power;
 
-                    //ESP_LOGI(TAG, " CRU is in position %d", peer->position );
+                    ESP_LOGI(TAG, " CRU is in position %d", peer->position );
 
                     //save led state
                     led_state[peer->position-1] = 1;

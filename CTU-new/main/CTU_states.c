@@ -18,11 +18,6 @@ static void CTU_power_transfer_state(void *arg);
 static void CTU_local_fault_state(void *arg);
 static void CTU_remote_fault_state(void *arg);
 
-//defined in ble_central.c
-extern const ble_uuid_t *wpt_svc_uuid;
-extern const ble_uuid_t *wpt_char_CRU_dyn_uuid;
-
-
 /* NVS TOPICS */
 const char pads[4][20] = {"pad1", "pad2", "pad3", "pad4"};
 const char scooters[4][20] = {"3PAU", "6F35", "CE8J", "D8X5"};

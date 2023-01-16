@@ -184,6 +184,45 @@ bool CTU_is_charging(void)
 }
 
 /**
+ * @brief Determine which scooters do not have a position and set the variable 'to be checked')
+ */
+void set_scooters_tobechecked(void)
+{
+    struct peer *peer;
+
+    SLIST_FOREACH(peer, &peers, next) {
+        if ((peer->CRU) && (!peer->position)) {
+            scooter_check[peer->voi_code] = false;
+        }
+    }
+}
+
+
+/**
+ * @brief Determine wheter all scooters withouth a position were checked after a pad was turned on in low power mode
+ */
+bool all_scooters_checked(void)
+{
+    if (scooter_check[0] && scooter_check[1] && scooter_check[2] && scooter_check[3])
+        return true;
+    else
+        return false;
+}
+
+bool isOnePadEmpty(void)
+{   
+    bool isOneEmpty = false;
+    struct peer *peer;
+
+    SLIST_FOREACH(peer, &peers, next) {
+        if ((!peer->CRU) && (peer->voi_code == EMPTY)) {
+            isOneEmpty = true;
+        }
+    }
+
+    return isOneEmpty;
+}
+/**
  * @brief Detected wheter the Tx pad in this position is the only one involved in the loc process
  * 
  * @param pos the position of the tx calling this function
