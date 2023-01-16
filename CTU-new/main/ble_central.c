@@ -244,7 +244,7 @@ static void BLEAgent_Task(void)
     disc_params.filter_policy = 0;
     disc_params.limited = 0;
 
-    esp_task_wdt_add(BLE_QueueHandle);
+    esp_task_wdt_add(task_handle_BLEAgent);
     //add error handling for reading? prob not necessary with the agent
 
     //loop
@@ -273,7 +273,7 @@ static void BLEAgent_Task(void)
                         ESP_LOGE(TAG, "Error initiating GAP discovery procedure; rc=%d\n", rc);
                     
                     //wait for it to be completed? TRY WITHOUT AND SEE WHETER READ PROCEDURES FAIL
-                    vTaskDelay(Timeout);
+                    //vTaskDelay(Timeout);
 
                     break;
 
@@ -288,7 +288,7 @@ static void BLEAgent_Task(void)
 
                     // if procedure was completed successfully, we must wait the notification from the callback function
                     if (rc == 0)               
-                        ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
+                        ulTaskNotifyTake( pdTRUE, pdMS_TO_TICKS(3000) );
 
                     break;
 
@@ -298,8 +298,9 @@ static void BLEAgent_Task(void)
                     // if procedure was completed successfully, we must wait the notification from the callback function
                     if (rc == ESP_OK)
                     {
-                        ulTaskNotifyTake( pdTRUE, portMAX_DELAY );
-                        //ESP_LOGI(TAG, "notification arrived");
+                        //ESP_LOGI(TAG, "notification");
+                        ulTaskNotifyTake( pdTRUE, pdMS_TO_TICKS(3000) );
+                        //ESP_LOGI(TAG, "arrived");
                     } else
                     {
                         //error handling
@@ -330,7 +331,7 @@ static void BLEAgent_Task(void)
                             //ESP_LOGW(TAG, "HALF MODE");
                             low_power_pads[BLEAgentCommand_t.peer->position-1] = 1;
                         }
-                        //ESP_LOGE(TAG, "Enable charge on pad=%d", peer->position);
+                        //ESP_LOGW(TAG, "Enable charge on pad=%d", BLEAgentCommand_t.peer->position);
                     }
                     else if(BLEAgentCommand_t.value[0] == 0)
                     {
@@ -342,7 +343,7 @@ static void BLEAgent_Task(void)
                             //ESP_LOGW(TAG, "HALF MODE");
                             low_power_pads[BLEAgentCommand_t.peer->position-1] = 0;
                         }
-                        //ESP_LOGE(TAG, "Disable charge on pad=%d!", peer->position);
+                        //ESP_LOGW(TAG, "Disable charge on pad=%d!", BLEAgentCommand_t.peer->position);
                     }
                         
                     break;
@@ -364,6 +365,7 @@ static void BLEAgent_Task(void)
         esp_task_wdt_reset();
     }
 
+    esp_task_wdt_delete(NULL);
     vTaskDelete(NULL);    
 
 }
@@ -448,7 +450,8 @@ void ble_central_kill_AUX_CTU(uint16_t conn_handle)
         if (Aux_CTU->task_handle)
         {
             esp_task_wdt_delete(Aux_CTU->task_handle);
-            vTaskDelete(Aux_CTU->task_handle);           
+            vTaskDelete(Aux_CTU->task_handle);    
+            Aux_CTU->task_handle = NULL;       
         }
     }
 }
@@ -509,10 +512,11 @@ void ble_central_kill_CRU(uint16_t conn_handle, TaskHandle_t task_handle)
             xQueueSendToBack( BLE_QueueHandle, &BLEAgentCommand_t, 0);
         }
 
+        //gotta keep connected during fully charged scenario
         if (task_handle)
         {
-            esp_task_wdt_delete(peer->task_handle);
-            vTaskDelete(peer->task_handle);
+            esp_task_wdt_delete(task_handle);
+            vTaskDelete(task_handle);
         }
     }
 }
@@ -615,7 +619,9 @@ static int ble_central_on_localization_process(uint16_t conn_handle,
         //TEST LOC PROTOCOL
         char string_value[50];
         sprintf(string_value, "Scooter %s checked with pad: %d", peer->voi_code_string, current_low_power);
-        esp_mqtt_client_publish( client, debug, string_value, 0, 0, 0);
+        if(MQTT)
+            esp_mqtt_client_publish( client, debug, string_value, 0, 0, 0);
+        ESP_LOGI(TAG, "%s", string_value);
         
         // CHECK VOLTAGE ONCE
         if (peer->dyn_payload.vrect.f > VOLTAGE_LOW_THRESH)
@@ -1066,8 +1072,8 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
         vTaskDelay(task_delay);
     }
 
+    esp_task_wdt_delete(NULL);
     vTaskDelete(NULL);    
-
 }
 
 /** 
@@ -1194,8 +1200,8 @@ static void ble_central_CRU_task_handle(void *arg)
         vTaskDelay(task_delay);
     }
 
+    esp_task_wdt_delete(NULL);
     vTaskDelete(NULL);    
-
 }
 
 /**
@@ -1619,7 +1625,7 @@ static int ble_central_should_connect(const struct ble_gap_disc_desc *disc)
 static void ble_central_connect_if_interesting(const struct ble_gap_disc_desc *disc)
 {
     BLEAgentCommand BLEAgentCommand_t;
-    uint8_t* slave_type = NULL;
+    uint8_t slave_type = 0;
 
     /* Don't do anything if we don't care about this advertiser. */
     if (!ble_central_should_connect(disc)) 
@@ -1629,11 +1635,11 @@ static void ble_central_connect_if_interesting(const struct ble_gap_disc_desc *d
     {
         ESP_LOGI(TAG, "AUX CTU found!");
         time(&conf_time);    
-        *slave_type = 1;
+        slave_type = 1;
     } else if(ble_central_should_connect(disc) == 2) 
     {
         ESP_LOGI(TAG, "CRU found!");
-        *slave_type = 2;
+        slave_type = 2;
     }
 
     //send BLE command
@@ -1693,11 +1699,11 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
             uintptr_t type = (uintptr_t) slave_type;
 
             if(type == 1) {
-                //ESP_LOGI(TAG, "Connection EVT with AUX CTU");
+                ESP_LOGI(TAG, "Connection EVT with AUX CTU");
                 /* Adds AUX CTU to list of connections */
                 rc = peer_add(event->connect.conn_handle, 0);
             } else if (type == 2) {
-                //ESP_LOGI(TAG, "Connection EVT with CRU");
+                ESP_LOGI(TAG, "Connection EVT with CRU");
                 /* Adds CRU to list of connections */
                 rc = peer_add(event->connect.conn_handle, 1);
             }
@@ -1756,13 +1762,14 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
                 //this may happen when scooter leaves the platform after being fully charged
                 peer->alert_payload.alert_field.charge_complete = 0;
                 if (peer->conn_handle)
-                    ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
+                    ble_central_kill_CRU(peer->conn_handle, NULL);
             } else 
             {
                 if (peer->conn_handle)
                     ble_central_kill_AUX_CTU(peer->conn_handle);
                 if (peer->position) 
                     ESP_LOGE(TAG, "A-CTU in position: %d", peer->position);
+
                 if (!peer_get_NUM_AUX_CTU())
                     CTU_state_change(CTU_CONFIG_STATE, (void *)peer);
             }

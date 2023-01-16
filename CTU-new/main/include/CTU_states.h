@@ -44,9 +44,12 @@
 
 /* Voltage threshold during FULL-POWER mode on ROLL ON */
 #define VOLTAGE_FULL_THRESH_ON        50
+//#define VOLTAGE_FULL_THRESH_ON        20
+
 
 /* Voltage threshold during FULL-POWER mode on ROLL OFF */
 #define VOLTAGE_FULL_THRESH_OFF       60
+//#define VOLTAGE_FULL_THRESH_OFF       20
 
 /* Voltage threshold for misalignment check */
 #define VOLTAGE_MIS_THRESH            110

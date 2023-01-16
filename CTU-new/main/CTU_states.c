@@ -92,14 +92,9 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
         else if (p_state == CTU_LOW_POWER_STATE)
         {
             // Reset power interfaces
-            low_power_pads[0] = 0;
-            low_power_pads[1] = 0;
-            low_power_pads[2] = 0;
-            low_power_pads[3] = 0;
-            full_power_pads[0] = 0;
-            full_power_pads[1] = 0;
-            full_power_pads[2] = 0;
-            full_power_pads[3] = 0;
+            low_power_pads[0] = low_power_pads[1] = low_power_pads[2] = low_power_pads[3] = 0;
+            full_power_pads[0] = full_power_pads[1] = full_power_pads[2] = full_power_pads[3] = 0;
+            scooter_check[0] = scooter_check[1] = scooter_check[2] = scooter_check[3] = true;  
 
             m_CTU_task_param.state_fn = CTU_low_power_state;
             m_CTU_task_param.state = CTU_LOW_POWER_STATE;

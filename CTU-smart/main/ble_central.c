@@ -428,6 +428,7 @@ static int ble_central_on_localization_process(uint16_t conn_handle,
         char string_value[50];
         sprintf(string_value, "Scooter %s checked with pad: %d", peer->voi_code_string, current_low_power);
         esp_mqtt_client_publish( client, debug, string_value, 0, 0, 0);
+        ESP_LOGI(TAG, "%s", string_value);
         
         // CHECK VOLTAGE ONCE
         if (peer->dyn_payload.vrect.f > VOLTAGE_LOW_THRESH)

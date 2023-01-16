@@ -68,7 +68,7 @@
 #define BLE_PERIODIC_SCAN_ITVL				100	
 #define BLE_PERIODIC_SCAN_WIND				100
 
-#define BLE_SCAN_TIMEOUT                    pdMS_TO_TICKS(300)     
+#define BLE_SCAN_TIMEOUT                    200     
 #define BLE_FIRST_SCAN_ITVL                 30          /**< The scanning interval (in units of 0.625 ms). */
 #define BLE_FIRST_SCAN_WIND					30          /**< The scanning window   (in units of 0.625 ms). */
                                                         /**< The scan window must be less than 256 (160 ms) to coexist with WiFi */
