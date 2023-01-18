@@ -10,51 +10,33 @@
 /* Defines what type of task the unit will run on */
 #define TASKS_CORE            0
 #define TASK_STACK_SIZE       3000
-#define BLE_AGENT_PRIORITY    18
+#define BLE_AGENT_PRIORITY    20
 #define CRU_TASK_PRIORITY     18
 #define AUX_CTU_TASK_PRIORITY 18
 
 static TaskHandle_t task_handle_BLEAgent = NULL;
 
 //A-CTUs bluetooth addresses
-
-/* TESTING N 5 */
-uint8_t Actu_addr1[6] = {0x4e, 0x7b, 0x26, 0xfb, 0x0b, 0xac};
-
-//static uint8_t Actu_addr1[6] = {0x72, 0x81, 0x24, 0xfb, 0x0b, 0xac};
-static uint8_t Actu_addr2[6] = {0x86, 0x68, 0x24, 0xfb, 0x0b, 0xac};
-//real
-//static uint8_t Actu_addr3[6] = {0x5a, 0xe3, 0x26, 0xfb, 0x0b, 0xac};
-//static uint8_t Actu_addr4[6] = {0x9a, 0xbb, 0x25, 0xfb, 0x0b, 0xac};
-//fake
-static uint8_t Actu_addr3[6] = {0x72, 0x85, 0xed, 0x0c, 0x38, 0x90};
-static uint8_t Actu_addr4[6] = {0xd2, 0xa7, 0xc0, 0xe2, 0xde, 0xc4};
+static uint8_t Actu_addr1[6] = {0x72, 0x81, 0x24, 0xfb, 0x0b, 0xac};
+static uint8_t Actu_addr2[6] = {0x5a, 0xe3, 0x26, 0xfb, 0x0b, 0xac};
+static uint8_t Actu_addr3[6] = {0xda, 0x62, 0x25, 0xfb, 0x0b, 0xac};
+static uint8_t Actu_addr4[6] = {0x9a, 0xbb, 0x25, 0xfb, 0x0b, 0xac};
 
 //CRUs bluetooth addresses
 static uint8_t cru_6F35[6] = {0x02, 0xec, 0x25, 0xfb, 0x0b, 0xac};
 static uint8_t cru_3PAU[6] = {0x5a, 0x63, 0x25, 0xfb, 0x0b, 0xac};
-//real
-//static uint8_t cru_CE8J[6] = {0x86, 0x85, 0xed, 0x0c, 0x38, 0x90};
-//static uint8_t cru_D8X5[6] = {0xb2, 0x6d, 0x24, 0xfb, 0x0b, 0xac};
-//fake
-static uint8_t cru_CE8J[6] = {0x26, 0x24, 0x46, 0xef, 0x49, 0xc0};
-static uint8_t cru_D8X5[6] = {0x06, 0xce, 0x44, 0xef, 0x49, 0xc0};
+static uint8_t cru_CE8J[6] = {0x86, 0x85, 0xed, 0x0c, 0x38, 0x90};
+static uint8_t cru_D8X5[6] = {0xb2, 0x6d, 0x24, 0xfb, 0x0b, 0xac};
 
 //timer 
-static time_t switch_pad_ON = 0, /* switch_pad_OFF,*/ loc_success = 0;
-static float time_sec = 0, /*time_lowpower_on,*/ min_switch_time = 0/*, loc_time*/;
+static time_t switch_pad_ON = 0, loc_success = 0;
+static float time_sec = 0, min_switch_time = 0;
 
 //variable to know which pad is actually on in Low Power mode
 static uint8_t current_low_power = 0;
 
 /* store last led state (1) GREEN (2) MISALIGNED */
 static uint8_t last_led[4] = {0, 0, 0, 0};
-
-/* Number of failed localization processes */
-//uint8_t n_loc[4];
-
-/* counters */
-//uint16_t count[4];
 
 /* Keep track of how many times one scooter has been checked to allow others to be prioritized (?) */
 // --> will be resolved when BLE agent takes properly care of scanning
@@ -140,8 +122,13 @@ static int ble_central_on_control_enable(uint16_t conn_handle,
                 const struct ble_gatt_error *error,
                 struct ble_gatt_attr *attr,
                 void *arg);
-/* Function handling localization process (dynamic readings) */
+/* Function handling localization process */
 static int ble_central_on_localization_process(uint16_t conn_handle,
+                const struct ble_gatt_error *error,
+                struct ble_gatt_attr *attr,
+                void *arg);
+/* Function handling CRU dynamic readings */
+static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
                 const struct ble_gatt_error *error,
                 struct ble_gatt_attr *attr,
                 void *arg);
@@ -212,12 +199,11 @@ const ble_uuid_t *wpt_char_dyn_uuid =
 
 static void BLEAgent_Task(void)
 {
-    //watchdog?
-
-    int rc = 0;
+    uint8_t rc = 0, last_rc = 0;
     BaseType_t queueStatus = pdFAIL;
     BLEAgentCommand BLEAgentCommand_t;
     uint16_t Timeout;
+    uint8_t comms_error = 0;
 
     ESP_LOGI(TAG, "BLE Agent start");
 
@@ -288,64 +274,41 @@ static void BLEAgent_Task(void)
 
                     // if procedure was completed successfully, we must wait the notification from the callback function
                     if (rc == 0)               
-                        ulTaskNotifyTake( pdTRUE, pdMS_TO_TICKS(3000) );
+                        ulTaskNotifyTake( pdTRUE, pdMS_TO_TICKS(1000) );
 
                     break;
 
                 case READ:
-                    rc = ble_gattc_read(BLEAgentCommand_t.peer->conn_handle, BLEAgentCommand_t.attr_handle,
-                                (ble_gatt_attr_fn *)BLEAgentCommand_t.cb, (void *)BLEAgentCommand_t.peer);
-                    // if procedure was completed successfully, we must wait the notification from the callback function
-                    if (rc == ESP_OK)
+                    if (BLEAgentCommand_t.peer != NULL)
                     {
-                        //ESP_LOGI(TAG, "notification");
-                        ulTaskNotifyTake( pdTRUE, pdMS_TO_TICKS(3000) );
-                        //ESP_LOGI(TAG, "arrived");
-                    } else
-                    {
-                        //error handling
-                        ESP_LOGE(TAG, "ERROR READ PROCEDURE");
-                    }
-                    break;
-                
-                case WRITE:
-                    ble_gattc_write_no_rsp_flat(BLEAgentCommand_t.peer->conn_handle, BLEAgentCommand_t.attr_handle, BLEAgentCommand_t.value, BLEAgentCommand_t.sizeOfValue);
-
-                    time(&now);
-                    localtime_r(&now, &info);
-
-                    if (BLEAgentCommand_t.value[0] == 1)
-                    {
-                        if(BLEAgentCommand_t.peer->contr_payload.full_power)
-                        {
-                            //ESP_LOGW(TAG, "FULL MODE");
-                            full_power_pads[BLEAgentCommand_t.peer->position-1] = 1;
+                        // localization command when the position is already found
+                        if ((BLEAgentCommand_t.peer->CRU) && (BLEAgentCommand_t.peer->position) && (BLEAgentCommand_t.cb == ble_central_on_localization_process))
+                            BLEAgentCommand_t.cb = ble_central_on_CRU_dyn_read;
                             
-                            const char string_value[2] = "1"; 
-                            if (SD_CARD)
-                                write_sd_card(tx_status[BLEAgentCommand_t.peer->position-1], 1.00, &info);
-                            if (MQTT)
-                                esp_mqtt_client_publish(client, tx_status[BLEAgentCommand_t.peer->position-1], string_value, 0, 0, 0);
-
-                        } else {
-                            //ESP_LOGW(TAG, "HALF MODE");
-                            low_power_pads[BLEAgentCommand_t.peer->position-1] = 1;
-                        }
-                        //ESP_LOGW(TAG, "Enable charge on pad=%d", BLEAgentCommand_t.peer->position);
-                    }
-                    else if(BLEAgentCommand_t.value[0] == 0)
-                    {
-                        if(BLEAgentCommand_t.peer->contr_payload.full_power)
+                        rc = ble_gattc_read(BLEAgentCommand_t.peer->conn_handle, BLEAgentCommand_t.attr_handle,
+                                    (ble_gatt_attr_fn *)BLEAgentCommand_t.cb, (void *)BLEAgentCommand_t.peer);
+                        // if procedure was completed successfully, we must wait the notification from the callback function
+                        if (rc == ESP_OK)
                         {
-                            //ESP_LOGW(TAG, "FULL MODE");
-                            full_power_pads[BLEAgentCommand_t.peer->position-1] = 0;
-                        } else {
-                            //ESP_LOGW(TAG, "HALF MODE");
-                            low_power_pads[BLEAgentCommand_t.peer->position-1] = 0;
+                            ulTaskNotifyTake( pdTRUE, pdMS_TO_TICKS(1000) );
+                            comms_error = 0;
+                        } else
+                        {
+                            //error handling
+                            ESP_LOGE(TAG, "ERROR READ PROCEDURE");
+                            if (MQTT)
+                                esp_mqtt_client_publish(client, debug, "error read procedure", 0, 0, 0);
+
+                            if (last_rc)
+                            {
+                                if (comms_error < COMMS_ERROR_LIMIT)
+                                    comms_error++;
+                                else 
+                                    ble_central_kill_CRU(BLEAgentCommand_t.peer->conn_handle, BLEAgentCommand_t.peer->task_handle);
+                            }
                         }
-                        //ESP_LOGW(TAG, "Disable charge on pad=%d!", BLEAgentCommand_t.peer->position);
+                        last_rc = rc;
                     }
-                        
                     break;
 
                 case DISCONNECT:
@@ -353,7 +316,8 @@ static void BLEAgent_Task(void)
                         ble_gap_disc_cancel();
 
                     //BLE_HS_EAPP to disconnect permanently
-                    ble_gap_terminate(BLEAgentCommand_t.peer->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
+                    if (BLEAgentCommand_t.peer != NULL)
+                        ble_gap_terminate(BLEAgentCommand_t.peer->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
                     
                     break;
 
@@ -373,18 +337,6 @@ static void BLEAgent_Task(void)
 uint8_t BLEAgent_Init(void)
 {
     esp_err_t err_code;
-
-    //create queue
-    /*
-    // STATIC MEMORY ALLOCATION
-    static uint8_t StaticQueueStorageArea[ BLE_AGENT_COMMAND_QUEUE_LENGTH * sizeof( BLEAgentCommand * ) ];
-    static StaticQueue_t StaticQueueStructure;
-
-    BLE_QueueHandle = xQueueCreateStatic( BLE_AGENT_COMMAND_QUEUE_LENGTH,
-                                          sizeof( BLEAgentCommand_t * ), 
-                                          StaticQueueStorageArea,
-                                          &StaticQueueStructure );
-    */
 
     // DYNAMIC MEMORY ALLOCATION
     BLE_QueueHandle = xQueueCreate( BLE_AGENT_COMMAND_QUEUE_LENGTH,
@@ -433,6 +385,7 @@ void ble_central_kill_AUX_CTU(uint16_t conn_handle)
     {
         if (Aux_CTU->position)
         {
+            fully_charged[Aux_CTU->position-1] = 0;
             Aux_CTU->voi_code = EMPTY;
             if (low_power_pads[Aux_CTU->position-1])
                 ble_central_update_control_enables(0, 0, 0, Aux_CTU); 
@@ -513,10 +466,11 @@ void ble_central_kill_CRU(uint16_t conn_handle, TaskHandle_t task_handle)
         }
 
         //gotta keep connected during fully charged scenario
-        if (task_handle)
+        if (task_handle != NULL)
         {
-            esp_task_wdt_delete(task_handle);
-            vTaskDelete(task_handle);
+            esp_task_wdt_delete(peer->task_handle);
+            vTaskDelete(peer->task_handle);
+            peer->task_handle = NULL;
         }
     }
 }
@@ -608,8 +562,11 @@ static int ble_central_on_localization_process(uint16_t conn_handle,
         char string_value[50];    
         sprintf(string_value, "Pad: %d - Voltage: %.02f and Current: %.02f", Aux_CTUx->position, Aux_CTUx->dyn_payload.vrect.f, Aux_CTUx->dyn_payload.irect.f);
         esp_mqtt_client_publish(client, debug, string_value, 0, 0, 0);
+        sprintf(string_value, "Scooter: %s - Voltage: %.02f and Current: %.02f", peer->voi_code_string, peer->dyn_payload.vrect.f, peer->dyn_payload.irect.f);
+        esp_mqtt_client_publish(client, debug, string_value, 0, 0, 0);
     }
     */
+    
     
     if( (min_switch_time > MIN_SWITCH_TIME) && (!scooter_check[peer->voi_code]) && (current_low_power) )
     { 
@@ -618,10 +575,10 @@ static int ble_central_on_localization_process(uint16_t conn_handle,
         
         //TEST LOC PROTOCOL
         char string_value[50];
-        sprintf(string_value, "Scooter %s checked with pad: %d", peer->voi_code_string, current_low_power);
+        sprintf(string_value, "Scooter %s checked with pad: %d. Voltage: %.02f", peer->voi_code_string, current_low_power, peer->dyn_payload.vrect.f);
         if(MQTT)
             esp_mqtt_client_publish( client, debug, string_value, 0, 0, 0);
-        ESP_LOGI(TAG, "%s", string_value);
+        //ESP_LOGI(TAG, "%s", string_value);
         
         // CHECK VOLTAGE ONCE
         if (peer->dyn_payload.vrect.f > VOLTAGE_LOW_THRESH)
@@ -699,26 +656,36 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
     // LOCALIZATION SWITCHING
     if (current_localization_process() && !full_power_pads[peer->position-1] && !fully_charged[peer->voi_code])
     {
-        //led state
         led_state[peer->position-1] = 0;
         //SWITCH ON
         if (all_low_power_off())
         {
             if (baton == peer->position)
             {
-                set_scooters_tobechecked();
                 ble_central_update_control_enables(1, 0, led_state[peer->position-1], peer);
+                set_scooters_tobechecked();
                 current_low_power = baton;
                 time(&switch_pad_ON);
                 //pass the baton to the next pad
-                pass_the_baton(); 
+                pass_the_baton();
+
+                char string_value[50];
+                sprintf(string_value, "low power ON pad: %d", peer->position); 
+                if (MQTT)
+                    esp_mqtt_client_publish(client, debug, string_value, 0, 0, 0);
             }
         } else
         {
             //SWITCH OFF 
             if ( (peer->position == loc_pad_find()+1) && (!low_power_alone(peer->position)) && (all_scooters_checked()) )
+            {
                 ble_central_update_control_enables(0, 0, led_state[peer->position-1], peer);
-            
+
+                char string_value[50];
+                sprintf(string_value, "low power OFF pad: %d", peer->position );
+                if (MQTT)
+                    esp_mqtt_client_publish(client, debug, string_value, 0, 0, 0);
+            }
         }
     }
 
@@ -802,7 +769,7 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
     time_sec = abs(difftime(now, loc_success));
     if ( time_sec < BATTERY_REACTION_TIME )
     {
-        if(peer->dyn_payload.vrect.f > VOLTAGE_FULL_THRESH_ON)
+        if ((peer->dyn_payload.vrect.f > VOLTAGE_FULL_THRESH_ON) && (!peer->correct))
         {
             peer->correct = true;
             if (MQTT)
@@ -961,6 +928,7 @@ static int ble_central_on_alert_read(uint16_t conn_handle,
  */
 static void ble_central_AUX_CTU_task_handle(void *arg)
 {
+    BLEAgentCommand BLEAgentCommand_t;
     esp_err_t err_code;
     const struct peer_chr *dynamic_chr = NULL;
     const struct peer_chr *alert_chr = NULL;
@@ -1020,8 +988,6 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
     }
 
     time(&loc_fail);
-
-    BLEAgentCommand BLEAgentCommand_t;
     
     /* WPT task loop */
     while (1)
@@ -1029,36 +995,36 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
         //check alert is fine
         if (peer->dyn_payload.alert == 0)
         {
+            BLEAgentCommand_t.BLEAgentCommandType_t = READ;
+            BLEAgentCommand_t.attr_handle = dynamic_chr->chr.val_handle; 
+            BLEAgentCommand_t.cb = ble_central_on_AUX_CTU_dyn_read;
+            BLEAgentCommand_t.peer = peer;
+            xQueueSendToBack( BLE_QueueHandle, &BLEAgentCommand_t, 0);
+        } else 
+        {
+            //!AVOID FOD DURING LOCALIZATION
+            time(&now);                                            
+            if (((current_localization_process() || (now < loc_fail + 30))  && !full_power_pads[peer->position-1] && !fully_charged[peer->voi_code])
+            //!AVOID OV ALERTS FOR PAD 3
+                || ((peer->position == 3) && (peer->dyn_payload.vrect.f > 68) && (peer->dyn_payload.irect.f < 2.75) && (peer->dyn_payload.temp1.f < 55) && (peer->dyn_payload.temp2.f < 55)) )
+            {
+                peer->dyn_payload.alert = 0;
+                
                 BLEAgentCommand_t.BLEAgentCommandType_t = READ;
-                BLEAgentCommand_t.attr_handle = dynamic_chr->chr.val_handle; 
-                BLEAgentCommand_t.cb = ble_central_on_AUX_CTU_dyn_read;
+                BLEAgentCommand_t.attr_handle = static_chr->chr.val_handle; 
+                BLEAgentCommand_t.cb = ble_central_on_alert_read;
                 BLEAgentCommand_t.peer = peer;
                 xQueueSendToBack( BLE_QueueHandle, &BLEAgentCommand_t, 0);
-        } else 
-            {
-                //!AVOID FOD DURING LOCALIZATION
-                time(&now);
-                if (((current_localization_process() || (now < loc_fail + 10))  && !full_power_pads[peer->position-1] && !fully_charged[peer->voi_code])
-                //!AVOID OV ALERTS FOR PAD 3
-                    || ((peer->position == 3) && (peer->dyn_payload.vrect.f > 68) && (peer->dyn_payload.irect.f < 2.75) && (peer->dyn_payload.temp1.f < 55) && (peer->dyn_payload.temp2.f < 55)) )
-                {
-                    peer->dyn_payload.alert = 0;
-                    
-                    BLEAgentCommand_t.BLEAgentCommandType_t = READ;
-                    BLEAgentCommand_t.attr_handle = static_chr->chr.val_handle; 
-                    BLEAgentCommand_t.cb = ble_central_on_alert_read;
-                    BLEAgentCommand_t.peer = peer;
-                    xQueueSendToBack( BLE_QueueHandle, &BLEAgentCommand_t, 0);
-                }
-                else
-                {
-                    BLEAgentCommand_t.BLEAgentCommandType_t = READ;
-                    BLEAgentCommand_t.attr_handle = alert_chr->chr.val_handle; 
-                    BLEAgentCommand_t.cb = ble_central_on_alert_read;
-                    BLEAgentCommand_t.peer = peer;
-                    xQueueSendToBack( BLE_QueueHandle, &BLEAgentCommand_t, 0);
-                }
             }
+            else
+            {
+                BLEAgentCommand_t.BLEAgentCommandType_t = READ;
+                BLEAgentCommand_t.attr_handle = alert_chr->chr.val_handle; 
+                BLEAgentCommand_t.cb = ble_central_on_alert_read;
+                BLEAgentCommand_t.peer = peer;
+                xQueueSendToBack( BLE_QueueHandle, &BLEAgentCommand_t, 0);
+            }
+        }
         
         // set Task Delay
         if ((current_localization_process()) && (!full_power_pads[peer->position-1]))
@@ -1072,6 +1038,7 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
         vTaskDelay(task_delay);
     }
 
+    //if for any reason the loop terminates
     esp_task_wdt_delete(NULL);
     vTaskDelete(NULL);    
 }
@@ -1087,7 +1054,7 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
  */
 static void ble_central_CRU_task_handle(void *arg)
 {
-    int rc = 0;
+    BLEAgentCommand BLEAgentCommand_t;
     esp_err_t err_code;
     const struct peer_chr *dynamic_chr = NULL;
     const struct peer_chr *alert_chr = NULL;
@@ -1104,7 +1071,7 @@ static void ble_central_CRU_task_handle(void *arg)
                             wpt_char_dyn_uuid);
     if (dynamic_chr == NULL)
     {
-        ESP_LOGE(TAG, "Error: Failed to read dynamic characteristic; rc=%d", rc);
+        ESP_LOGE(TAG, "Error: Failed to read dynamic characteristic");
         ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
         return;
     }
@@ -1136,8 +1103,6 @@ static void ble_central_CRU_task_handle(void *arg)
     n_loc_checks[peer->voi_code] = 0;
 
     int task_delay = CRU_TIMER_PERIOD;
-
-    BLEAgentCommand BLEAgentCommand_t;
     
     /* WPT task loop */
     while (1)
@@ -1145,7 +1110,6 @@ static void ble_central_CRU_task_handle(void *arg)
         //check alert is fine
         if ((peer->dyn_payload.alert == 0) || (peer->alert_payload.alert_field.charge_complete))
         {
-            // ENSURE only one localization process per time!
             if ((peer->position == 0) && (isOnePadEmpty()))
             {
                 //check how many times the scooter has been checked - pause it for while to allow connection to other scooters
@@ -1158,18 +1122,17 @@ static void ble_central_CRU_task_handle(void *arg)
                     BLEAgentCommand_t.peer = peer;
                     xQueueSendToBack( BLE_QueueHandle, &BLEAgentCommand_t, 0);
                 } else
+                {
+                    if(peer->localization_process)
                     {
-                        if(peer->localization_process)
-                        {
-                            time(&loc_fail);
-                            peer->localization_process = false;
-                        }
-                        //reset variable after Min time //CHANGE
-                        time(&now);
-                        if (now > (loc_fail + MIN_TIME_AFTER_LOC))
-                            n_loc_checks[peer->voi_code] = 0;
-                        rc = 0;
+                        time(&loc_fail);
+                        peer->localization_process = false;
                     }
+                    //reset variable after Min time 
+                    time(&now);
+                    if (now > (loc_fail + MIN_TIME_AFTER_LOC))
+                        n_loc_checks[peer->voi_code] = 0;
+                }
             } else
             {   
                 //* POWER TRANSFER PROCESS (keep reading dyn chr)
@@ -1200,6 +1163,7 @@ static void ble_central_CRU_task_handle(void *arg)
         vTaskDelay(task_delay);
     }
 
+    //if for any reason the loop terminates
     esp_task_wdt_delete(NULL);
     vTaskDelete(NULL);    
 }
@@ -1451,9 +1415,10 @@ static int ble_central_on_write_cccd(uint16_t conn_handle, void *arg)
      * characteristic-configuration-descriptor (CCCD).
      */
     
-    BLEAgentCommand BLEAgentCommand_t;
     const struct peer_dsc *dsc = NULL;
     const struct peer *peer = (const struct peer *) arg;
+    uint8_t value[2];
+
 
     if (peer==NULL)
     {
@@ -1469,13 +1434,12 @@ static int ble_central_on_write_cccd(uint16_t conn_handle, void *arg)
         goto err;
     }
 
-    BLEAgentCommand_t.BLEAgentCommandType_t = WRITE;
-    BLEAgentCommand_t.attr_handle = dsc->dsc.handle; 
-    BLEAgentCommand_t.peer = peer;
-    BLEAgentCommand_t.value[0] = 1;
-    BLEAgentCommand_t.value[1] = 0;
-    BLEAgentCommand_t.sizeOfValue = 2;
-    xQueueSendToBack( BLE_QueueHandle, &BLEAgentCommand_t, 0);
+    value[0] = 1;
+    value[1] = 0;
+    
+    //doesn't seem to change anything but theoretically required
+    ble_gattc_write_no_rsp_flat(conn_handle, dsc->dsc.handle,
+                            value, sizeof value);
 
     ble_central_on_subscribe(conn_handle, (void *)peer);
 
@@ -1594,7 +1558,7 @@ static int ble_central_should_connect(const struct ble_gap_disc_desc *disc)
             else if ((disc->addr.val[5] == cru_CE8J[5]) && (disc->addr.val[4] == cru_CE8J[4]) && (disc->addr.val[3] == cru_CE8J[3]) && (disc->addr.val[2] == cru_CE8J[2]) && (disc->addr.val[1] == cru_CE8J[1]) && (disc->addr.val[0] == cru_CE8J[0]))
                 x = 7;
             else if ((disc->addr.val[5] == cru_D8X5[5]) && (disc->addr.val[4] == cru_D8X5[4]) && (disc->addr.val[3] == cru_D8X5[3]) && (disc->addr.val[2] == cru_D8X5[2]) && (disc->addr.val[1] == cru_D8X5[1]) && (disc->addr.val[0] == cru_D8X5[0]))
-                x = 8;
+                x = 8; 
         }
 
         if (x==0)
@@ -1605,13 +1569,13 @@ static int ble_central_should_connect(const struct ble_gap_disc_desc *disc)
         
         if (((x==5) && (reconn_time >= timeScooter[VOI_3PAU])) || ((x==6) && (reconn_time >= timeScooter[VOI_6F35])) || ((x==7) && (reconn_time >= timeScooter[VOI_CE8J])) || ((x==8) && (reconn_time >= timeScooter[VOI_D8X5])))
             return 2;
-        
-        /*
+      
+/*        
         if ((x==1) || (x==2) || (x==3) || (x==4))
             return 1;
-        if ((x==5) || (x==6) || (x==7) || (x==8))
+        if ((x==5) || (x==7))
             return 2;
-        */
+*/     
     }
 
    return 0;
@@ -1971,7 +1935,8 @@ static void ble_central_unpack_static_param(const struct ble_gatt_attr *attr, ui
             ESP_LOGE(TAG, "ERROR - AUX CTU NOT IDENTIFIED ");
             ble_central_kill_AUX_CTU(peer->conn_handle);
         }
-
+        
+        // publish 0FF status of the pad
         char string_value[2] = "0";
         if (MQTT)
             esp_mqtt_client_publish(client, tx_status[peer->position-1], string_value, 0, 0, 0);
@@ -2075,7 +2040,7 @@ static void ble_central_unpack_dynamic_param(const struct ble_gatt_attr *attr, u
             }
         } if ( (!peer->CRU) && ( (!current_localization_process()) || full_power_pads[peer->position-1] ) )
         {
-            if (peer->dyn_payload.vrect.f > 60)
+            if (peer->dyn_payload.vrect.f > VOLTAGE_FULL_THRESH_ON)
                 peer->dyn_payload.tx_power = peer->dyn_payload.vrect.f * peer->dyn_payload.irect.f;
             else
                 peer->dyn_payload.tx_power = 0;
@@ -2106,12 +2071,8 @@ static void ble_central_unpack_dynamic_param(const struct ble_gatt_attr *attr, u
 
 void ble_central_update_control_enables(uint8_t enable, uint8_t full_power, uint8_t led, struct peer *peer)
 {
-    BLEAgentCommand BLEAgentCommand_t;
     const struct peer_chr *control_chr;
-
-    //time(&now);
-    //localtime_r(&now, &info);
-    //ESP_LOGI(TAG, "Time is %s", asctime(&info));
+    uint8_t value[PRU_CONTROL_CHAR_SIZE];
 
     /* Get attribute value of CRU control characteristic */
     control_chr = peer_chr_find_uuid(peer,
@@ -2128,16 +2089,39 @@ void ble_central_update_control_enables(uint8_t enable, uint8_t full_power, uint
     peer->contr_payload.led = led;
     peer->contr_payload.RFU = 0;
 
-    BLEAgentCommand_t.BLEAgentCommandType_t = WRITE;
-    BLEAgentCommand_t.attr_handle = control_chr->chr.val_handle; 
-    BLEAgentCommand_t.peer = peer;
-    BLEAgentCommand_t.value[0] = enable;
-    //BLEAgentCommand_t.value[1] = full_power;
-    //! AVOID LOW POWER MODE
-    BLEAgentCommand_t.value[1] = 1;
-    BLEAgentCommand_t.value[2] = led;
-    BLEAgentCommand_t.value[3] = 0;
-    BLEAgentCommand_t.value[4] = 0;
-    BLEAgentCommand_t.sizeOfValue = 5;
-    xQueueSendToBack( BLE_QueueHandle, &BLEAgentCommand_t, 0);
+    value[0] = enable;
+    //value[1] = full_power;
+    value[1] = 1;
+    value[2] = led;
+    value[3] = 0;
+    value[4] = 0;
+
+    ble_gattc_write_no_rsp_flat(peer->conn_handle, control_chr->chr.val_handle,
+                              (void *)value, sizeof value);
+                    
+    time(&now);
+    localtime_r(&now, &info);
+    if (enable)
+    {
+        if(full_power)
+        {
+            full_power_pads[peer->position-1] = 1;
+            if (SD_CARD)
+                write_sd_card(tx_status[peer->position-1], 1.00, &info);
+            if (MQTT)
+                esp_mqtt_client_publish(client, tx_status[peer->position-1], "1", 0, 0, 0);
+        } else 
+        {
+            low_power_pads[peer->position-1] = 1;   
+        } 
+        //ESP_LOGW(TAG, "Enable charge on pad=%d", peer->position);
+    }
+    else if(!enable)
+    {
+        if(full_power)
+            full_power_pads[peer->position-1] = 0;
+        else 
+            low_power_pads[peer->position-1] = 0;
+        //ESP_LOGW(TAG, "Disable charge on pad=%d!", peer->position);
+    }
 }

@@ -157,14 +157,15 @@ static void bleprph_advertise(void)
     master.val[4]= 0x21;
     master.val[5]= 0x78;
 
+
 //*  FAKE MASTER
 /*
-    master.val[0]= 0x0a;
-    master.val[1]= 0x31;
-    master.val[2]= 0x46;
-    master.val[3]= 0xef;
-    master.val[4]= 0x49;
-    master.val[5]= 0xc0;
+    master.val[0]= 0xd6;
+    master.val[1]= 0x9b;
+    master.val[2]= 0x25;
+    master.val[3]= 0xfb;
+    master.val[4]= 0x0b;
+    master.val[5]= 0xac;
 */
     rc = ble_gap_adv_start(own_addr_type, &master, BLE_HS_FOREVER,
                            &adv_params, bleprph_gap_event, NULL);
@@ -338,6 +339,9 @@ void init_sw_timers(void)
     // Create timers
     dynamic_t_handle = xTimerCreate("dynamic params", DYNAMIC_PARAM_TIMER_INTERVAL, pdTRUE, NULL, dynamic_param_timeout_handler);
     alert_t_handle = xTimerCreate("alert", ALERT_PARAM_TIMER_INTERVAL, pdTRUE, NULL, alert_timeout_handler);
+
+    //test
+    //xTimerStart(dynamic_t_handle, 0);
 
     if ((dynamic_t_handle == NULL) || (alert_t_handle == NULL))
     {

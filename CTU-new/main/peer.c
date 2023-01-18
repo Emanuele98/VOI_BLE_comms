@@ -222,6 +222,7 @@ bool isOnePadEmpty(void)
 
     return isOneEmpty;
 }
+
 /**
  * @brief Detected wheter the Tx pad in this position is the only one involved in the loc process
  * 

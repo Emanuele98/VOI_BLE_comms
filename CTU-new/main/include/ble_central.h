@@ -52,7 +52,7 @@
 
 //BLE
 #define BLE_AGENT_COMMAND_QUEUE_LENGTH      50
-#define COMMS_ERROR_LIMIT                   60
+#define COMMS_ERROR_LIMIT                   20
 
 #define N_CHAR_UUIDS                        5
 #define N_BYTES_IN_UUID                     16
@@ -68,7 +68,7 @@
 #define BLE_PERIODIC_SCAN_ITVL				100	
 #define BLE_PERIODIC_SCAN_WIND				100
 
-#define BLE_SCAN_TIMEOUT                    200     
+#define BLE_SCAN_TIMEOUT                    100     
 #define BLE_FIRST_SCAN_ITVL                 30          /**< The scanning interval (in units of 0.625 ms). */
 #define BLE_FIRST_SCAN_WIND					30          /**< The scanning window   (in units of 0.625 ms). */
                                                         /**< The scan window must be less than 256 (160 ms) to coexist with WiFi */
@@ -82,7 +82,7 @@
 #define PRU_CONTROL_CHAR_SIZE               5
 
 // RECONNECTION TIMES
-#define RECONNECTION_LOC_FAIL               300           //30 sec
+//#define RECONNECTION_LOC_FAIL               300           //30 sec
 #define RECONNECTION_COMMS_FAIL             30           //30 sec
 #define RECONNECTION_SCOOTER_LEFT           10           //30 sec
 //#define RX_RECONNECTION_AFTER_PAD_KILLED    30         //30 min
@@ -106,7 +106,6 @@ typedef enum{
     SCAN,
     CONNECT,
     READ,
-    WRITE,
     DISCONNECT
 } BLEAgentCommandType;
 
@@ -115,8 +114,7 @@ typedef struct {
     uint16_t attr_handle;
     const struct peer *peer;
     void *cb;
-    uint8_t value[PRU_CONTROL_CHAR_SIZE];
-    uint8_t sizeOfValue;
+    uint8_t value[5];
     ble_addr_t peer_addr;
 } BLEAgentCommand;
 

@@ -22,7 +22,7 @@
 #include "host/ble_uuid.h"
 
 #include "ble_central.h"
-#include"wifi.h"
+#include "wifi.h"
 
 /** Peer. */
 struct peer_dsc {

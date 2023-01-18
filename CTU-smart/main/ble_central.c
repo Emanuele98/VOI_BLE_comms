@@ -426,8 +426,9 @@ static int ble_central_on_localization_process(uint16_t conn_handle,
         
         //TEST LOC PROTOCOL
         char string_value[50];
-        sprintf(string_value, "Scooter %s checked with pad: %d", peer->voi_code_string, current_low_power);
-        esp_mqtt_client_publish( client, debug, string_value, 0, 0, 0);
+        sprintf(string_value, "Scooter %s checked with pad: %d - Voltage: %d", peer->voi_code_string, current_low_power, peer->dyn_payload.vrect.f);
+        if(MQTT)
+            esp_mqtt_client_publish( client, debug, string_value, 0, 0, 0);
         ESP_LOGI(TAG, "%s", string_value);
         
         // CHECK VOLTAGE ONCE
@@ -1659,6 +1660,9 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
                 }
                 break;
             }
+
+            if (MQTT)
+                esp_mqtt_client_publish( client, debug, "connection", 0, 0, 0);
 
             /* Perform service discovery. */
             rc = peer_disc_all(event->connect.conn_handle,

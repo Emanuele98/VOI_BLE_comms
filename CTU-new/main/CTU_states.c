@@ -6,10 +6,12 @@
 #define POWER_TRANSFER_MAIN_ITVL    1000
 #define LATCHING_FAULT_MAIN_ITVL    2000
 #define LOCAL_FAULT_MAIN_ITVL       2000
+#define NULL_MAIN_ITVL              2000
 
 static const char* TAG = "STATES";
 
 /* State handle functions */
+static void CTU_null_state(void *arg);
 static void CTU_configuration_state(void *arg);
 static void CTU_low_power_state(void *arg);
 static void CTU_power_transfer_state(void *arg);
@@ -37,6 +39,9 @@ void CTU_states_run(void)
     /* IMPORTANT: Must wait for host synchronisation to end before starting runtime */
     while (m_CTU_task_param.state != CTU_CONFIG_STATE) {}
 
+    // add watchdog
+    esp_task_wdt_add(xTaskGetCurrentTaskHandle());
+
     /* State management loop (Main context) */
     /* Needs to feed watchdog as well */
     while(1)
@@ -52,6 +57,7 @@ void CTU_states_run(void)
         }
 
         /* Feed watchdog and allocate resources */
+        esp_task_wdt_reset();
         vTaskDelay(m_CTU_task_param.itvl);
     }
 }
@@ -133,12 +139,23 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
         else
         {
             ESP_LOGW(TAG, "NULL STATE\n");
-            //xSemaphoreGive(m_set_state_sem);
-            return pdFALSE;
+            m_CTU_task_param.state_fn = CTU_null_state;
+            m_CTU_task_param.state = NULL_STATE;
+            m_CTU_task_param.itvl = NULL_MAIN_ITVL;
         }
         //xSemaphoreGive(m_set_state_sem);
     //}
     return pdTRUE;
+}
+
+/**
+ * @brief Handle function for the NULL state
+ * 
+ * @param arg void argument (not currently used)
+*/
+static void CTU_null_state(void *arg)
+{
+    CTU_state_change(CTU_CONFIG_STATE, (void *)NULL);
 }
 
 /**
@@ -234,7 +251,10 @@ static void CTU_local_fault_state(void *arg)
         else if (peer->alert_payload.alert_field.overtemperature)
             timePad[peer->position-1] = now + TX_RECONNECTION_OVERTEMPERATURE;
         else if (peer->alert_payload.alert_field.overvoltage)
-            timePad[peer->position-1] = now + TX_RECONNECTION_OVERVOLTAGE;
+            {
+                if (peer->position != 3)  
+                    timePad[peer->position-1] = now + TX_RECONNECTION_OVERVOLTAGE;
+            }
     
         nvs_set_i64(my_handle, pads[peer->position-1], timePad[peer->position-1]);
         nvs_commit(my_handle);

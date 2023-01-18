@@ -34,31 +34,28 @@
 #define MAX_LOC_CHECKS                8  
 
 /* Minimum time for the peer to wait after a failed localization attempt */
-#define MIN_TIME_AFTER_LOC            5
+#define MIN_TIME_AFTER_LOC            10
 
 /* Max time allowed without finding any A-CTUs*/
-#define CONF_STATE_TIMEOUT            20
+#define CONF_STATE_TIMEOUT            15
 
 /* Voltage threshold during LOW-POWER mode */
 #define VOLTAGE_LOW_THRESH            25
 
 /* Voltage threshold during FULL-POWER mode on ROLL ON */
-#define VOLTAGE_FULL_THRESH_ON        50
-//#define VOLTAGE_FULL_THRESH_ON        20
+//#define VOLTAGE_FULL_THRESH_ON        50
+#define VOLTAGE_FULL_THRESH_ON        20
 
 
 /* Voltage threshold during FULL-POWER mode on ROLL OFF */
-#define VOLTAGE_FULL_THRESH_OFF       60
-//#define VOLTAGE_FULL_THRESH_OFF       20
+//#define VOLTAGE_FULL_THRESH_OFF       60
+#define VOLTAGE_FULL_THRESH_OFF       20
 
 /* Voltage threshold for misalignment check */
 #define VOLTAGE_MIS_THRESH            110
 
 /* Time within the battery should pick the voltage */
 #define BATTERY_REACTION_TIME         10
-
-/* Minimum time for the voltage to be received during the localization process */
-#define MIN_LOW_POWER_ON              0.2
 
 /* Minimum time for the Voltage check to be valid after the switching activates another pad */
 #define MIN_SWITCH_TIME               0.025
@@ -89,7 +86,6 @@ bool scooter_check[4];
 TimerHandle_t periodic_scan_t_handle, ambient_temp_handle;
 
 time_t conf_time, loc_fail;
-
 
 /**
  * @brief Possible states of CTU
