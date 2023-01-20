@@ -43,13 +43,13 @@
 #define VOLTAGE_LOW_THRESH            25
 
 /* Voltage threshold during FULL-POWER mode on ROLL ON */
-//#define VOLTAGE_FULL_THRESH_ON        50
-#define VOLTAGE_FULL_THRESH_ON        20
+#define VOLTAGE_FULL_THRESH_ON        50
+//#define VOLTAGE_FULL_THRESH_ON        20
 
 
 /* Voltage threshold during FULL-POWER mode on ROLL OFF */
-//#define VOLTAGE_FULL_THRESH_OFF       60
-#define VOLTAGE_FULL_THRESH_OFF       20
+#define VOLTAGE_FULL_THRESH_OFF       60
+//#define VOLTAGE_FULL_THRESH_OFF       20
 
 /* Voltage threshold for misalignment check */
 #define VOLTAGE_MIS_THRESH            110
@@ -58,7 +58,7 @@
 #define BATTERY_REACTION_TIME         10
 
 /* Minimum time for the Voltage check to be valid after the switching activates another pad */
-#define MIN_SWITCH_TIME               0.025
+#define MIN_SWITCH_TIME               0.03
 
 /* Number of retries when RSSS is found below the threshold (fully charged)*/
 #define RSSI_ATTEMPT                  5

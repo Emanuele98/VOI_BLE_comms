@@ -25,7 +25,9 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
         break;
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-        esp_mqtt_client_publish(client, debug, "MQTT connected", 0, 0, 0);
+        char string_value[50];    
+        sprintf(string_value, "MQTT CONNECTED! free memory: %d bytes", esp_get_free_heap_size());
+        esp_mqtt_client_publish(client, debug, string_value, 0, 0, 0);
         MQTT = true;
         break;
     case MQTT_EVENT_DISCONNECTED:

@@ -14,18 +14,8 @@
 #define AUX_CTU_TASK_PRIORITY 18
 
 //A-CTUs bluetooth addresses
-
-/* TESTING N 5 */
-//uint8_t Actu_addr1[6] = {0x32, 0x8c, 0x25, 0xfb, 0x0b, 0xac};
-
-//real 1
 static uint8_t Actu_addr1[6] = {0x72, 0x81, 0x24, 0xfb, 0x0b, 0xac};
-//fake 1
-//static uint8_t Actu_addr1[6] = {0x5a, 0xe3, 0x26, 0xfb, 0x0b, 0xac};
-static uint8_t Actu_addr2[6] = {0x86, 0x68, 0x24, 0xfb, 0x0b, 0xac};
-//broken inverter board
-//static uint8_t Actu_addr3[6] = {0x46, 0x0b, 0x27, 0xfb, 0x0b, 0xac};
-//new inverter board
+static uint8_t Actu_addr2[6] = {0x5a, 0xe3, 0x26, 0xfb, 0x0b, 0xac};
 static uint8_t Actu_addr3[6] = {0xda, 0x62, 0x25, 0xfb, 0x0b, 0xac};
 static uint8_t Actu_addr4[6] = {0x9a, 0xbb, 0x25, 0xfb, 0x0b, 0xac};
 
@@ -201,9 +191,6 @@ const ble_uuid_t *wpt_svc_uuid =
 const ble_uuid_t *wpt_char_control_uuid = 
     BLE_UUID128_DECLARE(0x67, 0x9A, 0x0C, 0x20, 0x00, 0x08, 0x96, 0x9E, 0xE2, 0x11, 0x46, 0xA1, 0x70, 0xE6, 0x55, 0x64);
 
-//const ble_uuid_t *wpt_char_CTU_stat_uuid = 
-//    BLE_UUID128_DECLARE(0x67, 0x9A, 0x0C, 0x20, 0x00, 0x08, 0x96, 0x9E, 0xE2, 0x11, 0x46, 0xA1, 0x71, 0xE6, 0x55, 0x64);
-
 const ble_uuid_t *wpt_char_alert_uuid = 
     BLE_UUID128_DECLARE(0x67, 0x9A, 0x0C, 0x20, 0x00, 0x08, 0x96, 0x9E, 0xE2, 0x11, 0x46, 0xA1, 0x72, 0xE6, 0x55, 0x64);
 
@@ -222,7 +209,7 @@ const ble_uuid_t *wpt_char_CRU_dyn_uuid =
  * @details This function only removes the peer identified by the conn_handle parameter.
  * 
  */
-void ble_central_kill_AUX_CTU(uint16_t conn_handle, TaskHandle_t task_handle)
+void ble_central_kill_AUX_CTU(uint16_t conn_handle)
 {
     struct peer *Aux_CTU = peer_find(conn_handle);
 
@@ -231,7 +218,7 @@ void ble_central_kill_AUX_CTU(uint16_t conn_handle, TaskHandle_t task_handle)
     // kill the scooter that was charging above it
     struct peer *peer = CRU_find(Aux_CTU->position);
     if (peer != NULL)
-        ble_central_kill_CRU(peer->conn_handle, NULL);
+        ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
 
     uint8_t rc = 1;
     //disable realtive interface
@@ -239,6 +226,7 @@ void ble_central_kill_AUX_CTU(uint16_t conn_handle, TaskHandle_t task_handle)
     {
         if (Aux_CTU->position)
         {
+            fully_charged[Aux_CTU->position-1] = 0;
             Aux_CTU->voi_code = EMPTY;
             if (low_power_pads[Aux_CTU->position-1])
             {
@@ -251,15 +239,19 @@ void ble_central_kill_AUX_CTU(uint16_t conn_handle, TaskHandle_t task_handle)
                     rc = ble_central_update_control_enables(0, 1, 0, Aux_CTU);   
             }
         }
+
+        if (ble_gap_disc_active())
+            ble_gap_disc_cancel();
+
+        //BLE_HS_EAPP to disconnect permanently
         ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
-        if (task_handle != NULL)
+
+        if (Aux_CTU->task_handle != NULL)
         {
             esp_task_wdt_delete(Aux_CTU->task_handle);
             vTaskDelete(Aux_CTU->task_handle);           
             Aux_CTU->task_handle = NULL;
         }
-    // use this to avoid reconnection
-    // ble_gap_terminate(conn_handle, BLE_HS_EAPP);
     }
 }
 
@@ -318,6 +310,10 @@ void ble_central_kill_CRU(uint16_t conn_handle, TaskHandle_t task_handle)
         if (!peer->alert_payload.alert_field.charge_complete) //stay connected if fully charged until the scooter leaves the platform
         {
             fully_charged[peer->voi_code] = 0;
+            if (ble_gap_disc_active())
+                ble_gap_disc_cancel();
+
+            //BLE_HS_EAPP to disconnect permanently
             ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
         }
         //DELETE THE TASK ALWAYS AT THE END
@@ -328,8 +324,6 @@ void ble_central_kill_CRU(uint16_t conn_handle, TaskHandle_t task_handle)
             peer->task_handle = NULL;
         }
     }
-    // use this to avoid reconnection
-    // ble_gap_terminate(conn_handle, BLE_HS_EAPP);
 }
 
 /** 
@@ -359,7 +353,7 @@ void ble_central_kill_all_AUX_CTU(void)
         struct peer* peer = peer_find(conn_handle);
         if ((peer != NULL) && (!peer->CRU))
         {
-            ble_central_kill_AUX_CTU(conn_handle, peer->task_handle);
+            ble_central_kill_AUX_CTU(conn_handle);
         }
     }
 }
@@ -390,7 +384,7 @@ static int ble_central_on_localization_process(uint16_t conn_handle,
     if (error->status != 0)
     {
         ESP_LOGE(TAG, "Unable to read (ON LOCALIZATION PROCESS): status=%d", error->status);
-        ble_central_kill_CRU(peer->conn_handle, NULL);
+        ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
         return 1;
     }
 
@@ -425,8 +419,8 @@ static int ble_central_on_localization_process(uint16_t conn_handle,
         n_loc_checks[peer->voi_code]++;
         
         //TEST LOC PROTOCOL
-        char string_value[50];
-        sprintf(string_value, "Scooter %s checked with pad: %d - Voltage: %d", peer->voi_code_string, current_low_power, peer->dyn_payload.vrect.f);
+        char string_value[100];
+        sprintf(string_value, "Scooter %s checked with pad: %d - Voltage: %.02f", peer->voi_code_string, current_low_power, peer->dyn_payload.vrect.f);
         if(MQTT)
             esp_mqtt_client_publish( client, debug, string_value, 0, 0, 0);
         ESP_LOGI(TAG, "%s", string_value);
@@ -499,7 +493,7 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
     if (error->status != 0)
     {
         ESP_LOGE(TAG, "Unable to read (ON AUX CTU DYN): status=%d", error->status);
-        ble_central_kill_AUX_CTU(peer->conn_handle, NULL);
+        ble_central_kill_AUX_CTU(peer->conn_handle);
         return 1;
     }
    
@@ -523,6 +517,11 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
                 time(&switch_pad_ON);
                 //pass the baton to the next pad
                 pass_the_baton(); 
+
+                char string_value[50];
+                sprintf(string_value, "low power ON pad: %d", peer->position); 
+                if (MQTT)
+                    esp_mqtt_client_publish(client, debug, string_value, 0, 0, 0);
             }
         } else
         {
@@ -531,6 +530,10 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
             {
                 while (rc)
                     rc = ble_central_update_control_enables(0, 0, led_state[peer->position-1], peer);
+                char string_value[50];
+                sprintf(string_value, "low power OFF pad: %d", peer->position );
+                if (MQTT)
+                    esp_mqtt_client_publish(client, debug, string_value, 0, 0, 0);
             }
         }
     }
@@ -571,8 +574,8 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
         // this happens only when the fully charged scooter leaves the platform 
         peer->alert_payload.alert_field.charge_complete = 0;
         ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
-        vTaskDelay(500);
-        ble_central_kill_AUX_CTU(Aux_CTU->conn_handle, Aux_CTU->task_handle);
+        //vTaskDelay(500);
+        ble_central_kill_AUX_CTU(Aux_CTU->conn_handle);
         return 1;
     }
    
@@ -651,8 +654,8 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
             }
             //disconnect the aux ctu to avoid FOD on roll off
             ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
-            vTaskDelay(500);
-            ble_central_kill_AUX_CTU(Aux_CTU->conn_handle, Aux_CTU->task_handle);
+            //vTaskDelay(500);
+            ble_central_kill_AUX_CTU(Aux_CTU->conn_handle);
             return 1;
         } 
 
@@ -702,8 +705,8 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
                         }
                         peer->alert_payload.alert_field.charge_complete = 0;
                         ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
-                        vTaskDelay(500);
-                        ble_central_kill_AUX_CTU(Aux_CTU->conn_handle, Aux_CTU->task_handle);
+                        //vTaskDelay(500);
+                        ble_central_kill_AUX_CTU(Aux_CTU->conn_handle);
                         return 1;
                     } else
                     {
@@ -744,7 +747,7 @@ static int ble_central_on_alert_read(uint16_t conn_handle,
         if (peer->CRU)
                 ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
         else
-                ble_central_kill_AUX_CTU(peer->conn_handle, peer->task_handle);
+                ble_central_kill_AUX_CTU(peer->conn_handle);
         return 1;
     }
    
@@ -776,7 +779,7 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
     if (dynamic_chr == NULL)
     {
         ESP_LOGE(TAG, "Error: Failed to read dynamic characteristic");
-        ble_central_kill_AUX_CTU(peer->conn_handle, peer->task_handle);
+        ble_central_kill_AUX_CTU(peer->conn_handle);
         return;
     }
 
@@ -787,7 +790,7 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
     if (alert_chr == NULL)
     {
         ESP_LOGE(TAG, "ALERT chr not found!");
-        ble_central_kill_AUX_CTU(peer->conn_handle, peer->task_handle);
+        ble_central_kill_AUX_CTU(peer->conn_handle);
         return;
     }
 
@@ -795,7 +798,7 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
     if (err_code)
     {
         ESP_LOGE(TAG, "AUX CTU task could not be added!");
-        ble_central_kill_AUX_CTU(peer->conn_handle, peer->task_handle);
+        ble_central_kill_AUX_CTU(peer->conn_handle);
         return;
     }
 
@@ -819,7 +822,7 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
     if (static_chr == NULL)
     {
         ESP_LOGE(TAG, "STATIC chr not found!");
-        ble_central_kill_AUX_CTU(peer->conn_handle, peer->task_handle);
+        ble_central_kill_AUX_CTU(peer->conn_handle);
         return;
     }
 
@@ -878,7 +881,7 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
                         nvs_commit(my_handle);
                         nvs_close(my_handle);
                     }
-                    ble_central_kill_AUX_CTU(peer->conn_handle, peer->task_handle);        
+                    ble_central_kill_AUX_CTU(peer->conn_handle);        
                 }
             } 
             //ESP_LOGW(TAG, "AUX CTU in position %d, task error number %d, error code rc=%d", peer->position, ctu_comms_error, rc);
@@ -904,6 +907,10 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
 
         vTaskDelay(task_delay);
     }
+
+    //if for any reason the loop terminates
+    esp_task_wdt_delete(NULL);
+    vTaskDelete(NULL);   
 }
 
 /** 
@@ -1058,6 +1065,10 @@ static void ble_central_CRU_task_handle(void *arg)
 
         vTaskDelay(task_delay);
     }
+
+    //if for any reason the loop terminates
+    esp_task_wdt_delete(NULL);
+    vTaskDelete(NULL);
 }
 
 /**
@@ -1113,7 +1124,7 @@ static int ble_central_wpt_start(uint16_t conn_handle, void *arg)
         if ((err_code != pdPASS))
         {
             ESP_LOGE(TAG, "ERROR creating AUX CTU task!");
-            ble_central_kill_AUX_CTU(peer->conn_handle, peer->task_handle); 
+            ble_central_kill_AUX_CTU(peer->conn_handle); 
         } 
     }
 
@@ -1154,7 +1165,7 @@ static int ble_central_on_control_enable(uint16_t conn_handle,
             if (control_chr == NULL)
             {
                 ESP_LOGE(TAG, "CONTROL chr not found!");
-                ble_central_kill_CRU(peer->conn_handle, peer->task_handle);      
+                ble_central_kill_CRU(peer->conn_handle, NULL);      
             }
         }
         
@@ -1169,10 +1180,10 @@ static int ble_central_on_control_enable(uint16_t conn_handle,
         ESP_LOGE(TAG, "on_control_enable");
         if(peer->CRU)
         {
-            ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
+            ble_central_kill_CRU(peer->conn_handle, NULL);
         }
         else {
-            ble_central_kill_AUX_CTU(peer->conn_handle, peer->task_handle);
+            ble_central_kill_AUX_CTU(peer->conn_handle);
         }
     }
     return 0;
@@ -1226,10 +1237,10 @@ static void ble_central_on_disc_complete(const struct peer *peer, int status, vo
         ESP_LOGW(TAG, "on_disc_complete");
         if(peer->CRU)
         {
-            ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
+            ble_central_kill_CRU(peer->conn_handle, NULL);
         }
         else {
-            ble_central_kill_AUX_CTU(peer->conn_handle, peer->task_handle);
+            ble_central_kill_AUX_CTU(peer->conn_handle);
         }
 }
 
@@ -1278,10 +1289,10 @@ static int ble_central_on_subscribe(uint16_t conn_handle, void *arg)
         ESP_LOGW(TAG, "on_subscribe");
         if(peer->CRU)
         {
-            ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
+            ble_central_kill_CRU(peer->conn_handle, NULL);
         }
         else {
-            ble_central_kill_AUX_CTU(peer->conn_handle, peer->task_handle);
+            ble_central_kill_AUX_CTU(peer->conn_handle);
         }
 
     return 1;
@@ -1344,10 +1355,10 @@ static int ble_central_on_write_cccd(uint16_t conn_handle, void *arg)
         ESP_LOGW(TAG, "on_write_cccd");
        if(peer->CRU)
         {
-            ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
+            ble_central_kill_CRU(peer->conn_handle, NULL);
         }
         else {
-            ble_central_kill_AUX_CTU(peer->conn_handle, peer->task_handle);
+            ble_central_kill_AUX_CTU(peer->conn_handle);
         }
 
     return 1;
@@ -1390,10 +1401,10 @@ static int ble_central_on_static_chr_read(uint16_t conn_handle,
         ESP_LOGW(TAG, "on_CRU_static_read");
         if(peer->CRU)
         {
-            ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
+            ble_central_kill_CRU(peer->conn_handle, NULL);
         }
         else {
-            ble_central_kill_AUX_CTU(peer->conn_handle, peer->task_handle);
+            ble_central_kill_AUX_CTU(peer->conn_handle);
         }
     
     return 1;
@@ -1654,9 +1665,9 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
             {
                 ESP_LOGE(TAG, "Failed to add peer; rc=%d\n", rc);
                 if(type == 1) {
-                    ble_central_kill_AUX_CTU(peer->conn_handle, peer->task_handle);
+                    ble_central_kill_AUX_CTU(peer->conn_handle);
                 } else if (type == 2) {
-                    ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
+                    ble_central_kill_CRU(peer->conn_handle, NULL);
                 }
                 break;
             }
@@ -1671,9 +1682,9 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
             {
                 ESP_LOGE(TAG, "Failed to discover services; rc=%d\n", rc);
                 if(type == 1) {
-                    ble_central_kill_AUX_CTU(peer->conn_handle, peer->task_handle);
+                    ble_central_kill_AUX_CTU(peer->conn_handle);
                 } else if (type == 2) {
-                    ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
+                    ble_central_kill_CRU(peer->conn_handle, NULL);
                 }
             }
             //vTaskDelay(pdMS_TO_TICKS(200));
@@ -1710,7 +1721,7 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
             } else 
             {
                 if (peer->conn_handle)
-                    ble_central_kill_AUX_CTU(peer->conn_handle, NULL);
+                    ble_central_kill_AUX_CTU(peer->conn_handle);
                 if (peer->position) 
                     ESP_LOGE(TAG, "A-CTU in position: %d", peer->position);
                 if (!peer_get_NUM_AUX_CTU())
@@ -1923,7 +1934,7 @@ static void ble_central_unpack_static_param(const struct ble_gatt_attr *attr, ui
         { 
             peer->position = 0;
             ESP_LOGE(TAG, "ERROR - AUX CTU NOT IDENTIFIED ");
-            ble_central_kill_AUX_CTU(peer->conn_handle, peer->task_handle);
+            ble_central_kill_AUX_CTU(peer->conn_handle);
         }
 
         char string_value[2] = "0";
@@ -1959,7 +1970,7 @@ static void ble_central_unpack_static_param(const struct ble_gatt_attr *attr, ui
         } else 
         { 
             ESP_LOGE(TAG, "ERROR - SCOOTER NOT IDENTIFIED");
-            ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
+            ble_central_kill_CRU(peer->conn_handle, NULL);
         }
         char string[50];
         sprintf(string, "Scooter %s connected", peer->voi_code_string);

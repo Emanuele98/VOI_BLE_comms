@@ -400,7 +400,7 @@ void ble_central_kill_AUX_CTU(uint16_t conn_handle)
         BLEAgentCommand_t.peer = Aux_CTU;
         xQueueSendToBack( BLE_QueueHandle, &BLEAgentCommand_t, 0);
 
-        if (Aux_CTU->task_handle)
+        if (Aux_CTU->task_handle != NULL)
         {
             esp_task_wdt_delete(Aux_CTU->task_handle);
             vTaskDelete(Aux_CTU->task_handle);    
@@ -677,7 +677,7 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
         } else
         {
             //SWITCH OFF 
-            if ( (peer->position == loc_pad_find()+1) && (!low_power_alone(peer->position)) && (all_scooters_checked()) )
+            if ( (peer->position == loc_pad_find()+1) && (all_scooters_checked()) )
             {
                 ble_central_update_control_enables(0, 0, led_state[peer->position-1], peer);
 
