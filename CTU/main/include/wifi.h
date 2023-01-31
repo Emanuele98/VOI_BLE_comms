@@ -73,7 +73,6 @@
 
 /* Time structures */
 time_t now;
-time_t loc_finish;
 struct tm info;
 
 /* MQTT CLIENT */

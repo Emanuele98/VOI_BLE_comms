@@ -57,7 +57,6 @@ The CTU state machine is handled almost entirely inside this module. It progress
 - **Configuration State**
 
     - The Configuration State only starts the periodic local check timer (to determine if any Local Faults are present).
-    //to be added - connection to at least 1 aux ctu
 
 - **Low power state**
   

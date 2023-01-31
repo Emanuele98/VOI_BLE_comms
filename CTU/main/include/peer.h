@@ -153,9 +153,6 @@ struct peer {
     /* bool to detect if localization process is currently going */
     bool localization_process;
 
-    /* Save time after a localization attempt failed for prioritize others peers waiting*/
-    time_t loc_fail;
-
     /* bool to check wheter the power is received correctly */
     bool correct;
 
@@ -189,6 +186,8 @@ bool CTU_is_charging(void);
 uint8_t loc_pad_find(void);
 bool all_low_power_off(void);
 bool low_power_alone(uint8_t pos);
+void set_scooters_tobechecked(void);
+bool all_scooters_checked(void);
 
 // find the aux CTU
 struct peer *Aux_CTU_find(uint16_t pos);

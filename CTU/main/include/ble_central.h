@@ -115,6 +115,6 @@ uint8_t ble_central_update_control_enables(uint8_t enable, uint8_t full_power, u
 void ble_central_kill_all_CRU(void);
 void ble_central_kill_all_AUX_CTU(void);
 void ble_central_kill_CRU(uint16_t conn_handle, TaskHandle_t task_handle);
-void ble_central_kill_AUX_CTU(uint16_t conn_handle, TaskHandle_t task_handle);
+void ble_central_kill_AUX_CTU(uint16_t conn_handle);
 
 #endif

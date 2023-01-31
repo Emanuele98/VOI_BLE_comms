@@ -20,7 +20,7 @@ static void CTU_remote_fault_state(void *arg);
 
 //defined in ble_central.c
 extern const ble_uuid_t *wpt_svc_uuid;
-extern const ble_uuid_t *wpt_char_CRU_dyn_uuid;
+extern const ble_uuid_t *wpt_char_dyn_uuid;
 
 
 /* NVS TOPICS */
@@ -97,14 +97,9 @@ BaseType_t CTU_state_change(CTU_state_t p_state, void *arg)
         else if (p_state == CTU_LOW_POWER_STATE)
         {
             // Reset power interfaces
-            low_power_pads[0] = 0;
-            low_power_pads[1] = 0;
-            low_power_pads[2] = 0;
-            low_power_pads[3] = 0;
-            full_power_pads[0] = 0;
-            full_power_pads[1] = 0;
-            full_power_pads[2] = 0;
-            full_power_pads[3] = 0;
+            low_power_pads[0] = low_power_pads[1] = low_power_pads[2] = low_power_pads[3] = 0;
+            full_power_pads[0] = full_power_pads[1] = full_power_pads[2] = full_power_pads[3] = 0;
+            scooter_check[0] = scooter_check[1] = scooter_check[2] = scooter_check[3] = true;  
 
             m_CTU_task_param.state_fn = CTU_low_power_state;
             m_CTU_task_param.state = CTU_LOW_POWER_STATE;
@@ -234,7 +229,7 @@ static void CTU_local_fault_state(void *arg)
 
         if (peer->alert_payload.alert_field.FOD)
         {
-            if ((current_localization_process() || (now < loc_finish + 10))  && !full_power_pads[peer->position-1] && !fully_charged[peer->voi_code])
+            if ((current_localization_process() || (now < loc_fail + 10))  && !full_power_pads[peer->position-1] && !fully_charged[peer->voi_code])
                 timePad[peer->position-1] = now -1;
             else
                 timePad[peer->position-1] = now + TX_RECONNECTION_FOD;
@@ -244,7 +239,10 @@ static void CTU_local_fault_state(void *arg)
         else if (peer->alert_payload.alert_field.overtemperature)
             timePad[peer->position-1] = now + TX_RECONNECTION_OVERTEMPERATURE;
         else if (peer->alert_payload.alert_field.overvoltage)
-            timePad[peer->position-1] = now + TX_RECONNECTION_OVERVOLTAGE;
+            {
+                if (peer->position != 3)  
+                    timePad[peer->position-1] = now + TX_RECONNECTION_OVERVOLTAGE;
+            }
     
         nvs_set_i64(my_handle, pads[peer->position-1], timePad[peer->position-1]);
         nvs_commit(my_handle);
@@ -256,7 +254,7 @@ static void CTU_local_fault_state(void *arg)
     peer->alert_payload.alert_field.overcurrent = 0;
     peer->alert_payload.alert_field.FOD = 0;
 
-    ble_central_kill_AUX_CTU(peer->conn_handle, NULL);
+    ble_central_kill_AUX_CTU(peer->conn_handle);
 
     if (!peer_get_NUM_AUX_CTU())
         CTU_state_change(CTU_CONFIG_STATE, (void *)peer);
@@ -308,7 +306,7 @@ static void CTU_remote_fault_state(void *arg)
     peer->alert_payload.alert_field.overtemperature = 0;
     peer->alert_payload.alert_field.overvoltage = 0;
 
-    ble_central_kill_CRU(peer->conn_handle, NULL);
+    ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
     
     if (!CTU_is_charging())
         CTU_state_change(CTU_LOW_POWER_STATE, (void *)peer);
