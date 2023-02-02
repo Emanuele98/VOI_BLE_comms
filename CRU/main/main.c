@@ -323,7 +323,7 @@ static void host_ctrl_on_sync(void)
     uint8_t addr_val[6] = {0};
     rc = ble_hs_id_copy_addr(own_addr_type, addr_val, NULL);
     ESP_LOGI(TAG, "Device Address: \n ");
-    ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x \n", addr_val[5], addr_val[4], addr_val[3], addr_val[2], addr_val[1], addr_val[0]);
+    ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x \n", addr_val[0], addr_val[1], addr_val[2], addr_val[3], addr_val[4], addr_val[5]);
 
     /* Begin advertising. */
     bleprph_advertise();
@@ -339,9 +339,6 @@ void init_sw_timers(void)
     // Create timers
     dynamic_t_handle = xTimerCreate("dynamic params", DYNAMIC_PARAM_TIMER_INTERVAL, pdTRUE, NULL, dynamic_param_timeout_handler);
     alert_t_handle = xTimerCreate("alert", ALERT_PARAM_TIMER_INTERVAL, pdTRUE, NULL, alert_timeout_handler);
-
-    //test
-    //xTimerStart(dynamic_t_handle, 0);
 
     if ((dynamic_t_handle == NULL) || (alert_t_handle == NULL))
     {
@@ -410,13 +407,6 @@ void app_main(void)
     /* Initialize all elements of CRU (timers and I2C)*/
     init_setup();   
 
-/*
-    //INIT STATIC PAYLOAD 
-    uint8_t mac[6] = {0};
-    esp_efuse_mac_get_default(mac);
-    ESP_LOGI(TAG, "MAC Address: \n ");
-    ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x \n", mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
-*/
     /* just for testing I2C */
     //xTimerStart(dynamic_t_handle, 0);
 }

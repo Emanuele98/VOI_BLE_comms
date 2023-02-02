@@ -183,23 +183,23 @@ static void bleprph_advertise(void)
     master.type = 0;
 
 //*  REAL MASTER
-
+/*
     master.val[0]= 0x12;
     master.val[1]= 0x15;
     master.val[2]= 0x9c;
     master.val[3]= 0x84;
     master.val[4]= 0x21;
     master.val[5]= 0x78;
-
+*/
 //*  FAKE MASTER
-/*
+
     master.val[0]= 0xd6;
     master.val[1]= 0x9b;
     master.val[2]= 0x25;
     master.val[3]= 0xfb;
     master.val[4]= 0x0b;
     master.val[5]= 0xac;
-*/
+
 
     rc = ble_gap_adv_start(own_addr_type, &master, BLE_HS_FOREVER,
                            &adv_params, bleprph_gap_event, NULL);
@@ -350,12 +350,7 @@ static void host_ctrl_on_sync(void)
     uint8_t addr_val[6] = {0};
     rc = ble_hs_id_copy_addr(own_addr_type, addr_val, NULL);
     ESP_LOGI(TAG, "Device Address: \n ");
-    ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x \n", addr_val[5], addr_val[4], addr_val[3], addr_val[2], addr_val[1], addr_val[0]);
-
-    //uint8_t mac[6] = {0};
-    //esp_efuse_mac_get_default(mac);
-    //ESP_LOGI(TAG, "MAC Address: \n ");
-    //ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x \n", mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
+    ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x \n", addr_val[0], addr_val[1], addr_val[2], addr_val[3], addr_val[4], addr_val[5]);
 
     /* Begin advertising. */
     bleprph_advertise();
@@ -529,43 +524,13 @@ void app_main(void)
     //SET MAX TX POWER
     esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_ADV, ESP_PWR_LVL_P9);
 
-
     /*uncomment to test the I2C without the need of being connected to the central unit */
     //xTimerStart(dynamic_t_handle, 0);
 
-/*
-    //INIT STATIC PAYLOAD 
-    uint8_t mac[6] = {0};
-    esp_efuse_mac_get_default(mac);
-    ESP_LOGI(TAG, "MAC Address: \n ");
-    ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x \n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-*/
-
-/*
-    while(1){
-        vTaskDelay(3000 / portTICK_PERIOD_MS);
-        ESP_ERROR_CHECK(esp_register_shutdown_handler(&on_reset));
-        esp_restart();
-    }
-*/
-
-//* TESTING
-
-xTimerStart(dynamic_t_handle, 0);
-
-vTaskDelay(2000); 
-
-//disable OR gate
-disable_OR_output();
-//wait 
-vTaskDelay(OR_TIME_GAP); 
-//enable power
-disable_full_power_output();
-
-while (1)
-{
-    ESP_LOGI(TAG, "Voltage: %.02f, Current: %.02f", dyn_payload.vrect.f, dyn_payload.irect.f);
-    vTaskDelay(1000);
-}
-
+    //disable OR gate
+    disable_OR_output();
+    //wait 
+    vTaskDelay(OR_TIME_GAP); 
+    //enable power
+    disable_full_power_output();
 }

@@ -1445,7 +1445,7 @@ void ble_central_scan_start(uint32_t timeout, uint16_t scan_itvl, uint16_t scan_
         ESP_LOGE(TAG, "error retrieving address");
         return;
     }
-    ESP_LOGI(TAG, "Address: %02x:%02x:%02x:%02x:%02x:%02x", out_id_addr[5], out_id_addr[4], out_id_addr[3], out_id_addr[2], out_id_addr[1], out_id_addr[0]);
+    ESP_LOGI(TAG, "Address: %02x:%02x:%02x:%02x:%02x:%02x", out_id_addr[0], out_id_addr[1], out_id_addr[2], out_id_addr[3], out_id_addr[4], out_id_addr[5]);
 */
     /* Tell the controller to do not filter duplicates; 
        we want to connect only when the device is close enough to the platform.
