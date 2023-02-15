@@ -55,7 +55,7 @@ float i2c_read_voltage_sensor(void)
     
     if(ret!=ESP_OK)
     {
-        ESP_LOGW(TAG, "voltage reading problem");
+        //ESP_LOGW(TAG, "voltage reading problem");
         value = -1;
         goto exit;
     }
@@ -67,6 +67,8 @@ float i2c_read_voltage_sensor(void)
 
     exit:
         xSemaphoreGive(i2c_sem);
+        //!testing
+        //return 67;
         return value;
 }
 
@@ -98,7 +100,7 @@ float i2c_read_current_sensor(void)
     
     if(ret!=ESP_OK)
     {
-        ESP_LOGW(TAG, "current reading problem");
+        //ESP_LOGW(TAG, "current reading problem");
         value = -1;
         goto exit;
     }
@@ -110,6 +112,8 @@ float i2c_read_current_sensor(void)
 
     exit:
         xSemaphoreGive(i2c_sem);
+        //!testing
+        //return 1;
         return value;
 }
 
@@ -152,7 +156,7 @@ float i2c_read_temperature_sensor(bool n_temp_sens)
 
     if(ret!=ESP_OK)
     {
-        ESP_LOGW(TAG, "temperature reading problem");
+        //ESP_LOGW(TAG, "temperature reading problem");
         value = -1;
         goto exit;
     }

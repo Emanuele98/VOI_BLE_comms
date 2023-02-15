@@ -141,8 +141,8 @@ static int gatt_svr_chr_read_peer_static(uint16_t conn_handle, uint16_t attr_han
                         sizeof data);
 
     //Start app timers
-    xTimerStart(dynamic_t_handle, 0);
-    xTimerStart(alert_t_handle, 0);
+    xTimerStart(dynamic_t_handle, 10);
+    xTimerStart(alert_t_handle, 10);
     alert = false;
     charge_comp = false;
 

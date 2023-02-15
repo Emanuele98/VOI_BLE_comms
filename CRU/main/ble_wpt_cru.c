@@ -75,7 +75,7 @@ static int gatt_svr_chr_read_peer_static(uint16_t conn_handle, uint16_t attr_han
                              struct ble_gatt_access_ctxt *ctxt,
                              void *arg)
 {
-    //ESP_LOGE(TAG, "READ PRU STATIC CALLBACK");
+    ESP_LOGE(TAG, "READ PRU STATIC CALLBACK");
 
     int err_code ;
 
@@ -87,7 +87,6 @@ static int gatt_svr_chr_read_peer_static(uint16_t conn_handle, uint16_t attr_han
     ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x \n", mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
 */
     /* Printing ADDR */
-    //todo: its not the mac
     uint8_t ble_addr[6] = {0};
     ble_hs_id_copy_addr(0, ble_addr, NULL);
 
@@ -109,8 +108,8 @@ static int gatt_svr_chr_read_peer_static(uint16_t conn_handle, uint16_t attr_han
                         sizeof data);
 
     //Start app timers
-    xTimerStart(dynamic_t_handle, 0);
-    xTimerStart(alert_t_handle, 0);
+    xTimerStart(dynamic_t_handle, 10);
+    xTimerStart(alert_t_handle, 10);
 
     //set alert values to initial state 0
     alert_payload.alert_field.overtemperature = 0; 

@@ -175,8 +175,8 @@ static void bleprph_advertise(void)
     adv_params.conn_mode = BLE_GAP_CONN_MODE_DIR;
     adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
     adv_params.high_duty_cycle = 1;
-    adv_params.itvl_min = 20;
-    adv_params.itvl_max = 40;
+    adv_params.itvl_min = 0x20;
+    adv_params.itvl_max = 0x40;
     
     //declare MASTER ADDRESS
     ble_addr_t master;
@@ -234,8 +234,8 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
         
         strip_enable = true;
         connected = true;
-        // reset alerts counters
 
+        // reset alerts counters
         Temp_counter = Volt_counter = Curr_counter = 0;        
         ESP_LOGI(TAG, "connection %s; status=%d; handle= %d",
                     event->connect.status == 0 ? "established" : "failed",
@@ -248,7 +248,7 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
             /* Connection failed; resume advertising. */
             bleprph_advertise();
         }
-        return 0;
+        break;
 
     case BLE_GAP_EVENT_DISCONNECT:
 
@@ -268,30 +268,32 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
 
         /* Stop timers */
         if (xTimerIsTimerActive(dynamic_t_handle) == pdTRUE)
-        {
             xTimerStop(dynamic_t_handle, 10);
-        }
+        
         if (xTimerIsTimerActive(alert_t_handle) == pdTRUE)
-        {
             xTimerStop(alert_t_handle, 10);
-        }
 
         /* Connection terminated; resume advertising. */
         bleprph_advertise();
-        return 0;
+
+        break;;
 
     case BLE_GAP_EVENT_CONN_UPDATE:
         /* The central has updated the connection parameters. */
         ESP_LOGI(TAG, "connection updated; status=%d ",
                     event->conn_update.status);
         ble_gap_conn_find(event->conn_update.conn_handle, &desc);
-        return 0;
+        break;;
 
     case BLE_GAP_EVENT_ADV_COMPLETE:
         ESP_LOGI(TAG, "advertise complete; reason=%d",
                     event->adv_complete.reason);
         bleprph_advertise();
-        return 0;
+        break;;
+    
+    default:
+        //ESP_LOGI(TAG, "OTHERS");
+        break;
     }
 
     return 0;
@@ -380,9 +382,9 @@ void init_sw_timers(void)
         return;
     }
 
-    xTimerStart(connected_leds_handle, 0);
-    xTimerStart(misaligned_leds_handle, 0);
-    xTimerStart(charging_leds_handle, 0);
+    xTimerStart(connected_leds_handle, 10);
+    xTimerStart(misaligned_leds_handle, 10);
+    xTimerStart(charging_leds_handle, 10);
 
 }
 
@@ -424,20 +426,7 @@ void init_hw(void)
     io_conf.pull_up_en = 0;
     //configure GPIO with the given settings
     gpio_config(&io_conf);
-/*
-    //INPUT PIN
-    //interrupt of rising edge
-    io_conf.intr_type = GPIO_INTR_HIGH_LEVEL;
-    //bit mask of the pins
-    io_conf.pin_bit_mask = GPIO_INPUT_PIN_SEL;
-    //set as input mode    
-    io_conf.mode = GPIO_MODE_INPUT;
-    //disable pull-up mode
-    io_conf.pull_up_en = 0;
-    //disable pull-down mode
-    io_conf.pull_down_en = 0;
-    gpio_config(&io_conf);
-*/
+
     gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
     //start gpio task
     xTaskCreate(gpio_task, "gpio_task", 2048, NULL, 10, NULL);
@@ -467,11 +456,6 @@ void init_setup(void)
     i2c_sem = xSemaphoreCreateMutex();
 
     connected = false;
-}
-
-void on_reset(void)
-{
-    ESP_LOGI(TAG, "on_reset");
 }
 
 /** 

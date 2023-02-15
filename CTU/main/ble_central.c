@@ -1553,7 +1553,7 @@ static void ble_central_connect_if_interesting(const struct ble_gap_disc_desc *d
     int rc;
     struct ble_gap_conn_desc *out_desc = NULL;
     uint8_t own_addr_type;
-    int slave_type = 0;
+    static int slave_type = 0;
 
     /* Don't do anything if we don't care about this advertiser. */
     if (!ble_central_should_connect(disc)) 

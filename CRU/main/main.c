@@ -34,8 +34,9 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg);
 //read dynamic parameters from I2C sensors
 static void dynamic_param_timeout_handler(void *arg)
 {
-    if (xSemaphoreTake(i2c_sem, portMAX_DELAY) == pdTRUE)
+    if (xSemaphoreTake(i2c_sem, pdMS_TO_TICKS(1000)) == pdTRUE)
     {
+
         switch(counter)
         {
             //voltage
@@ -70,61 +71,58 @@ static void dynamic_param_timeout_handler(void *arg)
 
 static void alert_timeout_handler(void *arg)
 {      
-  		// Validate temperature levels
-		if (dyn_payload.temp1.f > OVER_TEMPERATURE)
+    // Validate temperature levels
+    if (dyn_payload.temp1.f > OVER_TEMPERATURE)
+    {
+        Temp_counter++;
+        //ESP_LOGI(TAG, "OVER TEMPERATURE");
+        if (Temp_counter > 99) 
         {
-            Temp_counter++;
-            ESP_LOGI(TAG, "OVER TEMPERATURE");
-            if (Temp_counter > 99) 
-            {
-                ESP_LOGE(TAG, "OVER TEMPERATURE");
-                alert_payload.alert_field.overtemperature = 1;
-            } 
-    	}
+            ESP_LOGE(TAG, "OVER TEMPERATURE");
+            alert_payload.alert_field.overtemperature = 1;
+        } 
+    }
 
-        // Validate voltage levels
-		if (dyn_payload.vrect.f > OVER_VOLTAGE)
-		{
-            Volt_counter++;
-            ESP_LOGI(TAG, "OVER VOLTAGE");
-            if (Volt_counter > 5) 
-            {
-                ESP_LOGE(TAG, "OVER VOLTAGE");
-                alert_payload.alert_field.overvoltage = 1;
-            }	
+    // Validate voltage levels
+    if (dyn_payload.vrect.f > OVER_VOLTAGE)
+    {
+        Volt_counter++;
+        if (Volt_counter > 5) 
+        {
+            ESP_LOGE(TAG, "OVER VOLTAGE");
+            alert_payload.alert_field.overvoltage = 1;
+        }	
+    }
+
+    // Validate current levels
+    if (dyn_payload.irect.f > OVER_CURRENT)
+    {
+        Curr_counter++;
+        //ESP_LOGI(TAG, "OVER CURRENT");
+        if (Curr_counter > 99)  
+        {
+            ESP_LOGE(TAG, "OVER CURRENT");
+            alert_payload.alert_field.overcurrent = 1;	
         }
+    }
 
-        // Validate current levels
-		if (dyn_payload.irect.f > OVER_CURRENT)
-		{
-            Curr_counter++;
-            ESP_LOGI(TAG, "OVER CURRENT");
-            if (Curr_counter > 99)  
-            {
-                ESP_LOGE(TAG, "OVER CURRENT");
-                alert_payload.alert_field.overcurrent = 1;	
-            }
+    //validate whether the battery is charged
+    if ((dyn_payload.vrect.f > VOLTAGE_FULL_THRESH) && (dyn_payload.irect.f < CURRENT_THRESH))
+    {   
+        ChargeComp_counter++;
+        //ESP_LOGI(TAG, "CHARGE COMPLETE");
+        if (ChargeComp_counter > 199)
+        {
+            ESP_LOGE(TAG, "CHARGE COMPLETE");
+            alert_payload.alert_field.charge_complete = 1;
         }
+    }
 
-        //validate whether the battery is charged
-        if ((dyn_payload.vrect.f > VOLTAGE_FULL_THRESH) && (dyn_payload.irect.f < CURRENT_THRESH))
-        {   
-            ChargeComp_counter++;
-            ESP_LOGI(TAG, "CHARGE COMPLETE");
-            if (ChargeComp_counter > 199)
-            {
-                ESP_LOGE(TAG, "CHARGE COMPLETE");
-                alert_payload.alert_field.charge_complete = 1;
-            }
-        }
+    //simulate alert situation
+    //alert_payload.alert_field.charge_complete = 1;
 
-
-        //simulate alert situation
-        //alert_payload.alert_field.charge_complete = 1;
-
-        // Values are then assigned to global payload instance of dynamic characteristic
-        dyn_payload.alert = alert_payload.alert_field.internal;
-
+    // Values are then assigned to global payload instance of dynamic characteristic
+    dyn_payload.alert = alert_payload.alert_field.internal;
 }
 
 /**
@@ -142,31 +140,31 @@ static void bleprph_advertise(void)
     adv_params.conn_mode = BLE_GAP_CONN_MODE_DIR;
     adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
     adv_params.high_duty_cycle = 1;
-    adv_params.itvl_min = 20;
-    adv_params.itvl_max = 40;
+    adv_params.itvl_min = 0x20;
+    adv_params.itvl_max = 0x40;
 
     //declare MASTER ADDRESS
     ble_addr_t master;
     master.type = 0;
 //*  REAL MASTER    
-
+/*
     master.val[0]= 0x12;
     master.val[1]= 0x15;
     master.val[2]= 0x9c;
     master.val[3]= 0x84;
     master.val[4]= 0x21;
     master.val[5]= 0x78;
-
+*/
 
 //*  FAKE MASTER
-/*
+
     master.val[0]= 0xd6;
     master.val[1]= 0x9b;
     master.val[2]= 0x25;
     master.val[3]= 0xfb;
     master.val[4]= 0x0b;
     master.val[5]= 0xac;
-*/
+
     rc = ble_gap_adv_start(own_addr_type, &master, BLE_HS_FOREVER,
                            &adv_params, bleprph_gap_event, NULL);
     if (rc != 0) {
@@ -183,6 +181,8 @@ static void bleprph_advertise(void)
 */
 void init_hw(void)
 {
+    esp_err_t err_code;
+
     i2c_master_port = I2C_MASTER_NUM;
     conf.mode = I2C_MODE_MASTER;
     conf.sda_io_num = I2C_MASTER_SDA_IO;
@@ -190,8 +190,9 @@ void init_hw(void)
     conf.scl_io_num = I2C_MASTER_SCL_IO;
     conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
     conf.master.clk_speed = I2C_MASTER_FREQ_HZ;
-    i2c_param_config(i2c_master_port, &conf);
+    err_code = i2c_param_config(i2c_master_port, &conf);
     i2c_driver_install(i2c_master_port, conf.mode, I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE, 0);
+    ESP_ERROR_CHECK(err_code);
 }
 
 /**
@@ -220,38 +221,37 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
         ESP_LOGI(TAG, "connection %s; status=%d ",
                     event->connect.status == 0 ? "established" : "failed",
                     event->connect.status);
+
         if (event->connect.status == 0) {
             rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
             assert(rc == 0);
             //SET MAX TX POWER
             esp_ble_tx_power_set(event->connect.conn_handle, ESP_PWR_LVL_P9); 
-        }
-
-        if (event->connect.status != 0) {
+        } else
+        {
             /* Connection failed; resume advertising. */
             bleprph_advertise();
-        }
-        return 0;
-
-    case BLE_GAP_EVENT_DISCONNECT:
-        ESP_LOGI(TAG, "disconnect; reason=%d ", event->disconnect.reason);
-        /* Stop timers */
-        if (xTimerIsTimerActive(dynamic_t_handle) == pdTRUE)
-        {
-            xTimerStop(dynamic_t_handle, 10);
-        }
-        if (xTimerIsTimerActive(alert_t_handle) == pdTRUE)
-        {
-            xTimerStop(alert_t_handle, 10);
         }
 
         // reset alerts counters
         Temp_counter = Volt_counter = Curr_counter = ChargeComp_counter = 0 ;
 
+        break;
+
+    case BLE_GAP_EVENT_DISCONNECT:
+        ESP_LOGI(TAG, "disconnect; reason=%d ", event->disconnect.reason);
+
+        /* Stop timers */
+        if (xTimerIsTimerActive(dynamic_t_handle) == pdTRUE)
+            xTimerStop(dynamic_t_handle, 10);
+        
+        if (xTimerIsTimerActive(alert_t_handle) == pdTRUE)
+            xTimerStop(alert_t_handle, 10);
+
         /* Connection terminated; resume advertising. */
         bleprph_advertise();
 
-        return 0;
+        break;
 
     case BLE_GAP_EVENT_CONN_UPDATE:
         /* The central has updated the connection parameters. */
@@ -259,13 +259,17 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
                     event->conn_update.status);
         rc = ble_gap_conn_find(event->conn_update.conn_handle, &desc);
         assert(rc == 0);
-        return 0;
+        break;
 
     case BLE_GAP_EVENT_ADV_COMPLETE:
-        //ESP_LOGI(TAG, "advertise complete; reason=%d",
-        //            event->adv_complete.reason);
+        ESP_LOGI(TAG, "advertise complete; reason=%d",
+                    event->adv_complete.reason);
         bleprph_advertise();
-        return 0;
+        break;
+    
+    default:
+        //ESP_LOGI(TAG, "OTHERS");
+        break;
     }
 
     return 0;

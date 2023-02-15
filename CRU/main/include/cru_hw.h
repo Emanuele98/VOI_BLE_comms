@@ -7,9 +7,8 @@
 #include "esp_log.h"
 
 
-#define DYNAMIC_PARAM_TIMER_INTERVAL    pdMS_TO_TICKS(100)                    /**< Timer synced to Dynamic parameter characteristic (20 ms). */
-#define ALERT_PARAM_TIMER_INTERVAL      pdMS_TO_TICKS(300)				       /**< Timer synced to Alert parameter characteristic (60 ms). */
-
+#define DYNAMIC_PARAM_TIMER_INTERVAL    pdMS_TO_TICKS(20)                      /**< Timer synced to Dynamic parameter characteristic (20 ms). */
+#define ALERT_PARAM_TIMER_INTERVAL      pdMS_TO_TICKS(60)				       /**< Timer synced to Alert parameter characteristic (60 ms). */
 
 //#define I2C_MASTER_SCL_IO 19                                  /*!< gpio number for I2C master clock */
 //#define I2C_MASTER_SDA_IO 18                                  /*!< gpio number for I2C master data  */
@@ -26,7 +25,6 @@
 #define V_REGISTER_ADDR 0x02  /* bus voltage register address */
 #define A_REGISTER_ADDR 0x01  /* shunt register address */
 #define T_REGISTER_ADDR 0x00  /* temperature register address */
-
 
 #define WRITE_BIT I2C_MASTER_WRITE              /*!< I2C master write */
 #define READ_BIT I2C_MASTER_READ                /*!< I2C master read */
