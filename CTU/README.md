@@ -17,11 +17,7 @@ Bluetooth LE architecture for Bumblebee power transmission unit (CTU)
 
 ## **Installation**
 
-Making a CTU work with an ESP32 chip requires a few steps. They are provided by the "Get Started" section of the ESP-IDF documentation. It is important to take into account that the CTU has been tested with the IDF v4.1.1 which can be found at https://github.com/espressif/esp-idf. To directly specify an IDF version with Git, use the folloing command:
-
->git clone -b v4.1.1 --recursive https://github.com/espressif/esp-idf.git
-
-Another important step to consider is reviewing the configurations by using `menuconfig`, a tool that allows configurations to be easily changed in a simple CLI.
+Making a CTU work with an ESP32 chip requires a few steps. They are provided by the "Get Started" section of the ESP-IDF documentation. It is important to take into account that the CTU has been tested with the IDF v4.2 which can be found at https://github.com/espressif/esp-idf.
 
 ## **Code Components**
 
@@ -35,18 +31,24 @@ This file contains the very important function `app_main()` which is the startin
 - Then, the *main* task procedes to get all NVS data present in the NVS partition (CTU Static Data).
 - Next, the `main` task initializes the ESP Bluetooth controller (link layer) and VHCI transport layer between NimBLE Host and ESP Bluetooth controller.
 - Afterwards, some of the BLE `host`'s callbacks are set to various callback functions, both of them need to be customized to a specific use case.
-    - This implies that whenever the `host` has a reset procedure scheduled, it will call `host_ctrl_on_reset` and proceed accordingly. 
+    - This implies that whenever the `host` has a reset procedure scheduled, it will call `host_ctrl_on_reset` and proceed accordingly.
+    - It is crucial to wait for `host_ctrl_on_sync` to be called before initiating any BLE procedure
 
-The next part of `app_main()` involves creating and initializing the peer structure. A peer is equivalent to a CRU since all CRUs are servers. Use cases that involve multiple CRUs connected simultaneously require most of what a peer structure is able to offer such as:
+The next part of `app_main()` involves creating and initializing the peer structure. A peer is equivalent to a peripeheral, either CRU or A-CTU. Use cases that involve multiple peripherals connected simultaneously require most of what a peer structure is able to offer such as:
 - A linked list pointer to the next peer in line
 - BLE related variables
     - Connection handle
     - Discovery process tracker
     - Specific payloads
 - A FreeRTOS task handle
-- A FreeRTOS semaphore handle to manage asynchronous BLE read requests
 
-Then, all hardware and software modules required by the application are initialized.
+Then, all hardware and software modules required by the application are initialized:
+    - SD CARD
+    - WIFI (+ connection to the MQTT broker)
+    - 2 software timers:
+        - scanning process (every second - can be changed in `PERIODIC_SCAN_TIMER_PERIOD` )
+        - ambient temperature measurements (every 10 seconds - can be changed in `PERIODIC_AMBIENT_TEMP_TIMER` )
+    - NVS data are then retrieved in some local variables (here, the disconnection times is saved in order to wait for a reconnection, e.g. after an alert, even among       reboots)
 
 The last step is then to run the states module to really manage the CTU dynamically.
 
@@ -56,21 +58,19 @@ The CTU state machine is handled almost entirely inside this module. It progress
 
 - **Configuration State**
 
-    - The Configuration State only starts the periodic local check timer (to determine if any Local Faults are present).
+    - The Configuration State tries to connect to all the A-CTU. The unit moves to the Low Power state as soon as all 4 of them are successfully connected. If this is       not the case, it will move to the Low Power state anyway after 20 seconds (`CONF_STATE_TIMEOUT`) of none received A-CTU advertisements.
+    - The BLE connection process is described in details in the next CTU module [*BLE central client (ble_central.c)*](#ble-central-client-ble_centralc).
 
 - **Low power state**
-  
-    - The power save state is the main state from which the CTU will run. In this state, `main` is in a busy wait kind of loop.
-    - In this state, both the `main` and `host` are involved. The `main` handles very little in the current application, but depending on the application, it can house some logic.
-    - The `host`, on the other hand handles both the connection procedure and the registration sequence.
-    - By receiving a valid advertisement with WPT Service UUID and also within a `rssi` that is smaller than `MINIMUM_ADV_RSSI`, the CTU procedes with multiple read/write procedures to allow an exchange of static parameters. This process will be described in more details in the next CTU module [*BLE central client (ble_central.c)*](#ble-central-client-ble_centralc).
-   - The CTU transitions to the power transfer state if there are less than `MYNEWT_VAL(BLE_MAX_CONNECTIONS)` peers connected, in which case there will be attempts to scan periodically for other CRUs. Once there are `BLE_MAX_CONNECTIONS` CRUs connected, no further scan attempts will be undertaken.
-   - Also, here the `localization_process` happens. Each pad is switched on sequentially in a low power mode (to avoid charging of faulty CRUs), so the value of the `Vrect` is compared with a given treshold. If it is above the treshold, then the right pad has been found and the Power Transfer State can finally begin. 
+        
+       - Here, the CTU is finally searching for CRUs.
+       - Whenever a CRu has no defined position, the `localization_process` happens. Each pad is switched on sequentially in a low power mode (to avoid charging of faulty CRUs), so the value of the `Vrect` is compared with a given treshold (`VOLTAGE_LOW_THRESH`). If it is above the treshold, then the right pad has been found and the Power Transfer State can finally begin. 
 
 - **Power transfer state**
   
-    - This state also involves both `main` and `host`, but this time equally. The `main` task handles all power transfer substates and all decisions regarding the values received from neighboring CRUs. The `host` task instead handles all communication procedures between any CRU and the CTU.
-    - Entering the "parent" function `CTU_power_transfer_state`, `main` starts by setting the total number of latching faults to 0. This allows on to reset to an error-less state.
+    - This state also involves both `main` and `host`, but this time equally. The `main` task handles all power transfer substates and all decisions regarding the values received from neighboring CRUs. The `host` task instead handles all communication procedures between any peripherals and the CTU.
+    - When the CTU reaches the `BLE_MAX_CONNECTIONS` peers connected (currently set to 8), no further scan attempts will be undertaken.
+
 
 
 - **Local fault state**
