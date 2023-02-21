@@ -167,14 +167,18 @@ The CTU state machine is handled almost entirely inside this module. It progress
         
 - **Localization process**
 
-    If a connected CRU does not have a defined position (_peer->position = 0_ the localization process happens (_ble_central_on_localization_process_);
+    If a connected CRU does not have a defined position (_peer->position = 0) the localization process happens:
     - Basically:
-        - Switch on a pad and wait a reasonable amount of time to see the change in the rx side;
-        - Read the Dynamic characteristic to know `Vrect`. Above the treshold?
-        - If yes, the position of CRU is known and we move on;
-        - If not, we try the same process with the next pad;
+        - All these scooters are set as to-be-checked (_set_scooters_tobechecked_);
+        - Switch on a pad and wait a reasonable amount of time to see the change in the rx side (`MIN_SWITCH_TIME`);
+        - Check these scooters reading their Dynamic characteristic to know `Vrect` and reset their to-be-checked variable. 
+        - Is the rx voltage above the treshold? (`VOLTAGE_LOW_THRESH`)
+            - If yes, the position of CRU is known and we move on;
+            - If not and all scooters have been checked, we try the same process with the next pad (_pass_the_baton_);
+        - These processes are located in _ble_central_on_AUX_CTU_dyn_read_ and _ble_central_on_localization_process_.
+        - To double check the localization was correct, the scooter must receive `VOLTAGE_FULL_THRESH_ON` in the first 10 seconds of the charging.
     - Restrictions:
-        - If position not found after a predefined amount of time, it disconnects to allow other CRU to try the process.
+        - If position not found after `MAX_LOC_CHECKS` attempts, the scooter must wait `MIN_TIME_AFTER_LOC` to prioritize others to be found.
 
 - **Fully charged**
      - daje     
