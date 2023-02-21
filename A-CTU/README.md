@@ -94,10 +94,6 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
   - Two output pins are responsible for switching the pad on/off in full/low power mode;
   - Also, one pin will continuously detect the output of the FPGA for Foreign Object Detection (FOD).
 
-## **Non-volatile storage (NVS)**
-
-Currently, the static values needed for the PTU are all stored in a separate partition from the application partition. This partition is named NVS and has to be programmed (flashed) before a PTU application can run properly.
-
 ## **`idf.py` tool**
 
 The `idf.py` tool provided by Espressif allows any ESP32 programmer to build, flash, analyse and configure any ESP chip. The installation procedure also includes this feature and therefore allows a user to take advantage of all the previously described tools.
@@ -106,22 +102,34 @@ Command lists can be obtained with the following command:
 
 >`idf.py`
 
-By combining it with an argument such as `build`, the `idf.py` tool will be able to compile and link the project, and produce binary files that are programmable on a ESP chip.
+Recommended procedure
+    - `idf.py build` to compile and link the project, and produce binary files that are programmable on a ESP chip;
+    - `erase_flash` to erase the previous firmware;
+    - `flash` to install the new firmware inside the ESP chip;
+    - `monitor` to reboot and see the logs;
+    - these commands can be unified into idf.py:
+    
+>`build erase_flash flash monitor`
+
+--> If the ESP board is the only peripheral of the laptop, it should not be necessary to declare which port to use. Otherwise, yes.
 
 It is important however to follow Espressif's guidelines to make sure its framework works properly on any machine.
 
-## **Menuconfig**
+### **Menuconfig**
 
 To change any embedded configurations, it is required to do so with the ESP-IDF utility that is `menuconfig`. By using the `idf.py` tool combined as such:
 
 >`idf.py` menuconfig
 
-a graphical interface will show up in your current terminal window (or ESP-IDF command prompt if on Windows). It is then possible to change all configurations present in the esp-idf repository and in the Central PTU project.
+a graphical interface will show up in your current terminal window (or ESP-IDF command prompt if on Windows). It is then possible to change all configurations present in the esp-idf repository and in the Central CTU project.
 
 ### **Logging**
 
-Logging configurations can be found inside the `menuconfig` interface. It can be changed from `verbose` which is the most resource demanding logging mode, to `error` which is the least demanding. It can also remove logging completely for releases.
+- Logging configurations can be found inside the `menuconfig` interface (inside components).
+-  It can be changed from `verbose` which is the most resource demanding logging mode, to `error` which is the least demanding. 
+- It can also remove logging completely for releases.
 
 ### **sdkconfig file**
 
-The sdkconfig file and its *.old and *.defaults counterparts are all representing configurations defined in `menuconfig` prior to compilation. It is important not to change values directly inside those files, but to simply go to `menuconfig` instead.
+- The sdkconfig file and its *.old and *.defaults counterparts are all representing configurations defined in `menuconfig` prior to compilation. 
+- It is important not to change values directly inside those files, but to simply go to `menuconfig` instead.
