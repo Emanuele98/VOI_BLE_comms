@@ -27,28 +27,28 @@ Throughout this document, mentions of main and host are not uncommon. The main r
 
 This file contains the very important function `app_main()` which is the starting point of any ESP32 application. There are also many configuration functions and some low-level callbacks related to the BLE host. The FreeRTOS task assigned to the application's start function is named *main* and runs on the Pro CPU (CPU0).
 
-- `app_main()` starts by trying to initialize the NVS partition and validating that this initialization worked properly.
-- Then, the *main* task procedes to get all NVS data present in the NVS partition (CTU Static Data).
-- Next, the `main` task initializes the ESP Bluetooth controller (link layer) and VHCI transport layer between NimBLE Host and ESP Bluetooth controller.
-- Afterwards, some of the BLE `host`'s callbacks are set to various callback functions, both of them need to be customized to a specific use case.
-    - This implies that whenever the `host` has a reset procedure scheduled, it will call `host_ctrl_on_reset` and proceed accordingly.
-    - It is crucial to wait for `host_ctrl_on_sync` to be called before initiating any BLE procedure
+- `app_main()` starts by trying to initialize the NVS partition and validating that this initialization worked properly;
+- Then, the *main* task procedes to get all NVS data present in the NVS partition (CTU Static Data);
+- Next, the `main` task initializes the ESP Bluetooth controller (link layer) and VHCI transport layer between NimBLE Host and ESP Bluetooth controller;
+- Afterwards, some of the BLE `host`'s callbacks are set to various callback functions, both of them need to be customized to a specific use case;
+    - This implies that whenever the `host` has a reset procedure scheduled, it will call `host_ctrl_on_reset` and proceed accordingly;
+    - It is crucial to wait for `host_ctrl_on_sync` to be called before initiating any BLE procedure.
 
 The next part of `app_main()` involves creating and initializing the peer structure. A peer is equivalent to a peripeheral, either CRU or A-CTU. Use cases that involve multiple peripherals connected simultaneously require most of what a peer structure is able to offer such as:
-- A linked list pointer to the next peer in line
-- BLE related variables
-    - Connection handle
-    - Discovery process tracker
-    - Specific payloads
-- A FreeRTOS task handle
+- A linked list pointer to the next peer in line;
+- BLE related variables:
+    - Connection handle;
+    - Discovery process tracker;
+    - Specific payloads.
+- A FreeRTOS task handle.
 
 Then, all hardware and software modules required by the application are initialized:
-    - SD CARD
-    - WIFI (+ connection to the MQTT broker)
+    - SD CARD;
+    - WIFI (+ connection to the MQTT broker);
     - 2 software timers:
-        - scanning process (every second - can be changed in `PERIODIC_SCAN_TIMER_PERIOD` )
-        - ambient temperature measurements (every 10 seconds - can be changed in `PERIODIC_AMBIENT_TEMP_TIMER` )
-    - NVS data are then retrieved in some local variables (here, the disconnection times is saved in order to wait for a reconnection, e.g. after an alert, even among       reboots)
+        - scanning process (every second - can be changed in `PERIODIC_SCAN_TIMER_PERIOD` );
+        - ambient temperature measurements (every 10 seconds - can be changed in `PERIODIC_AMBIENT_TEMP_TIMER` );
+    - NVS data are then retrieved in some local variables (here, the disconnection times is saved in order to wait for a reconnection, e.g. after an alert, even among       reboots).
 
 The last step is then to run the states module to really manage the CTU dynamically.
 
@@ -58,38 +58,54 @@ The CTU state machine is handled almost entirely inside this module. It progress
 
 - **Configuration State**
 
-    - The Configuration State tries to connect to all the A-CTU. The unit moves to the Low Power state as soon as all 4 of them are successfully connected. If this is       not the case, it will move to the Low Power state anyway after 20 seconds (`CONF_STATE_TIMEOUT`) of absence of any A-CTU advertisements.
+    - The Configuration State tries to connect to all the A-CTU. The unit moves to the Low Power state as soon as all 4 of them are successfully connected. If this is       not the case, it will move to the Low Power state anyway after 20 seconds (`CONF_STATE_TIMEOUT`) of absence of any A-CTU advertisements;
     - The BLE connection process is described in details in the next CTU module [*BLE central client (ble_central.c)*](#ble-central-client-ble_centralc).
 
 - **Low power state**
 
-    - Here, the CTU is finally searching for CRUs.
-    - Whenever a CRU has no defined position, the `localization_process` happens:
-       - Each pad is switched on sequentially in a low power mode (to avoid charging of faulty CRUs)
-       - the value of the `Vrect` is compared with a given treshold (`VOLTAGE_LOW_THRESH`)
-       - if it is above the treshold, then the right pad has been found and the Power Transfer State can finally begin. 
+    - Here, the CTU is finally searching for CRUs;
+    - When a CRU gets connected, the `localization_process` happens:
+       - Each pad is switched on sequentially in a low power mode (to avoid charging of faulty CRUs);
+       - the value of the `Vrect` is compared with a given treshold (`VOLTAGE_LOW_THRESH`);
+       - if it is above the treshold, then the right pad has been found and the Power Transfer State can finally begin; 
+       - The variables which determine the speed of this process are `LOC_CTU_TIMER_PERIOD` and `LOC_CRU_TIMER_PERIOD`.
 
 - **Power transfer state**
   
-    - This state also involves both `main` and `host`, but this time equally. The `main` task handles all power transfer substates and all decisions regarding the values received from neighboring CRUs. The `host` task instead handles all communication procedures between any peripherals and the CTU.
+    - This state means at least one scooter is being charged or fully charged;
+    - The master keeps reading the sensor values of the A-CTU and the CRU, send them to the MQTT broker and writes them to the SD card:
+        - The speed of this process is crucial as it takes a lot of CPU resources;
+        - `CTU_TIMER_PERIOD` and `CRU_TIMER_PERIOD`;
+    - `Localization process` for other CRUs happens in the meanwhile;
     - When the CTU reaches the `BLE_MAX_CONNECTIONS` peers connected (currently set to 8), no further scan attempts will be undertaken.
-
 
 
 - **Local fault state**
     
-    - Happens when sensor values received from A-CTUs are over the defined limit (overvoltage | overcurrent | overtemperature);
-    - Any time this state is reached, the BLE stack resets and the configuration state is reached;
-    - The main application's duty is then to remain in a continuous loop until the `host_ctrl_on_reset` callback is run. Only then will the state flag change to the configuration state. Also, any and all peers that were previously present on the stack are now gone. They will have to advertise yet again, and connect to the CTU once again.
+    - Happens when sensor values received from A-CTUs are over the defined limit (overvoltage | overcurrent | overtemperature) or a metal object was placed in between       the gap (FOD);
+    - The alert is sent from the A-CTU;
+    - The A-CTU is switched OFF, and then disconnected for some time depending on the type of alert:
+        - `TX_RECONNECTION_OVERVOLTAGE`;
+        - `TX_RECONNECTION_OVERTEMPERATURE`;
+        - `TX_RECONNECTION_OVERCURRENT`;
+        - `TX_RECONNECTION_FOD`;
+    - Finally, the master then goes back to the:
+        - Configuration State if no other A-CTUs are still connected;
+        - Power Transfer State if at least one scooter is currently being charged or already fully charged;
+        - Low Power State otherwise.
 
 - **Latching fault state**
 
     - Happens when sensor values received from CRU are over the defined limit (overvoltage | overcurrent | overtemperature);
-    - If `main` enters this state, the CTU has 3 "strikes" to correct any possible cause for this fault.
-    - At first, the application stop the power output under the relative peer.
-    - The CRUs will be disconnected and a delay of 5 seconds will be started. This allows a CRU to perhaps fix the latching fault on his own.
-    - At the count of 3 consecutive latching faults, local manteinance is requested (email to @bumblebee)
-
+    - At first, the application stop the power output under the relative scooter;
+    - The scooter won't be able to enstablish the BLE connection again for some time depending on the type of alert:
+        - RX_RECONNECTION_OVERCURRENT;
+        - RX_RECONNECTION_OVERTEMPERATURE;
+        - RX_RECONNECTION_OVERVOLTAGE; 
+    - Finally, the master then goes back to the:
+        - Low Power state if no other scooters are currently being charged or have already reached the fully charged state;
+        - Power Transfer State otherwise.
+      
 
 ### **BLE central client (ble_central.c)**
 
