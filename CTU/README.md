@@ -22,7 +22,8 @@ Bluetooth LE architecture for Bumblebee power transmission unit (CTU)
 
 ## **Installation**
 
-Making a CTU work with an ESP32 chip requires a few steps. They are provided by the "Get Started" section of the ESP-IDF documentation. It is important to take into account that the CTU has been tested with the IDF v4.2 which can be found at https://github.com/espressif/esp-idf.
+Making a CTU work with an ESP32 chip requires a few steps. They are provided by the "Get Started" section of the ESP-IDF documentation at https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html. 
+It is important to take into account that the CTU has been tested with the IDF v4.2 which can be found at https://github.com/espressif/esp-idf.
 
 ## **Code Components**
 
