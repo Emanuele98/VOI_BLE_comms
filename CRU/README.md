@@ -2,14 +2,12 @@
 Bluetooth LE architecture for Bumblebee Communication Transmission Unit (CRU)
 
 ## **Table of contents**
-  - [**Installation**](#installation)
-  - [**Application files**](#application-files) 
+- [**Installation**](#installation)
+- [**Application files**](#application-files) 
 - [**idf.py tool**](#idfpy-tool)
-- [**Menuconfig**](#menuconfig)
-    - [**Modes of operation**](#modes-of-operation)
+    - [**Menuconfig**](#menuconfig)
     - [**Logging**](#logging)
     - [**sdkconfig file**](#sdkconfig-file)
-    
 
 ## **Installation**
 
