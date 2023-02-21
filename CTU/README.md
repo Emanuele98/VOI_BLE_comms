@@ -58,13 +58,16 @@ The CTU state machine is handled almost entirely inside this module. It progress
 
 - **Configuration State**
 
-    - The Configuration State tries to connect to all the A-CTU. The unit moves to the Low Power state as soon as all 4 of them are successfully connected. If this is       not the case, it will move to the Low Power state anyway after 20 seconds (`CONF_STATE_TIMEOUT`) of none received A-CTU advertisements.
+    - The Configuration State tries to connect to all the A-CTU. The unit moves to the Low Power state as soon as all 4 of them are successfully connected. If this is       not the case, it will move to the Low Power state anyway after 20 seconds (`CONF_STATE_TIMEOUT`) of absence of any A-CTU advertisements.
     - The BLE connection process is described in details in the next CTU module [*BLE central client (ble_central.c)*](#ble-central-client-ble_centralc).
 
 - **Low power state**
-        
-       - Here, the CTU is finally searching for CRUs.
-       - Whenever a CRu has no defined position, the `localization_process` happens. Each pad is switched on sequentially in a low power mode (to avoid charging of faulty CRUs), so the value of the `Vrect` is compared with a given treshold (`VOLTAGE_LOW_THRESH`). If it is above the treshold, then the right pad has been found and the Power Transfer State can finally begin. 
+
+    - Here, the CTU is finally searching for CRUs.
+    - Whenever a CRU has no defined position, the `localization_process` happens:
+       - Each pad is switched on sequentially in a low power mode (to avoid charging of faulty CRUs)
+       - the value of the `Vrect` is compared with a given treshold (`VOLTAGE_LOW_THRESH`)
+       - if it is above the treshold, then the right pad has been found and the Power Transfer State can finally begin. 
 
 - **Power transfer state**
   
