@@ -115,33 +115,35 @@ The CTU state machine is handled almost entirely inside this module. It progress
 
 ### **BLE central client (ble_central.c)**
 
-- The BLE central module is almost solely handled by the `host` context. The only part of this module that runs on another task is the handle function for individual CRUs.
+- The BLE central module is almost solely handled by the `host` context. The only part of this module that runs on another task is the handle function for individual peripherals;
 - Any type of function/procedure/callback that is needed for BLE communication is present in this CTU module.
 
 - **Discovery attempt**
 
     All discovery attempts will follow the same pattern. The steps leading to a succesful discovery attempt are the following:
-    - _ble_central_scan_start_
+    - _CTU_periodic_scan_timeout_
 
         - The discovery parameters used to configure the scanning procedure on the ESP32 are stored in `disc_params`.
-        - Once a scan procedure starts through the function `ble_gap_disc`, any device within BLE range will be eligible for device discovery.
+        - Once the relative software timer is started in the Configuration State, any device within BLE range will be eligible for device discovery.
         - ble_central_gap_event() is the callback function used for GAP and GATTC events all throughout the application's runtime.
 
     - _ble_central_gap_event_
         
-        - This callback executes if the previous discovery procedure has succesfuly completed. The resulting event associated with the callback function will then be `_BLE_GAP_EVENT_DISC_`.
+        - This callback executes if the previous discovery procedure has succesfuly completed. The resulting event associated with the callback function will then be             `_BLE_GAP_EVENT_DISC_`.
 
     - _ble_central_connect_if_interesting_
 
-        - it will then run into `ble_central_connect_if_interesting` to determine if it is pertinent to connect to the newly found device. 
-        - For each BLE device in proximity, the `host` task will analyze, through the `ble_central_should_connect` function, their service UUID to determine if it is a CRU. It will also determine if said CRU is in a relatively close range (rssi > -80dBm)
-        - On an unsuccesful discovery procedure, it returns and cancels any active discovery procedure.
-
+        - it will then run into `ble_central_connect_if_interesting` to determine if it is pertinent to connect to the newly found device; 
+        - Each reported BLE device in proximity is analyzed through the `ble_central_should_connect` function:
+            - RSSI value must be below `MINIMUM_ADV_RSSI` (-90dB);
+            - The MAC address is checked to connect only to registered devices.
+       
 - **Connection/Registration attempt**
 
-    - Connection attempts happen whenever a CRU is found by the discovery procedure.
-    - The GAP procedure, as per NimBLE specifications, also attributes an event handler for both GAP and GATT events. The callback function chosen for this purpose is `ble_central_gap_event` which has been used previously by `ble_gap_disc`. Henceforth, this function will only run on events, not as a callback.
-    - On a successful connection attempt, the new connection with all its parameters will fill a peer structure and be added to a memory pool.
+    - Connection attempts happen whenever a CRU is found by the discovery procedure;
+    - The scanning is stopped before the connection attempt;
+    - The GAP procedure, as per NimBLE specifications, also attributes an event handler for both GAP and GATT events. The callback function chosen for this purpose is `ble_central_gap_event` which has been used previously by `ble_gap_disc`. Henceforth, this function will only run on events, not as a callback;
+    - On a successful connection attempt, the new connection with all its parameters will fill a peer structure and be added to a memory pool;
     - To properly identify what the CRU has to offer, the `host` task will fill out all Airfuel defined characteristics inside the peer structure's various memory pools with the `peer_disc_all` function.
 
    Once this runs completely, the `host` context procedes to run different functions in order:
@@ -150,45 +152,32 @@ The CTU state machine is handled almost entirely inside this module. It progress
     - ble_central_on_static_chr_read
       - When the CRU static characteristic has been read;
       - It unpacks the CRU static characteristic and compiles its content within its peer structure;
-      - Then, it writes without response to the CTU static characteristic;
     - ble_central_on_write_cccd
-      - Handles both the writing process for the CRU alert characteristic and the cccd subscription (to enable notifications on CTU);
+      - Handles cccd subscription (to enable notifications on CTU);
     - ble_central_on_subscribe
       - read the first dynamic chr
     - ble_central_on_control_enable
       - only if the peer is an A-CTU, it checks the presence of the Control chr
     - ble_central_wpt_start
-      - Creates a task and a semaphore and assigns them to the new peer;   
+      - Creates a FreeRTOS task and assigns it to the new peer;   
 
-    After all those steps, the peer is connected and registered for the WPT service.
-        - Keep reading the Dynamic chr (at least every 20ms) and check if any Alert is detected (a field of dyn chr is filled with alert status).
+    After all those steps, the peer is connected and registered for the WPT service:
+        --> the master keeps reading its Dynamic chr and check if any Alert are detected (a field of dyn chr is filled with alert status);
+        --> if an alert is detected, the master read the Alert chr to undestand its nature and react accordingly.
         
 - **Localization process**
 
-    If the peer is a CRY, the localization process starts (ble_central_on_localization function);
+    If a connected CRU does not have a defined position (_peer->position = 0_ the localization process happens (_ble_central_on_localization_process_);
     - Basically:
         - Switch on a pad and wait a reasonable amount of time to see the change in the rx side;
         - Read the Dynamic characteristic to know `Vrect`. Above the treshold?
         - If yes, the position of CRU is known and we move on;
         - If not, we try the same process with the next pad;
     - Restrictions:
-        - Only one CRU can undergo the localization process per time to avoid misunderstandings; 
         - If position not found after a predefined amount of time, it disconnects to allow other CRU to try the process.
 
 - **Fully charged**
      - daje     
-
-
-- **Peer task handling**
-
-    Here the description covers only CRU; however, the A-CTU peer task handling follows almost the same procedure with similar functions (e.g. ble_central_AUX_CTU_task_handle).
-
-    - Any CRUs peer structure will be assigned a task handle and a binary semaphore handle;
-    - All CRUs will run simultaneously on the `ble_central_CRU_task_handle` function and periodically read the dynamic characteristic when available;
-    - The availabiliy of this characteristic depends on the semaphores state bit;
-    - If the semaphore is taken and has yet to be given back, the peer task will simply wait for a short period of time and iterate once more. Only when the semaphore is given will this task trigger a read procedure on the dynamic characteristic;
-    - The semaphore is taken (in `ble_central_CRU_task_handle`);
-    - The semaphore is given back (in `ble_central_on_CRU_dyn_read`).
 
 ### **WiFi (wifi.c)**
 
