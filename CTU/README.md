@@ -3,14 +3,19 @@ Bluetooth LE architecture for Bumblebee power transmission unit (CTU)
 
 ## **Table of contents**
 - [**Installation**](#installation)
+
 - [**Code Components**](#code-components)
     - [**Main (main.c)**](#main-mainc)
     - [**CTU states (CTU_states.c)**](#CTU-states-CTU_statesc)
     - [**BLE central client (ble_central.c)**](#ble-central-client-ble_centralc)
-- [**Non-volatile storage (NVS)**](#non-volatile-storage-nvs)
+    - [**WiFi connection (wifi.c)**](#wifi-connection-wific)
+    - [**SD Card (sd_card.c)**](#sd-card-sd_cardc)
+    - [**Peer (peer.c)**](#peer-peerc)
+    - [**DHT22 sensor (DHT22.c)**](#DHT22-sensor-DHT22.c)
+
+
 - [**idf.py tool**](#idfpy-tool)
-- [**Menuconfig**](#menuconfig)
-    - [**Modes of operation**](#modes-of-operation)
+    - [**Menuconfig**](#menuconfig)
     - [**Logging**](#logging)
     - [**sdkconfig file**](#sdkconfig-file)
 
@@ -169,6 +174,10 @@ The CTU state machine is handled almost entirely inside this module. It progress
         - Only one CRU can undergo the localization process per time to avoid misunderstandings; 
         - If position not found after a predefined amount of time, it disconnects to allow other CRU to try the process.
 
+- **Fully charged**
+     - daje     
+
+
 - **Peer task handling**
 
     Here the description covers only CRU; however, the A-CTU peer task handling follows almost the same procedure with similar functions (e.g. ble_central_AUX_CTU_task_handle).
@@ -180,9 +189,16 @@ The CTU state machine is handled almost entirely inside this module. It progress
     - The semaphore is taken (in `ble_central_CRU_task_handle`);
     - The semaphore is given back (in `ble_central_on_CRU_dyn_read`).
 
-## **Non-volatile storage (NVS)**
+### **WiFi (wifi.c)**
 
-Currently, the static values needed for the CTU are all stored in a separate partition from the application partition. This partition is named NVS and has to be programmed (flashed) before a CTU application can run properly.
+### **SD Card (sd_card.c)**
+
+### **Peer (peer.c)**
+
+### **DHT22 sensor (DHT22.c)**
+
+
+
 
 ## **`idf.py` tool**
 
@@ -196,7 +212,7 @@ By combining it with an argument such as `build`, the `idf.py` tool will be able
 
 It is important however to follow Espressif's guidelines to make sure its framework works properly on any machine.
 
-## **Menuconfig**
+### **Menuconfig**
 
 To change any embedded configurations, it is required to do so with the ESP-IDF utility that is `menuconfig`. By using the `idf.py` tool combined as such:
 
