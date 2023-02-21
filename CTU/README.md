@@ -231,8 +231,8 @@ Recommended procedure
     - `flash` to install the new firmware inside the ESP chip;
     - `monitor` to reboot and see the logs;
     - these commands can be unified into idf.py:
-    >`build erase_flash flash monitor`
-    --> If the ESP board is the only peripheral of the laptop, it should not be necessary to declare which port to use. Otherwise, yes.
+>`build erase_flash flash monitor`
+--> If the ESP board is the only peripheral of the laptop, it should not be necessary to declare which port to use. Otherwise, yes.
 
 It is important however to follow Espressif's guidelines to make sure its framework works properly on any machine.
 
