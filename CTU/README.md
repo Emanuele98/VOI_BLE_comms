@@ -29,6 +29,15 @@ It is important to take into account that the CTU has been tested with the IDF v
 
 Throughout this document, mentions of main and host are not uncommon. The main refers to the RTOS context that initiates the program following the bootloader application. It also takes care of the state machine that runs on the ESP32. The main resides on the APP_CPU (Core 1). The host refers to another context, one that handles the NimBLE stack and its various states. The host resides on the PRO_CPU (Core 0).
 
+1 Service:
+    - wpt_svc_uuid (defined by Bluetooth SIG).
+    
+4 Characteristics:
+    - `wpt_char_control_uuid`; 
+    - `wpt_char_alert_uuid`;  
+    - `wpt_char_stat_uuid`; 
+    - `wpt_char_dyn_uuid`.
+
 ### **Main (main.c)**
 
 This file contains the very important function `app_main()` which is the starting point of any ESP32 application. There are also many configuration functions and some low-level callbacks related to the BLE host. The FreeRTOS task assigned to the application's start function is named *main* and runs on the Pro CPU (CPU0).
@@ -142,6 +151,7 @@ The CTU state machine is handled almost entirely inside this module. It progress
 
     - Connection attempts happen whenever a CRU is found by the discovery procedure;
     - The scanning is stopped before the connection attempt;
+    - Conn_params defines the connection parameters;
     - The GAP procedure, as per NimBLE specifications, also attributes an event handler for both GAP and GATT events. The callback function chosen for this purpose is `ble_central_gap_event` which has been used previously by `ble_gap_disc`. Henceforth, this function will only run on events, not as a callback;
     - On a successful connection attempt, the new connection with all its parameters will fill a peer structure and be added to a memory pool;
     - To properly identify what the CRU has to offer, the `host` task will fill out all Airfuel defined characteristics inside the peer structure's various memory pools with the `peer_disc_all` function.
@@ -167,7 +177,7 @@ The CTU state machine is handled almost entirely inside this module. It progress
         
 - **Localization process**
 
-    If a connected CRU does not have a defined position (_peer->position = 0) the localization process happens:
+    If a connected CRU does not have a defined position (_peer->position = 0_) the localization process happens:
     - Basically:
         - All these scooters are set as to-be-checked (_set_scooters_tobechecked_);
         - Switch on a pad and wait a reasonable amount of time to see the change in the rx side (`MIN_SWITCH_TIME`);
@@ -181,17 +191,30 @@ The CTU state machine is handled almost entirely inside this module. It progress
         - If position not found after `MAX_LOC_CHECKS` attempts, the scooter must wait `MIN_TIME_AFTER_LOC` to prioritize others to be found.
 
 - **Fully charged**
-     - daje     
+     - Whenever a scooter reaches the fully charged state, the charging must be stopped. However, the scooter must stay connected as the charging pad is not available        for others.
+     - `fully_charged[]` is used to keep track of the fully charged scooters, while their relative charge_complete field contained in the peer structure tells wheter           the scooter needs to be disconnected in the killing process. Indeed, ble_central_kill_CRU is called after receiving the notifications as its treated as an             alert.
+     - Since the CRU is currently lacking an accelerometer sensor, in order to know if the scooter is still placed on the pad the RSSI value is repeatedly checked:
+        - when it is found below `MINIMUM_FULLY_CHARGED_RSSI` for 5 consecutive checks, it means the scooter left and the pad is available for others.
+
+- **Undesidered alerts managament**
+If, for some reason, the CTU should not care about an alert from a peripheral, it needs not only to avoid taking actions but also to read its Static Chr to reset the alert variable inside the peripheral unit. (this has been done for undesidered FOD and OV on pad 3).
+
 
 ### **WiFi (wifi.c)**
 
+The WiFi unit is pretty dumb. After connecting to `WIFI_SSID` with `WIFI_PASS` (which can be configured in Menuconfig), it connects to the broker. Whenever a disconnection happen, a forced reconnections is done.
+Please bear in mind that the ESP32 modules only has 2.4 GHz capabilities.
+
 ### **SD Card (sd_card.c)**
+This module exploits the https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/sdspi_host.html. If the installation of the peripheral fails, it won't try.
 
 ### **Peer (peer.c)**
 
+Internal structure for CTU peer module. The peer is the main container for any peripherals context. All things relating to peripherals are incorporated into this module. It also implements all the functions necessary to create, fill and destroy peers dynamically.
+
 ### **DHT22 sensor (DHT22.c)**
 
-
+Temperature and Humidity sensor. Provides value and checks every `PERIODIC_AMBIENT_TEMP_TIMER` whether it's too cold to enable any charging through the variable `TOO_COLD`. Also, NVS values about the reconnection times are refreshed here as very CPU expesive.
 
 
 ## **`idf.py` tool**
@@ -202,7 +225,13 @@ Command lists can be obtained with the following command:
 
 >`idf.py`
 
-By combining it with an argument such as `build`, the `idf.py` tool will be able to compile and link the project, and produce binary files that are programmable on a ESP chip.
+Recommended procedure
+    - `idf.py build` to compile and link the project, and produce binary files that are programmable on a ESP chip;
+    - `erase_flash` to erase the previous firmware;
+    - `flash` to install the new firmware inside the ESP chip;
+    - `monitor` to reboot and see the logs.
+    --> these commands can be unified into idf.py `build erase_flash flash monitor`
+    --> If the ESP board is the only peripheral of the laptop, it should not be necessary to declare which port to use. Otherwise, yes.
 
 It is important however to follow Espressif's guidelines to make sure its framework works properly on any machine.
 
@@ -216,8 +245,11 @@ a graphical interface will show up in your current terminal window (or ESP-IDF c
 
 ### **Logging**
 
-Logging configurations can be found inside the `menuconfig` interface. It can be changed from `verbose` which is the most resource demanding logging mode, to `error` which is the least demanding. It can also remove logging completely for releases.
+Logging configurations can be found inside the `menuconfig` interface (inside components).
+--> It can be changed from `verbose` which is the most resource demanding logging mode, to `error` which is the least demanding. 
+--> It can also remove logging completely for releases.
 
 ### **sdkconfig file**
 
-The sdkconfig file and its *.old and *.defaults counterparts are all representing configurations defined in `menuconfig` prior to compilation. It is important not to change values directly inside those files, but to simply go to `menuconfig` instead.
+The sdkconfig file and its *.old and *.defaults counterparts are all representing configurations defined in `menuconfig` prior to compilation. 
+--> It is important not to change values directly inside those files, but to simply go to `menuconfig` instead.
