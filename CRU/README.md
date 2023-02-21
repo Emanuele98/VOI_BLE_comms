@@ -2,8 +2,6 @@
 Bluetooth LE architecture for Bumblebee Communication Transmission Unit (CRU)
 
 ## **Table of contents**
-- [**Peripheral**](#Peripheral-(PRU))
-  - [**Table of contents**](#table-of-contents)
   - [**Installation**](#installation)
   - [**Application files**](#application-files) 
 - [**idf.py tool**](#idfpy-tool)
@@ -12,13 +10,11 @@ Bluetooth LE architecture for Bumblebee Communication Transmission Unit (CRU)
     - [**Logging**](#logging)
     - [**sdkconfig file**](#sdkconfig-file)
     
+
 ## **Installation**
 
-Making a CRU work with an ESP32 chip requires a few steps. They are provided by the "Get Started" section of the ESP-IDF documentation. It is important to take into account that the PTU has been tested with the IDF v4.1.1 which can be found at https://github.com/espressif/esp-idf. To directly specify an IDF version with Git, use the folloing command:
-
->git clone -b v4.1.1 --recursive https://github.com/espressif/esp-idf.git
-
-Another important step to consider is reviewing the configurations by using `menuconfig`, a tool that allows configurations to be easily changed in a simple CLI.
+Making a CTU work with an ESP32 chip requires a few steps. They are provided by the "Get Started" section of the ESP-IDF documentation at https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html. 
+It is important to take into account that the CTU has been tested with the IDF v4.2 which can be found at https://github.com/espressif/esp-idf.
 
 
 ## **Application files**
@@ -53,12 +49,7 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
         .type = BLE_GATT_SVC_TYPE_PRIMARY,
         .uuid = &wpt_service_uuid.u,
         .characteristics = (struct ble_gatt_chr_def[])
-        {   {
-                // Characteristic: pru static payload.
-                .uuid = &WPT_PEER_STAT_UUID.u,
-                .access_cb = gatt_svr_chr_read_peer_static,
-                .flags = BLE_GATT_CHR_F_READ,
-            },
+        {  
             {
                 // Characteristic: ptu static payload.
                 .uuid = &WPT_PTU_STAT_UUID.u,
