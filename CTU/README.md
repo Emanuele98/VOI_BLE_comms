@@ -3,50 +3,67 @@ Bluetooth LE architecture for Bumblebee power transmission unit (CTU)
 
 ## **Table of contents**
 - [**Installation**](#installation)
+
 - [**Code Components**](#code-components)
     - [**Main (main.c)**](#main-mainc)
     - [**CTU states (CTU_states.c)**](#CTU-states-CTU_statesc)
     - [**BLE central client (ble_central.c)**](#ble-central-client-ble_centralc)
-- [**Non-volatile storage (NVS)**](#non-volatile-storage-nvs)
+    - [**WiFi connection (wifi.c)**](#wifi-connection-wific)
+    - [**SD Card (sd_card.c)**](#sd-card-sd_cardc)
+    - [**Peer (peer.c)**](#peer-peerc)
+    - [**DHT22 sensor (DHT22.c)**](#DHT22-sensor-DHT22.c)
+
+
 - [**idf.py tool**](#idfpy-tool)
-- [**Menuconfig**](#menuconfig)
-    - [**Modes of operation**](#modes-of-operation)
+    - [**Menuconfig**](#menuconfig)
     - [**Logging**](#logging)
     - [**sdkconfig file**](#sdkconfig-file)
 
 
 ## **Installation**
 
-Making a CTU work with an ESP32 chip requires a few steps. They are provided by the "Get Started" section of the ESP-IDF documentation. It is important to take into account that the CTU has been tested with the IDF v4.1.1 which can be found at https://github.com/espressif/esp-idf. To directly specify an IDF version with Git, use the folloing command:
-
->git clone -b v4.1.1 --recursive https://github.com/espressif/esp-idf.git
-
-Another important step to consider is reviewing the configurations by using `menuconfig`, a tool that allows configurations to be easily changed in a simple CLI.
+Making a CTU work with an ESP32 chip requires a few steps. They are provided by the "Get Started" section of the ESP-IDF documentation at https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html. 
+It is important to take into account that the CTU has been tested with the IDF v4.2 which can be found at https://github.com/espressif/esp-idf.
 
 ## **Code Components**
 
 Throughout this document, mentions of main and host are not uncommon. The main refers to the RTOS context that initiates the program following the bootloader application. It also takes care of the state machine that runs on the ESP32. The main resides on the APP_CPU (Core 1). The host refers to another context, one that handles the NimBLE stack and its various states. The host resides on the PRO_CPU (Core 0).
 
+1 Service:
+    - wpt_svc_uuid (defined by Bluetooth SIG).
+    
+4 Characteristics:
+    - `wpt_char_control_uuid`; 
+    - `wpt_char_alert_uuid`;  
+    - `wpt_char_stat_uuid`; 
+    - `wpt_char_dyn_uuid`.
+
 ### **Main (main.c)**
 
 This file contains the very important function `app_main()` which is the starting point of any ESP32 application. There are also many configuration functions and some low-level callbacks related to the BLE host. The FreeRTOS task assigned to the application's start function is named *main* and runs on the Pro CPU (CPU0).
 
-- `app_main()` starts by trying to initialize the NVS partition and validating that this initialization worked properly.
-- Then, the *main* task procedes to get all NVS data present in the NVS partition (CTU Static Data).
-- Next, the `main` task initializes the ESP Bluetooth controller (link layer) and VHCI transport layer between NimBLE Host and ESP Bluetooth controller.
-- Afterwards, some of the BLE `host`'s callbacks are set to various callback functions, both of them need to be customized to a specific use case.
-    - This implies that whenever the `host` has a reset procedure scheduled, it will call `host_ctrl_on_reset` and proceed accordingly. 
+- `app_main()` starts by trying to initialize the NVS partition and validating that this initialization worked properly;
+- Then, the *main* task procedes to get all NVS data present in the NVS partition (CTU Static Data);
+- Next, the `main` task initializes the ESP Bluetooth controller (link layer) and VHCI transport layer between NimBLE Host and ESP Bluetooth controller;
+- Afterwards, some of the BLE `host`'s callbacks are set to various callback functions, both of them need to be customized to a specific use case;
+    - This implies that whenever the `host` has a reset procedure scheduled, it will call `host_ctrl_on_reset` and proceed accordingly;
+    - It is crucial to wait for `host_ctrl_on_sync` to be called before initiating any BLE procedure.
 
-The next part of `app_main()` involves creating and initializing the peer structure. A peer is equivalent to a CRU since all CRUs are servers. Use cases that involve multiple CRUs connected simultaneously require most of what a peer structure is able to offer such as:
-- A linked list pointer to the next peer in line
-- BLE related variables
-    - Connection handle
-    - Discovery process tracker
-    - Specific payloads
-- A FreeRTOS task handle
-- A FreeRTOS semaphore handle to manage asynchronous BLE read requests
+The next part of `app_main()` involves creating and initializing the peer structure. A peer is equivalent to a peripeheral, either CRU or A-CTU. Use cases that involve multiple peripherals connected simultaneously require most of what a peer structure is able to offer such as:
+- A linked list pointer to the next peer in line;
+- BLE related variables:
+    - Connection handle;
+    - Discovery process tracker;
+    - Specific payloads.
+- A FreeRTOS task handle.
 
-Then, all hardware and software modules required by the application are initialized.
+Then, all hardware and software modules required by the application are initialized:
+    - SD CARD;
+    - WIFI (+ connection to the MQTT broker);
+    - 2 software timers:
+        - scanning process (every second - can be changed in `PERIODIC_SCAN_TIMER_PERIOD` );
+        - ambient temperature measurements (every 10 seconds - can be changed in `PERIODIC_AMBIENT_TEMP_TIMER` );
+    - NVS data are then retrieved in some local variables (here, the disconnection times is saved in order to wait for a reconnection, e.g. after an alert, even among       reboots).
 
 The last step is then to run the states module to really manage the CTU dynamically.
 
@@ -56,67 +73,87 @@ The CTU state machine is handled almost entirely inside this module. It progress
 
 - **Configuration State**
 
-    - The Configuration State only starts the periodic local check timer (to determine if any Local Faults are present).
+    - The Configuration State tries to connect to all the A-CTU. The unit moves to the Low Power state as soon as all 4 of them are successfully connected. If this is       not the case, it will move to the Low Power state anyway after 20 seconds (`CONF_STATE_TIMEOUT`) of absence of any A-CTU advertisements;
+    - The BLE connection process is described in details in the next CTU module [*BLE central client (ble_central.c)*](#ble-central-client-ble_centralc).
 
 - **Low power state**
-  
-    - The power save state is the main state from which the CTU will run. In this state, `main` is in a busy wait kind of loop.
-    - In this state, both the `main` and `host` are involved. The `main` handles very little in the current application, but depending on the application, it can house some logic.
-    - The `host`, on the other hand handles both the connection procedure and the registration sequence.
-    - By receiving a valid advertisement with WPT Service UUID and also within a `rssi` that is smaller than `MINIMUM_ADV_RSSI`, the CTU procedes with multiple read/write procedures to allow an exchange of static parameters. This process will be described in more details in the next CTU module [*BLE central client (ble_central.c)*](#ble-central-client-ble_centralc).
-   - The CTU transitions to the power transfer state if there are less than `MYNEWT_VAL(BLE_MAX_CONNECTIONS)` peers connected, in which case there will be attempts to scan periodically for other CRUs. Once there are `BLE_MAX_CONNECTIONS` CRUs connected, no further scan attempts will be undertaken.
-   - Also, here the `localization_process` happens. Each pad is switched on sequentially in a low power mode (to avoid charging of faulty CRUs), so the value of the `Vrect` is compared with a given treshold. If it is above the treshold, then the right pad has been found and the Power Transfer State can finally begin. 
+
+    - Here, the CTU is finally searching for CRUs;
+    - When a CRU gets connected, the `localization_process` happens:
+       - Each pad is switched on sequentially in a low power mode (to avoid charging of faulty CRUs);
+       - the value of the `Vrect` is compared with a given treshold (`VOLTAGE_LOW_THRESH`);
+       - if it is above the treshold, then the right pad has been found and the Power Transfer State can finally begin; 
+       - The variables which determine the speed of this process are `LOC_CTU_TIMER_PERIOD` and `LOC_CRU_TIMER_PERIOD`.
 
 - **Power transfer state**
   
-    - This state also involves both `main` and `host`, but this time equally. The `main` task handles all power transfer substates and all decisions regarding the values received from neighboring CRUs. The `host` task instead handles all communication procedures between any CRU and the CTU.
-    - Entering the "parent" function `CTU_power_transfer_state`, `main` starts by setting the total number of latching faults to 0. This allows on to reset to an error-less state.
+    - This state means at least one scooter is being charged or fully charged;
+    - The master keeps reading the sensor values of the A-CTU and the CRU, send them to the MQTT broker and writes them to the SD card:
+        - The speed of this process is crucial as it takes a lot of CPU resources;
+        - `CTU_TIMER_PERIOD` and `CRU_TIMER_PERIOD`;
+    - `Localization process` for other CRUs happens in the meanwhile;
+    - When the CTU reaches the `BLE_MAX_CONNECTIONS` peers connected (currently set to 8), no further scan attempts will be undertaken.
 
 
 - **Local fault state**
     
-    - Happens when sensor values received from A-CTUs are over the defined limit (overvoltage | overcurrent | overtemperature);
-    - Any time this state is reached, the BLE stack resets and the configuration state is reached;
-    - The main application's duty is then to remain in a continuous loop until the `host_ctrl_on_reset` callback is run. Only then will the state flag change to the configuration state. Also, any and all peers that were previously present on the stack are now gone. They will have to advertise yet again, and connect to the CTU once again.
+    - Happens when sensor values received from A-CTUs are over the defined limit (overvoltage | overcurrent | overtemperature) or a metal object was placed in between       the gap (FOD);
+    - The alert is sent from the A-CTU;
+    - The A-CTU is switched OFF, and then disconnected for some time depending on the type of alert:
+        - `TX_RECONNECTION_OVERVOLTAGE`;
+        - `TX_RECONNECTION_OVERTEMPERATURE`;
+        - `TX_RECONNECTION_OVERCURRENT`;
+        - `TX_RECONNECTION_FOD`;
+    - Finally, the master then goes back to the:
+        - Configuration State if no other A-CTUs are still connected;
+        - Power Transfer State if at least one scooter is currently being charged or already fully charged;
+        - Low Power State otherwise.
 
 - **Latching fault state**
 
     - Happens when sensor values received from CRU are over the defined limit (overvoltage | overcurrent | overtemperature);
-    - If `main` enters this state, the CTU has 3 "strikes" to correct any possible cause for this fault.
-    - At first, the application stop the power output under the relative peer.
-    - The CRUs will be disconnected and a delay of 5 seconds will be started. This allows a CRU to perhaps fix the latching fault on his own.
-    - At the count of 3 consecutive latching faults, local manteinance is requested (email to @bumblebee)
-
+    - At first, the application stop the power output under the relative scooter;
+    - The scooter won't be able to enstablish the BLE connection again for some time depending on the type of alert:
+        - `RX_RECONNECTION_OVERCURRENT`;
+        - `RX_RECONNECTION_OVERTEMPERATURE`;
+        - `RX_RECONNECTION_OVERVOLTAGE`; 
+    - Finally, the master then goes back to the:
+        - Low Power state if no other scooters are currently being charged or have already reached the fully charged state;
+        - Power Transfer State otherwise.
+      
 
 ### **BLE central client (ble_central.c)**
 
-- The BLE central module is almost solely handled by the `host` context. The only part of this module that runs on another task is the handle function for individual CRUs.
+- The BLE central module is almost solely handled by the `host` context. The only part of this module that runs on another task is the handle function for individual peripherals;
 - Any type of function/procedure/callback that is needed for BLE communication is present in this CTU module.
 
 - **Discovery attempt**
 
     All discovery attempts will follow the same pattern. The steps leading to a succesful discovery attempt are the following:
-    - _ble_central_scan_start_
+    - _CTU_periodic_scan_timeout_
 
         - The discovery parameters used to configure the scanning procedure on the ESP32 are stored in `disc_params`.
-        - Once a scan procedure starts through the function `ble_gap_disc`, any device within BLE range will be eligible for device discovery.
+        - Once the relative software timer is started in the Configuration State, any device within BLE range will be eligible for device discovery.
         - ble_central_gap_event() is the callback function used for GAP and GATTC events all throughout the application's runtime.
 
     - _ble_central_gap_event_
         
-        - This callback executes if the previous discovery procedure has succesfuly completed. The resulting event associated with the callback function will then be `_BLE_GAP_EVENT_DISC_`.
+        - This callback executes if the previous discovery procedure has succesfuly completed. The resulting event associated with the callback function will then be             `_BLE_GAP_EVENT_DISC_`.
 
     - _ble_central_connect_if_interesting_
 
-        - it will then run into `ble_central_connect_if_interesting` to determine if it is pertinent to connect to the newly found device. 
-        - For each BLE device in proximity, the `host` task will analyze, through the `ble_central_should_connect` function, their service UUID to determine if it is a CRU. It will also determine if said CRU is in a relatively close range (rssi > -80dBm)
-        - On an unsuccesful discovery procedure, it returns and cancels any active discovery procedure.
-
+        - it will then run into `ble_central_connect_if_interesting` to determine if it is pertinent to connect to the newly found device; 
+        - Each reported BLE device in proximity is analyzed through the `ble_central_should_connect` function:
+            - RSSI value must be below `MINIMUM_ADV_RSSI` (-90dB);
+            - The MAC address is checked to connect only to registered devices.
+       
 - **Connection/Registration attempt**
 
-    - Connection attempts happen whenever a CRU is found by the discovery procedure.
-    - The GAP procedure, as per NimBLE specifications, also attributes an event handler for both GAP and GATT events. The callback function chosen for this purpose is `ble_central_gap_event` which has been used previously by `ble_gap_disc`. Henceforth, this function will only run on events, not as a callback.
-    - On a successful connection attempt, the new connection with all its parameters will fill a peer structure and be added to a memory pool.
+    - Connection attempts happen whenever a CRU is found by the discovery procedure;
+    - The scanning is stopped before the connection attempt;
+    - Conn_params defines the connection parameters;
+    - The GAP procedure, as per NimBLE specifications, also attributes an event handler for both GAP and GATT events. The callback function chosen for this purpose is `ble_central_gap_event` which has been used previously by `ble_gap_disc`. Henceforth, this function will only run on events, not as a callback;
+    - On a successful connection attempt, the new connection with all its parameters will fill a peer structure and be added to a memory pool;
     - To properly identify what the CRU has to offer, the `host` task will fill out all Airfuel defined characteristics inside the peer structure's various memory pools with the `peer_disc_all` function.
 
    Once this runs completely, the `host` context procedes to run different functions in order:
@@ -125,50 +162,60 @@ The CTU state machine is handled almost entirely inside this module. It progress
     - ble_central_on_static_chr_read
       - When the CRU static characteristic has been read;
       - It unpacks the CRU static characteristic and compiles its content within its peer structure;
-      - Then, it writes without response to the CTU static characteristic;
     - ble_central_on_write_cccd
-      - Handles both the writing process for the CRU alert characteristic and the cccd subscription (to enable notifications on CTU);
+      - Handles cccd subscription (to enable notifications on CTU);
     - ble_central_on_subscribe
       - read the first dynamic chr
     - ble_central_on_control_enable
       - only if the peer is an A-CTU, it checks the presence of the Control chr
     - ble_central_wpt_start
-      - Creates a task and a semaphore and assigns them to the new peer;   
+      - Creates a FreeRTOS task and assigns it to the new peer;   
 
-    After all those steps, the peer is connected and registered for the WPT service.
-        - Keep reading the Dynamic chr (at least every 20ms) and check if any Alert is detected (a field of dyn chr is filled with alert status).
+    After all those steps, the peer is connected and registered for the WPT service:
+        --> the master keeps reading its Dynamic chr and check if any Alert are detected (a field of dyn chr is filled with alert status);
+        --> if an alert is detected, the master read the Alert chr to undestand its nature and react accordingly.
         
 - **Localization process**
 
-    If the peer is a CRY, the localization process starts (ble_central_on_localization function);
+    If a connected CRU does not have a defined position (_peer->position = 0_) the localization process happens:
     - Basically:
-        - Switch on a pad and wait a reasonable amount of time to see the change in the rx side;
-        - Read the Dynamic characteristic to know `Vrect`. Above the treshold?
-        - If yes, the position of CRU is known and we move on;
-        - If not, we try the same process with the next pad;
+        - All these scooters are set as to-be-checked (_set_scooters_tobechecked_);
+        - Switch on a pad and wait a reasonable amount of time to see the change in the rx side (`MIN_SWITCH_TIME`);
+        - Check these scooters reading their Dynamic characteristic to know `Vrect` and reset their to-be-checked variable. 
+        - Is the rx voltage above the treshold? (`VOLTAGE_LOW_THRESH`)
+            - If yes, the position of CRU is known and we move on;
+            - If not and all scooters have been checked, we try the same process with the next pad (_pass_the_baton_);
+        - These processes are located in _ble_central_on_AUX_CTU_dyn_read_ and _ble_central_on_localization_process_.
+        - To double check the localization was correct, the scooter must receive `VOLTAGE_FULL_THRESH_ON` in the first 10 seconds of the charging.
     - Restrictions:
-        - Only one CRU can undergo the localization process per time to avoid misunderstandings; 
-        - If position not found after a predefined amount of time, it disconnects to allow other CRU to try the process.
-   
+        - If position not found after `MAX_LOC_CHECKS` attempts, the scooter must wait `MIN_TIME_AFTER_LOC` to prioritize others to be found.
 
-- **Signal reception**
+- **Fully charged**
+     - Whenever a scooter reaches the fully charged state, the charging must be stopped. However, the scooter must stay connected as the charging pad is not available        for others.
+     - `fully_charged[]` is used to keep track of the fully charged scooters, while their relative charge_complete field contained in the peer structure tells wheter           the scooter needs to be disconnected in the killing process. Indeed, ble_central_kill_CRU is called after receiving the notifications as its treated as an             alert.
+     - Since the CRU is currently lacking an accelerometer sensor, in order to know if the scooter is still placed on the pad the RSSI value is repeatedly checked:
+        - when it is found below `MINIMUM_FULLY_CHARGED_RSSI` for 5 consecutive checks, it means the scooter left and the pad is available for others.
 
-    On any signal reception, the event handler that was described before will handle any events related to those signals. For example, a notification will trigger a notification event in `ble_central_gap_event` and parse all bytes from the characteristic that triggered this specific notification (for the CTU, notifications are in fact alerts from the CRU).
+- **Undesidered alerts managament**
+If, for some reason, the CTU should not care about an alert from a peripheral, it needs not only to avoid taking actions but also to read its Static Chr to reset the alert variable inside the peripheral unit. (this has been done for undesidered FOD and OV on pad 3).
 
-- **Peer task handling**
 
-    Here the description covers only CRU; however, the A-CTU peer task handling follows almost the same procedure with similar functions (e.g. ble_central_AUX_CTU_task_handle).
+### **WiFi (wifi.c)**
 
-    - Any CRUs peer structure will be assigned a task handle and a binary semaphore handle;
-    - All CRUs will run simultaneously on the `ble_central_CRU_task_handle` function and periodically read the dynamic characteristic when available;
-    - The availabiliy of this characteristic depends on the semaphores state bit;
-    - If the semaphore is taken and has yet to be given back, the peer task will simply wait for a short period of time and iterate once more. Only when the semaphore is given will this task trigger a read procedure on the dynamic characteristic;
-    - The semaphore is taken (in `ble_central_CRU_task_handle`);
-    - The semaphore is given back (in `ble_central_on_CRU_dyn_read`).
+The WiFi unit is pretty dumb. After connecting to `WIFI_SSID` with `WIFI_PASS` (which can be configured in Menuconfig), it connects to the broker. Whenever a disconnection happen, a forced reconnections is done.
+Please bear in mind that the ESP32 modules only has 2.4 GHz capabilities.
 
-## **Non-volatile storage (NVS)**
+### **SD Card (sd_card.c)**
+This module exploits the https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/sdspi_host.html. If the installation of the peripheral fails, it won't try.
 
-Currently, the static values needed for the CTU are all stored in a separate partition from the application partition. This partition is named NVS and has to be programmed (flashed) before a CTU application can run properly.
+### **Peer (peer.c)**
+
+Internal structure for CTU peer module. The peer is the main container for any peripherals context. All things relating to peripherals are incorporated into this module. It also implements all the functions necessary to create, fill and destroy peers dynamically.
+
+### **DHT22 sensor (DHT22.c)**
+
+Temperature and Humidity sensor. Provides value and checks every `PERIODIC_AMBIENT_TEMP_TIMER` whether it's too cold to enable any charging through the variable `TOO_COLD`. Also, NVS values about the reconnection times are refreshed here as very CPU expesive.
+
 
 ## **`idf.py` tool**
 
@@ -178,11 +225,20 @@ Command lists can be obtained with the following command:
 
 >`idf.py`
 
-By combining it with an argument such as `build`, the `idf.py` tool will be able to compile and link the project, and produce binary files that are programmable on a ESP chip.
+Recommended procedure
+    - `idf.py build` to compile and link the project, and produce binary files that are programmable on a ESP chip;
+    - `erase_flash` to erase the previous firmware;
+    - `flash` to install the new firmware inside the ESP chip;
+    - `monitor` to reboot and see the logs;
+    - these commands can be unified into idf.py:
+    
+>`build erase_flash flash monitor`
+
+--> If the ESP board is the only peripheral of the laptop, it should not be necessary to declare which port to use. Otherwise, yes.
 
 It is important however to follow Espressif's guidelines to make sure its framework works properly on any machine.
 
-## **Menuconfig**
+### **Menuconfig**
 
 To change any embedded configurations, it is required to do so with the ESP-IDF utility that is `menuconfig`. By using the `idf.py` tool combined as such:
 
@@ -192,8 +248,11 @@ a graphical interface will show up in your current terminal window (or ESP-IDF c
 
 ### **Logging**
 
-Logging configurations can be found inside the `menuconfig` interface. It can be changed from `verbose` which is the most resource demanding logging mode, to `error` which is the least demanding. It can also remove logging completely for releases.
+- Logging configurations can be found inside the `menuconfig` interface (inside components).
+-  It can be changed from `verbose` which is the most resource demanding logging mode, to `error` which is the least demanding. 
+- It can also remove logging completely for releases.
 
 ### **sdkconfig file**
 
-The sdkconfig file and its *.old and *.defaults counterparts are all representing configurations defined in `menuconfig` prior to compilation. It is important not to change values directly inside those files, but to simply go to `menuconfig` instead.
+- The sdkconfig file and its *.old and *.defaults counterparts are all representing configurations defined in `menuconfig` prior to compilation. 
+- It is important not to change values directly inside those files, but to simply go to `menuconfig` instead.

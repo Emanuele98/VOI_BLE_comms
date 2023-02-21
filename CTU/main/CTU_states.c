@@ -239,10 +239,8 @@ static void CTU_local_fault_state(void *arg)
         else if (peer->alert_payload.alert_field.overtemperature)
             timePad[peer->position-1] = now + TX_RECONNECTION_OVERTEMPERATURE;
         else if (peer->alert_payload.alert_field.overvoltage)
-            {
-                if (peer->position != 3)  
-                    timePad[peer->position-1] = now + TX_RECONNECTION_OVERVOLTAGE;
-            }
+            timePad[peer->position-1] = now + TX_RECONNECTION_OVERVOLTAGE;
+            
     
         nvs_set_i64(my_handle, pads[peer->position-1], timePad[peer->position-1]);
         nvs_commit(my_handle);
@@ -258,8 +256,11 @@ static void CTU_local_fault_state(void *arg)
 
     if (!peer_get_NUM_AUX_CTU())
         CTU_state_change(CTU_CONFIG_STATE, (void *)peer);
-    else
+    else if(CTU_is_charging() || CTU_has_fully_charged())
         CTU_state_change(CTU_POWER_TRANSFER_STATE, (void *)peer);
+    else
+        CTU_state_change(CTU_LOW_POWER_STATE, (void *)peer);
+
 }
 
 /** 
@@ -308,7 +309,7 @@ static void CTU_remote_fault_state(void *arg)
 
     ble_central_kill_CRU(peer->conn_handle, peer->task_handle);
     
-    if (!CTU_is_charging())
+    if (!CTU_is_charging() && !CTU_has_fully_charged())
         CTU_state_change(CTU_LOW_POWER_STATE, (void *)peer);
     else 
         CTU_state_change(CTU_POWER_TRANSFER_STATE, (void *)peer);

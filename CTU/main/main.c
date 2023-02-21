@@ -187,9 +187,6 @@ void app_main(void)
         nvs_flash_init();
     }
 
-    /* Initialize all elements of CTU */
-    init_setup();
-
     /* Bind HCI and controller to NimBLE stack */
     esp_nimble_hci_and_controller_init();
     nimble_port_init();
@@ -200,6 +197,9 @@ void app_main(void)
 
     /* Initialize data structures to track connected peers. */
     peer_init(MYNEWT_VAL(BLE_MAX_CONNECTIONS), 64, 64, 64);
+
+    /* Initialize all elements of CTU */
+    init_setup();
 
     /* Set the default device name. */
     ble_svc_gap_device_name_set("Airfuel CTU");

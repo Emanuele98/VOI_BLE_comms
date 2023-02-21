@@ -184,6 +184,23 @@ bool CTU_is_charging(void)
 }
 
 /**
+ * @brief Boolean function for fully charged state
+ * @details This function asserts if at least one connected scooter is already fully charged.
+ * 
+ * @return True if peer is yes, false in any other case
+*/
+bool CTU_has_fully_charged(void)
+{
+    if(fully_charged[0] || fully_charged[1] || fully_charged[2] || fully_charged[3])
+    {
+        return 1;
+    } else 
+    {
+        return 0;
+    }
+}
+
+/**
  * @brief Determine which scooters do not have a position and set the variable 'to be checked')
  */
 void set_scooters_tobechecked(void)

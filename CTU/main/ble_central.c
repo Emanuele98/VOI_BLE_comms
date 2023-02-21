@@ -840,10 +840,10 @@ static void ble_central_AUX_CTU_task_handle(void *arg)
         } else 
             {
                 //!AVOID FOD DURING LOCALIZATION
-                time(&now);                                 //CHANGE
+                time(&now);                                 
                 if (((current_localization_process() || (now < loc_fail + 10))  && !full_power_pads[peer->position-1] && !fully_charged[peer->voi_code])
-                //!AVOID OV ALERTS FOR PAD 3
-                    || ((peer->position == 3) && (peer->dyn_payload.irect.f < 2.75) && (peer->dyn_payload.temp1.f < 55) && (peer->dyn_payload.temp2.f < 55)) )
+                /*//!AVOID OV ALERTS FOR PAD 3
+                    || ((peer->position == 3) && (peer->dyn_payload.irect.f < 2.75) && (peer->dyn_payload.temp1.f < 55) && (peer->dyn_payload.temp2.f < 55)) */)
                 {
                     peer->dyn_payload.alert = 0;
                     /* Initiate Read procedure */        

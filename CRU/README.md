@@ -2,23 +2,17 @@
 Bluetooth LE architecture for Bumblebee Communication Transmission Unit (CRU)
 
 ## **Table of contents**
-- [**Peripheral**](#Peripheral-(PRU))
-  - [**Table of contents**](#table-of-contents)
-  - [**Installation**](#installation)
-  - [**Application files**](#application-files) 
+- [**Installation**](#installation)
+- [**Application files**](#application-files) 
 - [**idf.py tool**](#idfpy-tool)
-- [**Menuconfig**](#menuconfig)
-    - [**Modes of operation**](#modes-of-operation)
+    - [**Menuconfig**](#menuconfig)
     - [**Logging**](#logging)
     - [**sdkconfig file**](#sdkconfig-file)
-    
+
 ## **Installation**
 
-Making a CRU work with an ESP32 chip requires a few steps. They are provided by the "Get Started" section of the ESP-IDF documentation. It is important to take into account that the PTU has been tested with the IDF v4.1.1 which can be found at https://github.com/espressif/esp-idf. To directly specify an IDF version with Git, use the folloing command:
-
->git clone -b v4.1.1 --recursive https://github.com/espressif/esp-idf.git
-
-Another important step to consider is reviewing the configurations by using `menuconfig`, a tool that allows configurations to be easily changed in a simple CLI.
+Making a CTU work with an ESP32 chip requires a few steps. They are provided by the "Get Started" section of the ESP-IDF documentation at https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html. 
+It is important to take into account that the CTU has been tested with the IDF v4.2 which can be found at https://github.com/espressif/esp-idf.
 
 
 ## **Application files**
@@ -53,12 +47,7 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
         .type = BLE_GATT_SVC_TYPE_PRIMARY,
         .uuid = &wpt_service_uuid.u,
         .characteristics = (struct ble_gatt_chr_def[])
-        {   {
-                // Characteristic: pru static payload.
-                .uuid = &WPT_PEER_STAT_UUID.u,
-                .access_cb = gatt_svr_chr_read_peer_static,
-                .flags = BLE_GATT_CHR_F_READ,
-            },
+        {  
             {
                 // Characteristic: ptu static payload.
                 .uuid = &WPT_PTU_STAT_UUID.u,
@@ -93,10 +82,6 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
 
 - The hardware module takes care of I2C measurements.
 
-## **Non-volatile storage (NVS)**
-
-Currently, the static values needed for the PTU are all stored in a separate partition from the application partition. This partition is named NVS and has to be programmed (flashed) before a PTU application can run properly.
-
 ## **`idf.py` tool**
 
 The `idf.py` tool provided by Espressif allows any ESP32 programmer to build, flash, analyse and configure any ESP chip. The installation procedure also includes this feature and therefore allows a user to take advantage of all the previously described tools.
@@ -105,22 +90,34 @@ Command lists can be obtained with the following command:
 
 >`idf.py`
 
-By combining it with an argument such as `build`, the `idf.py` tool will be able to compile and link the project, and produce binary files that are programmable on a ESP chip.
+Recommended procedure
+    - `idf.py build` to compile and link the project, and produce binary files that are programmable on a ESP chip;
+    - `erase_flash` to erase the previous firmware;
+    - `flash` to install the new firmware inside the ESP chip;
+    - `monitor` to reboot and see the logs;
+    - these commands can be unified into idf.py:
+    
+>`build erase_flash flash monitor`
+
+--> If the ESP board is the only peripheral of the laptop, it should not be necessary to declare which port to use. Otherwise, yes.
 
 It is important however to follow Espressif's guidelines to make sure its framework works properly on any machine.
 
-## **Menuconfig**
+### **Menuconfig**
 
 To change any embedded configurations, it is required to do so with the ESP-IDF utility that is `menuconfig`. By using the `idf.py` tool combined as such:
 
 >`idf.py` menuconfig
 
-a graphical interface will show up in your current terminal window (or ESP-IDF command prompt if on Windows). It is then possible to change all configurations present in the esp-idf repository and in the Central PTU project.
+a graphical interface will show up in your current terminal window (or ESP-IDF command prompt if on Windows). It is then possible to change all configurations present in the esp-idf repository and in the Central CTU project.
 
 ### **Logging**
 
-Logging configurations can be found inside the `menuconfig` interface. It can be changed from `verbose` which is the most resource demanding logging mode, to `error` which is the least demanding. It can also remove logging completely for releases.
+- Logging configurations can be found inside the `menuconfig` interface (inside components).
+-  It can be changed from `verbose` which is the most resource demanding logging mode, to `error` which is the least demanding. 
+- It can also remove logging completely for releases.
 
 ### **sdkconfig file**
 
-The sdkconfig file and its *.old and *.defaults counterparts are all representing configurations defined in `menuconfig` prior to compilation. It is important not to change values directly inside those files, but to simply go to `menuconfig` instead.
+- The sdkconfig file and its *.old and *.defaults counterparts are all representing configurations defined in `menuconfig` prior to compilation. 
+- It is important not to change values directly inside those files, but to simply go to `menuconfig` instead.
