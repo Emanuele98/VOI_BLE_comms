@@ -2,16 +2,14 @@
 Bluetooth LE architecture for Bumblebee Auxiliary Communication Transmitting Unit (A-CTU)
 
 ## **Table of contents**
-- [**Peripheral**](#Peripheral-(PRU))
-  - [**Table of contents**](#table-of-contents)
-  - [**Installation**](#installation)
-  - [**Application files**](#application-files) 
+- [**Installation**](#installation)
+
+- [**Application files**](#application-files) 
+
 - [**idf.py tool**](#idfpy-tool)
-- [**Menuconfig**](#menuconfig)
-    - [**Modes of operation**](#modes-of-operation)
+    - [**Menuconfig**](#menuconfig)
     - [**Logging**](#logging)
     - [**sdkconfig file**](#sdkconfig-file)
-    
 
 ## **Installation**
 
