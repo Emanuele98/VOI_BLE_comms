@@ -99,9 +99,9 @@ The CTU state machine is handled almost entirely inside this module. It progress
     - Happens when sensor values received from CRU are over the defined limit (overvoltage | overcurrent | overtemperature);
     - At first, the application stop the power output under the relative scooter;
     - The scooter won't be able to enstablish the BLE connection again for some time depending on the type of alert:
-        - RX_RECONNECTION_OVERCURRENT;
-        - RX_RECONNECTION_OVERTEMPERATURE;
-        - RX_RECONNECTION_OVERVOLTAGE; 
+        - `RX_RECONNECTION_OVERCURRENT`;
+        - `RX_RECONNECTION_OVERTEMPERATURE`;
+        - `RX_RECONNECTION_OVERVOLTAGE`; 
     - Finally, the master then goes back to the:
         - Low Power state if no other scooters are currently being charged or have already reached the fully charged state;
         - Power Transfer State otherwise.
@@ -168,11 +168,6 @@ The CTU state machine is handled almost entirely inside this module. It progress
     - Restrictions:
         - Only one CRU can undergo the localization process per time to avoid misunderstandings; 
         - If position not found after a predefined amount of time, it disconnects to allow other CRU to try the process.
-   
-
-- **Signal reception**
-
-    On any signal reception, the event handler that was described before will handle any events related to those signals. For example, a notification will trigger a notification event in `ble_central_gap_event` and parse all bytes from the characteristic that triggered this specific notification (for the CTU, notifications are in fact alerts from the CRU).
 
 - **Peer task handling**
 
