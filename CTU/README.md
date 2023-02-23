@@ -3,7 +3,6 @@ Bluetooth LE architecture for Bumblebee power transmission unit (CTU)
 
 ## **Table of contents**
 - [**Installation**](#installation)
-
 - [**Code Components**](#code-components)
     - [**Main (main.c)**](#main-mainc)
     - [**CTU states (CTU_states.c)**](#CTU-states-CTU_statesc)
@@ -12,18 +11,19 @@ Bluetooth LE architecture for Bumblebee power transmission unit (CTU)
     - [**SD Card (sd_card.c)**](#sd-card-sd_cardc)
     - [**Peer (peer.c)**](#peer-peerc)
     - [**DHT22 sensor (DHT22.c)**](#DHT22-sensor-DHT22.c)
-
-
 - [**idf.py tool**](#idfpy-tool)
     - [**Menuconfig**](#menuconfig)
     - [**Logging**](#logging)
     - [**sdkconfig file**](#sdkconfig-file)
 
+--------------------------------------------------
 
 ## **Installation**
 
 Making a CTU work with an ESP32 chip requires a few steps. They are provided by the "Get Started" section of the ESP-IDF documentation at https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html. 
 It is important to take into account that the CTU has been tested with the IDF v4.2 which can be found at https://github.com/espressif/esp-idf.
+
+--------------------------------------------------
 
 ## **Code Components**
 
@@ -216,6 +216,7 @@ Internal structure for CTU peer module. The peer is the main container for any p
 
 Temperature and Humidity sensor. Provides value and checks every `PERIODIC_AMBIENT_TEMP_TIMER` whether it's too cold to enable any charging through the variable `TOO_COLD`. Also, NVS values about the reconnection times are refreshed here as very CPU expesive.
 
+--------------------------------------------------
 
 ## **`idf.py` tool**
 
