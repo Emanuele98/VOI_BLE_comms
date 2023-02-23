@@ -33,10 +33,10 @@ Throughout this document, mentions of main and host are not uncommon. The main r
 - `wpt_svc_uuid` (defined by Bluetooth SIG).
     
 4 Characteristics:
-- `wpt_char_control_uuid`; 
-- `wpt_char_alert_uuid`;  
-- `wpt_char_stat_uuid`; 
-- `wpt_char_dyn_uuid`.
+- `wpt_char_control_uuid` (defined by AirFuel standard); 
+- `wpt_char_alert_uuid` (defined by AirFuel standard);  
+- `wpt_char_stat_uuid` (defined by AirFuel standard); 
+- `wpt_char_dyn_uuid` (defined by AirFuel standard).
 
 ### **Main (main.c)**
 
