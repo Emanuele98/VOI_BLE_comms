@@ -30,7 +30,7 @@ It is important to take into account that the CTU has been tested with the IDF v
 Throughout this document, mentions of main and host are not uncommon. The main refers to the RTOS context that initiates the program following the bootloader application. It also takes care of the state machine that runs on the ESP32. The main resides on the APP_CPU (Core 1). The host refers to another context, one that handles the NimBLE stack and its various states. The host resides on the PRO_CPU (Core 0).
 
 1 Service:
-- wpt_svc_uuid (defined by Bluetooth SIG).
+- `wpt_svc_uuid` (defined by Bluetooth SIG).
     
 4 Characteristics:
 - `wpt_char_control_uuid`; 
