@@ -82,10 +82,21 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
 
 ### **aux_ctu_hw.c**
 - The hardware module takes care of I2C measurements;
-- Two output pins are responsible for switching the pad on/off in full/low power mode;
-- Also, one pin will continuously detect the output of the FPGA for Foreign Object Detection (FOD).
+- 3 output pins:
+    - FULL POWER (`FULL_POWER_OUT_PIN`);
+    - LOW POWER (`LOW_POWER_OUT_PIN`);
+    - OR GATE (`OR_GATE`);
+- Only one output pin can be enabled at a time. Use `switch_safely_off()` to switch safely OFF.
+- Also, one pin will continuously detect the output of the FPGA for Foreign Object Detection (FOD) (`FOD_FPGA`).
 
 ### **led_strip.c**
+RMT peripheral is used to control an LED strip which show the state of the tx pad. (https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/rmt.html)
+3 software timers continuously run:
+    - Connected state (connected_leds_handle);
+    - Misalignment state (misaligned_leds_handle);
+    - Charging state (charging_leds_handle).
+They are enabled (when necessary) by, respectively, `strip_enable`, `strip_misalignment`, and `strip_charging`.
+`set_strip()` is used to set a fixed colour to the strip, passing the RGB values.
     
 ------------------------
 ## **`idf.py` tool**
