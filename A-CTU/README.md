@@ -5,10 +5,10 @@ Bluetooth LE architecture for Bumblebee Auxiliary Communication Transmitting Uni
 - [**Installation**](#installation)
 
 - [**Application files**](#application-files) 
-    - [**Main.c**](#main.c)
-    - [**ble_wpt_aux_ctu.c**](#ble_wpt_aux_ctu.c)
-    - [**aux_ctu_hw.c**](#aux_ctu_hw.c)
-    - [**led_strip.c**](#led_strip.c)
+    - [**main.c**](#mainc)
+    - [**ble_wpt_aux_ctu.c**](#ble_wpt_aux_ctuc)
+    - [**aux_ctu_hw.c**](#aux_ctu_hwc)
+    - [**led_strip.c**](#led_stripc)
 
 - [**idf.py tool**](#idfpy-tool)
     - [**Menuconfig**](#menuconfig)
