@@ -5,6 +5,10 @@ Bluetooth LE architecture for Bumblebee Auxiliary Communication Transmitting Uni
 - [**Installation**](#installation)
 
 - [**Application files**](#application-files) 
+    - [**main.c**](#mainc)
+    - [**ble_wpt_aux_ctu.c**](#ble_wpt_aux_ctuc)
+    - [**aux_ctu_hw.c**](#aux_ctu_hwc)
+    - [**led_strip.c**](#led_stripc)
 
 - [**idf.py tool**](#idfpy-tool)
     - [**Menuconfig**](#menuconfig)
@@ -12,36 +16,26 @@ Bluetooth LE architecture for Bumblebee Auxiliary Communication Transmitting Uni
     - [**sdkconfig file**](#sdkconfig-file)
 
 ## **Installation**
-
 Making a CTU work with an ESP32 chip requires a few steps. They are provided by the "Get Started" section of the ESP-IDF documentation at https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html. 
 It is important to take into account that the CTU has been tested with the IDF v4.2 which can be found at https://github.com/espressif/esp-idf.
 
+------------------------
 
 ## **Application files**
-------------------------
 Most of what the application does can be seen inside the _main.c_ file.
 
-  * main.c
+### **main.c**
 
-       - This file contains most of the program with all the different initialization functions. It also contains the basis for the application timers and the overall features of the program.
-        - It starts by initializing all the different modules needed by the A-CTU application.
-        - There are 2 timers which update dynamic and alert values, respectively, every 10ms and 250 ms
-------------------------
-    
-In the _ble_ folder, there are 2 files that handle Bluetooth Low Energy functions. Specifically, it takes care of all the characteristics callbacks related to the Wireless Power Transfer service and it also takes care of the characteristics payloads.
-
-   * ble_wpt_aux_ctu.h
-   
-      - This header file defines some variables for the preprocessor as well as the data structures needed for the application. It contains all the different structures for BLE characteristics, in accordance with the AFA standard;
-      - The way UUIDs work in the software is by masking specific characteristic UUIDs with the base 128 bits vendor UUID. Therefore, when the application refers to a BLE characteristic, the resulting UUID is the combination of both the mask and the base;
-      -The most important components of this header file are all the structures that define the various characteristic payloads.
+- This file contains most of the program with all the different initialization functions. It also contains the basis for the application timers and the overall features of the program.
+- It starts by initializing all the different modules needed by the A-CTU application.
+- There are 2 timers which update dynamic and alert values, respectively, every `DYNAMIC_PARAM_TIMER_INTERVAL` and `ALERT_PARAM_TIMER_INTERVAL`
      
-   * ble_wpt_aux_ctu.c
+### **ble_wpt_aux_ctu.c**
    
-      - This file takes care of BLE events and their handlers, characteristic definitions and payload unpacking/updating;
-      - An unpacking function handles a particular set of payloads coming from a CTU. It involves the use of a buffer and a GATTS type function named `ble_hs_mbuf_from_flat`;
-      - As for the updating functions, they are composed of a fixed length buffer and a call to a interface function `ble_hs_mbuf_to_flat`;
-      - Every characteristic read/write/notify is handled by its respective callback function, declared at the beginning.
+- This file takes care of BLE events and their handlers, characteristic definitions and payload unpacking/updating;
+- An unpacking function handles a particular set of payloads coming from a CTU. It involves the use of a buffer and a GATTS type function named `ble_hs_mbuf_from_flat`;
+- As for the updating functions, they are composed of a fixed length buffer and a call to a interface function `ble_hs_mbuf_to_flat`;
+- Every characteristic read/write/notify is handled by its respective callback function, declared at the beginning.
 
 ```
 static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
@@ -86,12 +80,25 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
 };
 ```
 
-### **Hardware utility (ptu_hw.c)**
+### **aux_ctu_hw.c**
+- The hardware module takes care of I2C measurements;
+- 3 output pins:
+    - FULL POWER (`FULL_POWER_OUT_PIN`);
+    - LOW POWER (`LOW_POWER_OUT_PIN`);
+    - OR GATE (`OR_GATE`);
+- Only one output pin can be enabled at a time. Use `switch_safely_off()` to switch safely OFF.
+- Also, one pin will continuously detect the output of the FPGA for Foreign Object Detection (FOD) (`FOD_FPGA`).
 
-  - The hardware module takes care of I2C measurements;
-  - Two output pins are responsible for switching the pad on/off in full/low power mode;
-  - Also, one pin will continuously detect the output of the FPGA for Foreign Object Detection (FOD).
-
+### **led_strip.c**
+- RMT peripheral is used to control an LED strip which show the state of the tx pad. (https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/rmt.html)
+- 3 software timers continuously run:
+    - Connected state (connected_leds_handle);
+    - Misalignment state (misaligned_leds_handle);
+    - Charging state (charging_leds_handle).
+- They are enabled (when necessary) by, respectively, `strip_enable`, `strip_misalignment`, and `strip_charging`.
+- `set_strip()` is used to set a fixed colour to the strip, passing the RGB values.
+    
+------------------------
 ## **`idf.py` tool**
 
 The `idf.py` tool provided by Espressif allows any ESP32 programmer to build, flash, analyse and configure any ESP chip. The installation procedure also includes this feature and therefore allows a user to take advantage of all the previously described tools.
@@ -131,7 +138,11 @@ a graphical interface will show up in your current terminal window (or ESP-IDF c
 
 - The sdkconfig file and its *.old and *.defaults counterparts are all representing configurations defined in `menuconfig` prior to compilation. 
 <<<<<<< HEAD
+<<<<<<< HEAD
 - It is important not to change values directly inside those files, but to simply go to `menuconfig` instead.
 =======
 - It is important not to change values directly inside those files, but to simply go to `menuconfig` instead.
 >>>>>>> 2121f114c944631afc2aeb37eee9c87a0c622370
+=======
+- It is important not to change values directly inside those files, but to simply go to `menuconfig` instead.
+>>>>>>> 5e6caafbd35d047d11a7a7ccb77f47164af65bdd
