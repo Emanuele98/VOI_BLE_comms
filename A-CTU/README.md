@@ -130,4 +130,8 @@ a graphical interface will show up in your current terminal window (or ESP-IDF c
 ### **sdkconfig file**
 
 - The sdkconfig file and its *.old and *.defaults counterparts are all representing configurations defined in `menuconfig` prior to compilation. 
+<<<<<<< HEAD
 - It is important not to change values directly inside those files, but to simply go to `menuconfig` instead.
+=======
+- It is important not to change values directly inside those files, but to simply go to `menuconfig` instead.
+>>>>>>> 2121f114c944631afc2aeb37eee9c87a0c622370
