@@ -183,7 +183,7 @@ bool all_AUX_CTU_set(void);
 bool is_peer_alone(void);
 bool CTU_is_peer_charging(struct peer *peer);
 bool CTU_is_charging(void);
-bool CTU_has_fully_charged(void)
+bool CTU_has_fully_charged(void);
 uint8_t loc_pad_find(void);
 bool all_low_power_off(void);
 bool low_power_alone(uint8_t pos);
