@@ -15,10 +15,10 @@
 
 
 //A-CTUs bluetooth addresses
-static uint8_t Actu_addr1[6] = {0xd2, 0xa7, 0xc0, 0xe2, 0xde, 0xc4};
-static uint8_t Actu_addr2[6] = {0x46, 0x0b, 0x27, 0xfb, 0x0b, 0xac};
+static uint8_t Actu_addr1[6] = {0x46, 0x0b, 0x27, 0xfb, 0x0b, 0xac};
+static uint8_t Actu_addr2[6] = {0x86, 0x68, 0x24, 0xfb, 0x0b, 0xac};
 static uint8_t Actu_addr3[6] = {0x72, 0x85, 0xed, 0x0c, 0x38, 0x90};
-static uint8_t Actu_addr4[6] = {0x86, 0x68, 0x24, 0xfb, 0x0b, 0xac};
+static uint8_t Actu_addr4[6] = {0xd2, 0xa7, 0xc0, 0xe2, 0xde, 0xc4};
 
 //CRUs bluetooth addresses
 static uint8_t cru_6F35[6] = {0x02, 0xec, 0x25, 0xfb, 0x0b, 0xac};
@@ -527,7 +527,7 @@ static int ble_central_on_AUX_CTU_dyn_read(uint16_t conn_handle,
         } else
         {
             //SWITCH OFF 
-            if ( (peer->position == loc_pad_find()+1) && (!low_power_alone(peer->position)) && (all_scooters_checked()) )
+            if ( (peer->position == loc_pad_find()+1) && (all_scooters_checked()) )
             {
                 while (rc)
                     rc = ble_central_update_control_enables(0, 0, led_state[peer->position-1], peer);

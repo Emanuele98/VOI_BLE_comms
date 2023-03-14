@@ -58,8 +58,8 @@
 #define BLE_WPT_INITIAL_CONN_ITVL_MIN       (10 * 1000 / BLE_HCI_CONN_ITVL)
 #define BLE_WPT_INITIAL_CONN_ITVL_MAX       (30 * 1000 / BLE_HCI_CONN_ITVL)
 
-#define CTU_TIMER_PERIOD                    pdMS_TO_TICKS(3000)
-#define CRU_TIMER_PERIOD                    pdMS_TO_TICKS(3000)
+#define CTU_TIMER_PERIOD                    pdMS_TO_TICKS(1000)
+#define CRU_TIMER_PERIOD                    pdMS_TO_TICKS(1000)
 #define LOC_CTU_TIMER_PERIOD               	pdMS_TO_TICKS(300)
 #define LOC_CRU_TIMER_PERIOD                pdMS_TO_TICKS(100)
 
