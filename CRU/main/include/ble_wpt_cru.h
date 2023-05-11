@@ -35,8 +35,6 @@
 #include "host/util/util.h"
 
 
-//timers
-TimerHandle_t dynamic_t_handle, alert_t_handle;
 
 #define N_BYTES_IN_UUID 16
 #define COMPANY_ID                      0x00FF                                 /**< Airfuel company id. Is passed in advertising data. */
@@ -72,9 +70,9 @@ wpt_alert_payload_t _value3_name;
 /**                   LOCAL PRU CONFIGURATIONS                    **/
 /*******************************************************************/
 //LIMITS BEFORE SENDING ALERTS
-#define OVER_CURRENT                    1								 	   /**< Maximum current tolerated */
-#define OVER_VOLTAGE                    180 	                               /**< Maximum voltage tolerated */
-#define OVER_TEMPERATURE                40									   /**< Maximum temperature tolerated */
+#define OVER_CURRENT                    2								 	   /**< Maximum current tolerated */
+#define OVER_VOLTAGE                    80 //check under 50 	               /**< Maximum voltage tolerated */
+#define OVER_TEMPERATURE                50									   /**< Maximum temperature tolerated */
 /*Voltage treshold during FULL-POWER mode */
 #define VOLTAGE_FULL_THRESH 110
 /* Voltage treshold for checking charging complete */
@@ -93,8 +91,8 @@ typedef struct
     union i2c         irect;              /**< [mandatory] Irect value from I2C (4 bytes). */
     union i2c         temp1;               /**< [optional] Temperature value from I2C (4 bytes). */
     union i2c         temp2;               /**< [optional] Temperature value from I2C (4 bytes). NOT CURRENTLY USED */
-	uint8_t	          alert;		      /**< [mandatory] CRU alert field for warnings to send to CTU (1 byte). */
-	uint8_t	          RFU;		          /**< [optional] Reserved for future use (1 byte). */
+	uint8_t	          alert;  		      /**< [mandatory] CRU alert field for warnings to send to CTU (1 byte). */
+	uint8_t	          RFU; 		          /**< [optional] Reserved for future use (1 byte). */
 } wpt_dynamic_payload_t;
 
 /** @brief Dynamic characteristic structure. This contains elements necessary for static payload. */

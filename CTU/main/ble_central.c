@@ -24,7 +24,11 @@ static uint8_t Actu_addr4[6] = {0xd2, 0xa7, 0xc0, 0xe2, 0xde, 0xc4};
 static uint8_t cru_6F35[6] = {0x02, 0xec, 0x25, 0xfb, 0x0b, 0xac};
 static uint8_t cru_3PAU[6] = {0x5a, 0x63, 0x25, 0xfb, 0x0b, 0xac};
 static uint8_t cru_CE8J[6] = {0x86, 0x85, 0xed, 0x0c, 0x38, 0x90};
-static uint8_t cru_D8X5[6] = {0x16, 0xab, 0xc0, 0xe2, 0xde, 0xc4}; // Lab KV3K scooter
+static uint8_t cru_D8X5[6] = {0x16, 0x2f, 0x46, 0xef, 0x49, 0xc0}; // Lab isinwheel scooter
+
+//TESTING NEW RX BOARD
+//static uint8_t Actu_addr1[6] = {0x72, 0x85, 0xed, 0x0c, 0x38, 0x90};
+//static uint8_t cru_D8X5[6] = {0x12, 0x26, 0x2c, 0x9e, 0xf0, 0xc8}; 
 
 //timer 
 static time_t switch_pad_ON = 0, loc_success = 0;
@@ -639,7 +643,7 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
         if ((peer->dyn_payload.vrect.f < VOLTAGE_FULL_THRESH_OFF) && (time_sec > BATTERY_REACTION_TIME))
         {
             peer->correct = false;
-            ESP_LOGE(TAG, "Voltage no longer received! --> SCOOTER LEFT THE PLATFORM");
+            ESP_LOGE(TAG, "Voltage no longer received! --> SCOOTER LEFT THE PLATFORM %.2f", peer->dyn_payload.vrect.f);
             //NVS writing
             esp_err_t err = nvs_open("reconnection", NVS_READWRITE, &my_handle);
             if (err != ESP_OK) 
@@ -694,7 +698,7 @@ static int ble_central_on_CRU_dyn_read(uint16_t conn_handle,
                     write_sd_card(rx_charge_complete[peer->voi_code], 1.00, &peer->alert_payload.alert_time);
                 if (MQTT)
                     esp_mqtt_client_publish(client, rx_charge_complete[peer->voi_code], "1", 0, 0, 0);
-            } else if (rssiCheck[peer->voi_code] >= RSSI_ATTEMPT)
+            } else if ((rssiCheck[peer->voi_code] >= RSSI_ATTEMPT) || (peer->dyn_payload.RFU))
                     {
                         // if no - disconnect both pad and scooter
                         if (SD_CARD)
@@ -1673,8 +1677,8 @@ int ble_central_gap_event(struct ble_gap_event *event, void *arg)
                 break;
             }
 
-            if (MQTT)
-                esp_mqtt_client_publish( client, debug, "connection", 0, 0, 0);
+            //if (MQTT)
+            //    esp_mqtt_client_publish( client, debug, "connection", 0, 0, 0);
 
             /* Perform service discovery. */
             rc = peer_disc_all(event->connect.conn_handle,
@@ -1804,7 +1808,7 @@ static void ble_central_unpack_AUX_CTU_alert_param(struct os_mbuf* om, uint16_t 
 
         if(peer->alert_payload.alert_field.overvoltage)
         {
-            //ESP_LOGE(TAG, "ALERT -- OVERVOLTAGE -- aux ctu position %d", peer->position);
+            ESP_LOGE(TAG, "ALERT -- OVERVOLTAGE -- aux ctu position %d", peer->position);
             CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
             if (SD_CARD)
                 write_sd_card(tx_overvoltage[peer->position-1], peer->dyn_payload.vrect.f, &peer->alert_payload.alert_time);
@@ -1812,7 +1816,7 @@ static void ble_central_unpack_AUX_CTU_alert_param(struct os_mbuf* om, uint16_t 
                 esp_mqtt_client_publish(client, tx_overvoltage[peer->position-1], string_value, 0, 0, 0);
         } else if(peer->alert_payload.alert_field.overcurrent)
             {
-                //ESP_LOGE(TAG, "ALERT -- OVERCURRENT -- aux ctu position %d", peer->position);
+                ESP_LOGE(TAG, "ALERT -- OVERCURRENT -- aux ctu position %d", peer->position);
                 CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
                 if (SD_CARD)
                     write_sd_card(tx_overcurrent[peer->position-1], peer->dyn_payload.irect.f, &peer->alert_payload.alert_time);
@@ -1820,7 +1824,7 @@ static void ble_central_unpack_AUX_CTU_alert_param(struct os_mbuf* om, uint16_t 
                     esp_mqtt_client_publish(client, tx_overcurrent[peer->position-1], string_value, 0, 0, 0);
             } else if(peer->alert_payload.alert_field.overtemperature)
                 {
-                    //ESP_LOGE(TAG, "ALERT -- OVERTEMPERATURE -- aux ctu position %d", peer->position);
+                    ESP_LOGE(TAG, "ALERT -- OVERTEMPERATURE -- aux ctu position %d", peer->position);
                     CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
                     if (SD_CARD)
                         write_sd_card(tx_overtemperature[peer->position-1], peer->dyn_payload.temp1.f, &peer->alert_payload.alert_time);
@@ -1828,7 +1832,7 @@ static void ble_central_unpack_AUX_CTU_alert_param(struct os_mbuf* om, uint16_t 
                         esp_mqtt_client_publish(client, tx_overtemperature[peer->position-1], string_value, 0, 0, 0);
                 } else if(peer->alert_payload.alert_field.FOD)
                 {
-                    //ESP_LOGE(TAG, "ALERT -- FOD -- aux ctu position %d", peer->position);
+                    ESP_LOGE(TAG, "ALERT -- FOD -- aux ctu position %d", peer->position);
                     CTU_state_change(CTU_LOCAL_FAULT_STATE, (void *)peer);
                     if (SD_CARD)
                         write_sd_card(tx_fod[peer->position-1], 1.00, &peer->alert_payload.alert_time);
@@ -1857,15 +1861,15 @@ static void ble_central_unpack_CRU_alert_param(struct os_mbuf* om, uint16_t conn
 
         if(peer->alert_payload.alert_field.overvoltage)
         {
-            //ESP_LOGE(TAG, "ALERT -- OVERVOLTAGE -- cru");
+            ESP_LOGE(TAG, "ALERT -- OVERVOLTAGE -- cru");
             CTU_state_change(CTU_REMOTE_FAULT_STATE, (void *)peer);
             if (SD_CARD)
                 write_sd_card(rx_overvoltage[peer->voi_code], peer->dyn_payload.vrect.f, &peer->alert_payload.alert_time);
             if (MQTT)
-                esp_mqtt_client_publish(client, rx_voltage[peer->voi_code], string_value, 0, 0, 0);
+                esp_mqtt_client_publish(client, rx_overvoltage[peer->voi_code], string_value, 0, 0, 0);
         } else if(peer->alert_payload.alert_field.overcurrent)
             {
-                //ESP_LOGE(TAG, "ALERT -- OVERCURRENT -- cru");
+                ESP_LOGE(TAG, "ALERT -- OVERCURRENT -- cru");
                 CTU_state_change(CTU_REMOTE_FAULT_STATE, (void *)peer);
                 if (SD_CARD)
                     write_sd_card(rx_overcurrent[peer->voi_code], peer->dyn_payload.irect.f, &peer->alert_payload.alert_time);
@@ -1873,7 +1877,7 @@ static void ble_central_unpack_CRU_alert_param(struct os_mbuf* om, uint16_t conn
                     esp_mqtt_client_publish(client, rx_overcurrent[peer->voi_code], string_value, 0, 0, 0);
             } else if(peer->alert_payload.alert_field.overtemperature)
                 {
-                    //ESP_LOGE(TAG, "ALERT -- OVERTEMPERATURE -- cru");
+                    ESP_LOGE(TAG, "ALERT -- OVERTEMPERATURE -- cru");
                     CTU_state_change(CTU_REMOTE_FAULT_STATE, (void *)peer);
                     if (SD_CARD)
                         write_sd_card(rx_overtemperature[peer->voi_code], peer->dyn_payload.temp1.f, &peer->alert_payload.alert_time);
@@ -1881,7 +1885,7 @@ static void ble_central_unpack_CRU_alert_param(struct os_mbuf* om, uint16_t conn
                         esp_mqtt_client_publish(client, rx_overtemperature[peer->voi_code], string_value, 0, 0, 0);
                 }  else if (peer->alert_payload.alert_field.charge_complete)
                     {
-                        //ESP_LOGE(TAG, "ALERT -- CHARGE COMPLETE  -- cru");
+                        ESP_LOGE(TAG, "ALERT -- CHARGE COMPLETE  -- cru");
                         fully_charged[peer->voi_code] = true;
 
                         ble_central_kill_CRU(peer->conn_handle, NULL);
@@ -2020,7 +2024,9 @@ static void ble_central_unpack_dynamic_param(const struct ble_gatt_attr *attr, u
         if ((peer->CRU) && (peer->position))
         {
             if (peer->dyn_payload.vrect.f > VOLTAGE_FULL_THRESH_ON)
-                peer->dyn_payload.rx_power = peer->dyn_payload.vrect.f * peer->dyn_payload.irect.f;              
+                //peer->dyn_payload.rx_power = peer->dyn_payload.vrect.f * peer->dyn_payload.irect.f;     
+                peer->dyn_payload.rx_power =  42 * peer->dyn_payload.irect.f;
+
             else
                 peer->dyn_payload.rx_power = 0;
             if (SD_CARD)
@@ -2036,7 +2042,7 @@ static void ble_central_unpack_dynamic_param(const struct ble_gatt_attr *attr, u
                 esp_mqtt_client_publish(client, rx_voltage[peer->voi_code], string_value, 0, 0, 0);
                 sprintf(string_value, "%.02f", peer->dyn_payload.irect.f);
                 esp_mqtt_client_publish(client, rx_current[peer->voi_code], string_value, 0, 0, 0);
-                sprintf(string_value, "%.02f", peer->dyn_payload.temp1.f);
+                sprintf(string_value, "%.02f", peer->dyn_payload.temp2.f); //change
                 esp_mqtt_client_publish(client, rx_temp[peer->voi_code], string_value, 0, 0, 0);
                 sprintf(string_value, "%.02f", peer->dyn_payload.rx_power);
                 esp_mqtt_client_publish(client, rx_power[peer->voi_code], string_value, 0, 0, 0);
@@ -2044,7 +2050,7 @@ static void ble_central_unpack_dynamic_param(const struct ble_gatt_attr *attr, u
             }
         } if ( (!peer->CRU) && ( (!current_localization_process()) || full_power_pads[peer->position-1] ) )
         {
-            if (peer->dyn_payload.vrect.f > 60)
+            if (peer->dyn_payload.vrect.f > 40)
                 peer->dyn_payload.tx_power = peer->dyn_payload.vrect.f * peer->dyn_payload.irect.f;
             else
                 peer->dyn_payload.tx_power = 0;

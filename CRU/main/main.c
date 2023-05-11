@@ -3,10 +3,104 @@
 // The host resides on the PRO_CPU (Core 0).
 
 #include "esp_err.h"
-
 #include "ble_wpt_cru.h"
+#include "cru_hw.h"
+#include "lis3dh.h"
 
-#include "include/cru_hw.h"
+/* accelerometer */
+
+#define INT_EVENT    // inertial event interrupts used (wake-up, free fall or 6D/4D orientation)
+#define INT_USED
+#define INT1_PIN      34
+
+// user task stack depth for ESP32
+#define TASK_STACK_DEPTH 2048
+
+static lis3dh_sensor_t* sensor;
+
+/**
+ * Common function used to get sensor data.
+ */
+void read_data ()
+{
+    lis3dh_float_data_t  data;
+
+    if (lis3dh_new_data (sensor) &&
+        lis3dh_get_float_data (sensor, &data))
+        // max. full scale is +-16 g and best resolution is 1 mg, i.e. 5 digits
+        printf("%.3f LIS3DH (xyz)[g] ax=%+7.3f ay=%+7.3f az=%+7.3f\n",
+               (double)sdk_system_get_time()*1e-3, 
+                data.ax, data.ay, data.az);
+}
+
+/**
+ * In this case, any of the possible interrupts on interrupt signal *INT1* is
+ * used to fetch the data.
+ *
+ * When interrupts are used, the user has to define interrupt handlers that
+ * either fetches the data directly or triggers a task which is waiting to
+ * fetch the data. In this example, the interrupt handler sends an event to
+ * a waiting task to trigger the data gathering.
+ */
+
+static xQueueHandle gpio_evt_queue = NULL;
+
+// User task that fetches the sensor values.
+
+void user_task_interrupt (void *pvParameters)
+{
+    uint8_t gpio_num;
+
+    while (1)
+    {
+        //* MOTION WAKE UP INTERRUPT USED *//
+        
+        if (xQueueReceive(gpio_evt_queue, &gpio_num, portMAX_DELAY))
+        {
+            lis3dh_int_event_source_t event_src = {};
+
+            // get the source of the interrupt and reset *INTx* signals
+            lis3dh_get_int_event_source (sensor, &event_src, lis3dh_int_event1_gen);
+ 
+            // in case of event interrupt
+            if (event_src.active)
+            {
+                //if (event_src.x_low)  printf("x is lower than threshold\n");
+                //if (event_src.y_low)  printf("y is lower than threshold\n");
+                //if (event_src.z_low)  printf("z is lower than threshold\n");
+                //if (event_src.x_high) printf("x is higher than threshold\n");
+                //if (event_src.y_high) printf("y is higher than threshold\n");
+                //if (event_src.z_high) printf("z is higher than threshold\n");
+
+                if (event_src.x_high || event_src.y_high || event_src.z_high)
+                {
+                    printf("Motion detected\n");
+                    dyn_payload.RFU = 1;
+                }
+            }
+        }
+        
+        //* READ DATA FROM SENSOR *//
+        /*
+        // read sensor data
+        read_data ();
+        
+        // passive waiting until 1 second is over
+        vTaskDelay(1000/portTICK_PERIOD_MS);
+        */
+    }
+}
+
+// Interrupt handler which resumes user_task_interrupt on interrupt
+
+void IRAM int_signal_handler (uint8_t gpio)
+{
+    // send an event with GPIO to the interrupt user task
+    xQueueSendFromISR(gpio_evt_queue, &gpio, NULL);
+}
+
+
+
 
 /*******************************************************************/
 /**                           DEFINES                             **/
@@ -18,7 +112,6 @@
 
 static const char* TAG = "MAIN";
 
-static float volt, curr, t;
 static int counter = 0, Temp_counter = 0, Volt_counter = 0, Curr_counter = 0, ChargeComp_counter = 0;
 
 int i2c_master_port;
@@ -29,50 +122,83 @@ static uint8_t own_addr_type;
 static int bleprph_gap_event(struct ble_gap_event *event, void *arg);
 
 
+//read dynamic parameters from ADC sensors
+static void get_adc(void *arg)
+{
+    static float volt = 0, curr = 0;
+    static int adc_counter = 0;
 
+    while(1)
+    {
+        adc_counter++;
+        
+        //voltage
+        volt += adc_read_voltage_sensor();
+        //current
+        curr += adc_read_current_sensor();         
+        
+        //Multisampling
+        if (adc_counter == NO_OF_SAMPLES)
+        {
+            //average
+            dyn_payload.vrect.f = volt / NO_OF_SAMPLES;
+            dyn_payload.irect.f = curr / NO_OF_SAMPLES;
+
+            volt = 0;
+            curr = 0;
+            adc_counter = 0;
+
+            //ESP_LOGW(TAG, "Voltage: %.2f, Current: %.2f", dyn_payload.vrect.f, dyn_payload.irect.f );
+            vTaskDelay(pdMS_TO_TICKS(100));
+        }
+        /* Feed watchdog */
+        esp_task_wdt_reset();
+    }
+
+    //if for any reason the loop terminates
+    vTaskDelete(NULL); 
+}
 
 //read dynamic parameters from I2C sensors
-static void dynamic_param_timeout_handler(void *arg)
+static void get_temp(void *arg)
 {
-    if (xSemaphoreTake(i2c_sem, pdMS_TO_TICKS(1000)) == pdTRUE)
+    while (1)
     {
-
-        switch(counter)
+        float t1 = 0, t2 = 0;
+        if (xSemaphoreTake(i2c_sem, pdMS_TO_TICKS(1000)) == pdTRUE)
         {
-            //voltage
-            case 0:
-                counter++;
-                volt = i2c_read_voltage_sensor();
-                if (volt !=-1)
-                    dyn_payload.vrect.f = volt;
-                break;
-            
-            //current
-            case 1:
-                counter++;
-                curr = i2c_read_current_sensor();
-                if (curr != -1)
-                    dyn_payload.irect.f = curr;         
-                break;
+            switch(counter)
+            {
+                //temperature 1
+                case 0:
+                    counter++;
+                    t1 = i2c_read_temperature_sensor(0);
+                    if (t1 != -1)
+                        dyn_payload.temp1.f = t1;
+                    break;
 
-            //temperature 1
-            case 2:
-                counter = 0;
-                t = i2c_read_temperature_sensor();
-                if (t != -1)
-                    dyn_payload.temp1.f = t;
-                break;
-            default:
-                xSemaphoreGive(i2c_sem);
-                break;
+                //temperature 2
+                case 1:
+                    counter = 0;
+                    t2 = i2c_read_temperature_sensor(1);
+                    if (t2 != -1)
+                        dyn_payload.temp2.f = t2;
+                    break;
+                default:
+                    xSemaphoreGive(i2c_sem);
+                    break;
+            }
         }
     }
+
+    //if for any reason the loop terminates
+    vTaskDelete(NULL); 
 }
 
 static void alert_timeout_handler(void *arg)
 {      
     // Validate temperature levels
-    if (dyn_payload.temp1.f > OVER_TEMPERATURE)
+    if ((dyn_payload.temp1.f > OVER_TEMPERATURE) || (dyn_payload.temp2.f > OVER_TEMPERATURE))
     {
         Temp_counter++;
         //ESP_LOGI(TAG, "OVER TEMPERATURE");
@@ -158,12 +284,12 @@ static void bleprph_advertise(void)
 
 //*  FAKE MASTER
 
-    master.val[0]= 0xd6;
-    master.val[1]= 0x9b;
-    master.val[2]= 0x25;
-    master.val[3]= 0xfb;
-    master.val[4]= 0x0b;
-    master.val[5]= 0xac;
+    master.val[0]= 0xde;
+    master.val[1]= 0x52;
+    master.val[2]= 0xa9;
+    master.val[3]= 0xb2;
+    master.val[4]= 0x43;
+    master.val[5]= 0x54;
 
     rc = ble_gap_adv_start(own_addr_type, &master, BLE_HS_FOREVER,
                            &adv_params, bleprph_gap_event, NULL);
@@ -181,6 +307,27 @@ static void bleprph_advertise(void)
 */
 void init_hw(void)
 {
+    /* INIT OUTPUT PIN */
+    gpio_config_t io_conf;
+    //disable interrupt
+    io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
+    //set as output mode
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    //bit mask of the pins
+    io_conf.pin_bit_mask = (1ULL<<25);
+    //disable pull-down mode
+    io_conf.pull_down_en = 0;
+    //disable pull-up mode
+    io_conf.pull_up_en = 0;
+    //configure GPIO with the given settings
+    gpio_config(&io_conf);
+    //SET IT LOW
+    gpio_set_level(25, 0);
+
+    /* Init adc */
+    init_adc();
+
+    /* init I2C*/
     esp_err_t err_code;
 
     i2c_master_port = I2C_MASTER_NUM;
@@ -189,10 +336,75 @@ void init_hw(void)
     conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
     conf.scl_io_num = I2C_MASTER_SCL_IO;
     conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
-    conf.master.clk_speed = I2C_MASTER_FREQ_HZ;
+    conf.master.clk_speed = I2C_FREQ_400K;
     err_code = i2c_param_config(i2c_master_port, &conf);
     i2c_driver_install(i2c_master_port, conf.mode, I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE, 0);
     ESP_ERROR_CHECK(err_code);
+
+    /* init acceleremoter task */
+    // init the sensor with slave address LIS3DH_I2C_ADDRESS_1 connected to I2C_BUS.
+    sensor = lis3dh_init_sensor (I2C_MASTER_NUM, LIS3DH_I2C_ADDRESS_1, 0);
+
+    if (sensor) 
+    {
+        /** --- INTERRUPT CONFIGURATION PART ---- */
+        
+        // Interrupt configuration has to be done before the sensor is set
+        // into measurement mode to avoid losing interrupts
+
+        // create an event queue to send interrupt events from interrupt
+        // handler to the interrupt task
+        gpio_evt_queue = xQueueCreate(10, sizeof(uint8_t));
+
+        // configure interupt pins for *INT1* and *INT2* signals and set the interrupt handler
+        gpio_enable(INT1_PIN, GPIO_INPUT);
+        gpio_set_interrupt(INT1_PIN, GPIO_INTTYPE_EDGE_POS, int_signal_handler);
+        
+        /** -- SENSOR CONFIGURATION PART --- */
+
+        // set polarity of INT signals if necessary
+        // lis3dh_config_int_signals (sensor, lis3dh_high_active);
+        
+        // enable data interrupts on INT1 
+        lis3dh_int_event_config_t event_config;
+    
+        event_config.mode = lis3dh_wake_up;
+        event_config.threshold = 10;
+        event_config.x_low_enabled  = false;
+        event_config.x_high_enabled = true;
+        event_config.y_low_enabled  = false;
+        event_config.y_high_enabled = true;
+        event_config.z_low_enabled  = false;
+        event_config.z_high_enabled = true;
+        event_config.duration = 0; 
+        event_config.latch = true;
+        
+        lis3dh_set_int_event_config (sensor, &event_config, lis3dh_int_event1_gen);
+        lis3dh_enable_int (sensor, lis3dh_int_event1, lis3dh_int1_signal, true);
+
+
+        // configure HPF and reset the reference by dummy read
+        lis3dh_config_hpf (sensor, lis3dh_hpf_normal, 0, true, true, true, true);
+        lis3dh_get_hpf_ref (sensor);
+        
+        // enable ADC inputs and temperature sensor for ADC input 3
+        lis3dh_enable_adc (sensor, true, true);
+        
+        // LAST STEP: Finally set scale and mode to start measurements
+        lis3dh_set_scale(sensor, lis3dh_scale_2_g);
+        lis3dh_set_mode (sensor, lis3dh_odr_10, lis3dh_high_res, true, true, true);
+
+        /** -- TASK CREATION PART --- */
+
+        // must be done last to avoid concurrency situations with the sensor
+        // configuration part
+
+        // create a task that is triggered only in case of interrupts to fetch the data
+        xTaskCreate(user_task_interrupt, "user_task_interrupt", TASK_STACK_DEPTH, NULL, 2, NULL);
+        
+    }
+    else
+        printf("Could not initialize LIS3DH sensor\n");
 }
 
 /**
@@ -241,13 +453,6 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
     case BLE_GAP_EVENT_DISCONNECT:
         ESP_LOGI(TAG, "disconnect; reason=%d ", event->disconnect.reason);
 
-        /* Stop timers */
-        if (xTimerIsTimerActive(dynamic_t_handle) == pdTRUE)
-            xTimerStop(dynamic_t_handle, 10);
-        
-        if (xTimerIsTimerActive(alert_t_handle) == pdTRUE)
-            xTimerStop(alert_t_handle, 10);
-
         /* Connection terminated; resume advertising. */
         bleprph_advertise();
 
@@ -273,11 +478,12 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
     }
 
     return 0;
-}
+}       
 
+    
 /** 
  * @brief Task function used by the BLE host (NimBLE)
- * @details This function will handle most BLE calls from any other
+ * @details This function will handle most BLE calls from any other 
  *          task running on both cores.
  * 
  * @param param void argument which can be used if needed (not 
@@ -339,16 +545,37 @@ static void host_ctrl_on_sync(void)
 */
 void init_sw_timers(void)
 {
-    //
+    uint8_t err;
+    TimerHandle_t alert_t_handle;
+    
     // Create timers
-    dynamic_t_handle = xTimerCreate("dynamic params", DYNAMIC_PARAM_TIMER_INTERVAL, pdTRUE, NULL, dynamic_param_timeout_handler);
     alert_t_handle = xTimerCreate("alert", ALERT_PARAM_TIMER_INTERVAL, pdTRUE, NULL, alert_timeout_handler);
 
-    if ((dynamic_t_handle == NULL) || (alert_t_handle == NULL))
+    if (alert_t_handle == NULL)
     {
         ESP_LOGW(TAG, "Timers were not created successfully");
         return;
     }
+
+    //Start alert timer
+    xTimerStart(alert_t_handle, 10);
+
+    // create tasks to get measurements as fast as possible
+    
+    err = xTaskCreatePinnedToCore(get_temp, "get_temp", 2048, NULL, 5, NULL, 1);
+    if ( err != pdPASS )
+    {
+        ESP_LOGE(TAG, "Task get_temp was not created successfully");
+        return;
+    }
+    
+    err = xTaskCreatePinnedToCore(get_adc, "get_adc", 5000, NULL, 5, NULL, 1);
+    if( err != pdPASS )
+    {
+        ESP_LOGE(TAG, "Task get_ was not created successfully");
+        return;
+    }
+    
 }
 
 /** 
@@ -411,6 +638,4 @@ void app_main(void)
     /* Initialize all elements of CRU (timers and I2C)*/
     init_setup();   
 
-    /* just for testing I2C */
-    //xTimerStart(dynamic_t_handle, 0);
 }

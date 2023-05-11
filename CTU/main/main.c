@@ -118,6 +118,13 @@ static void host_ctrl_on_sync(void)
     /* Make sure we have proper identity address set (public preferred) */
     ble_hs_util_ensure_addr(0);
 
+    /* Printing ADDR */
+    static uint8_t own_addr_type;
+    uint8_t addr_val[6] = {0};
+    ble_hs_id_copy_addr(own_addr_type, addr_val, NULL);
+    ESP_LOGI(TAG, "Device Address: \n ");
+    ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x \n", addr_val[0], addr_val[1], addr_val[2], addr_val[3], addr_val[4], addr_val[5]);
+
     /* Initialize configuration state */
     CTU_state_change(CTU_CONFIG_STATE, (void *)NULL);
 }

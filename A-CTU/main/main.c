@@ -182,24 +182,12 @@ static void bleprph_advertise(void)
     ble_addr_t master;
     master.type = 0;
 
-//*  REAL MASTER
-/*
-    master.val[0]= 0x12;
-    master.val[1]= 0x15;
-    master.val[2]= 0x9c;
-    master.val[3]= 0x84;
-    master.val[4]= 0x21;
-    master.val[5]= 0x78;
-*/
-//*  FAKE MASTER
-
-    master.val[0]= 0xd6;
-    master.val[1]= 0x9b;
-    master.val[2]= 0x25;
-    master.val[3]= 0xfb;
-    master.val[4]= 0x0b;
-    master.val[5]= 0xac;
-
+    master.val[0]= 0xde;
+    master.val[1]= 0x52;
+    master.val[2]= 0xa9;
+    master.val[3]= 0xb2;
+    master.val[4]= 0x43;
+    master.val[5]= 0x54;
 
     rc = ble_gap_adv_start(own_addr_type, &master, BLE_HS_FOREVER,
                            &adv_params, bleprph_gap_event, NULL);
@@ -437,6 +425,14 @@ void init_hw(void)
     gpio_isr_handler_add(FOD_FPGA, gpio_isr_handler, (void*) FOD_FPGA);
 
     switch_safely_off();
+    //! only for TESTING TUNING!
+    /*
+    disable_low_power_output();
+    disable_OR_output();
+    vTaskDelay(OR_TIME_GAP);
+    //enable power
+    enable_full_power_output();
+    */
 }
 
 /** 
@@ -510,11 +506,4 @@ void app_main(void)
 
     /*uncomment to test the I2C without the need of being connected to the central unit */
     //xTimerStart(dynamic_t_handle, 0);
-
-    //disable OR gate
-    disable_OR_output();
-    //wait 
-    vTaskDelay(OR_TIME_GAP); 
-    //enable power
-    disable_full_power_output();
 }

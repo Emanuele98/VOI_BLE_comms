@@ -107,10 +107,6 @@ static int gatt_svr_chr_read_peer_static(uint16_t conn_handle, uint16_t attr_han
     err_code = os_mbuf_append(ctxt->om, &data,
                         sizeof data);
 
-    //Start app timers
-    xTimerStart(dynamic_t_handle, 10);
-    xTimerStart(alert_t_handle, 10);
-
     //set alert values to initial state 0
     alert_payload.alert_field.overtemperature = 0; 
     alert_payload.alert_field.overvoltage = 0;
@@ -152,6 +148,10 @@ static int gatt_svr_chr_read_dynamic(uint16_t conn_handle, uint16_t attr_handle,
     ESP_LOGW(TAG, "- DYN CHR - rx current = %.02f", dyn_payload.irect.f);
     ESP_LOGW(TAG, "- DYN CHR - rx temperature = %.02f", dyn_payload.temp1.f);
 */
+    // set 0 to accelerometer after you sent it
+    
+    dyn_payload.RFU = 0;
+
     err_code = os_mbuf_append(ctxt->om, &data,
                         sizeof data);
     return err_code;

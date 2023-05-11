@@ -34,22 +34,22 @@
 #define MAX_LOC_CHECKS                8  
 
 /* Minimum time for the peer to wait after a failed localization attempt */
-#define MIN_TIME_AFTER_LOC            5
+#define MIN_TIME_AFTER_LOC            0 //!5
 
 /* Max time allowed without finding any A-CTUs*/
-#define CONF_STATE_TIMEOUT            20
+#define CONF_STATE_TIMEOUT            5 //30
 
 /* Voltage threshold during LOW-POWER mode */
-#define VOLTAGE_LOW_THRESH            /*25*/ 50
+#define VOLTAGE_LOW_THRESH            /*25*/ 40
 
 /* Voltage threshold during FULL-POWER mode on ROLL ON */
-#define VOLTAGE_FULL_THRESH_ON        50
+#define VOLTAGE_FULL_THRESH_ON        40
 
 /* Voltage threshold during FULL-POWER mode on ROLL OFF */
-#define VOLTAGE_FULL_THRESH_OFF       60
+#define VOLTAGE_FULL_THRESH_OFF       40
 
 /* Voltage threshold for misalignment check */
-#define VOLTAGE_MIS_THRESH            90
+#define VOLTAGE_MIS_THRESH            50
 
 /* Time within the battery should pick the voltage */
 #define BATTERY_REACTION_TIME         10
@@ -58,7 +58,7 @@
 #define MIN_LOW_POWER_ON              0.2
 
 /* Minimum time for the Voltage check to be valid after the switching activates another pad */
-#define MIN_SWITCH_TIME               0.025
+#define MIN_SWITCH_TIME               1
 
 /* Number of retries when RSSS is found below the threshold (fully charged)*/
 #define RSSI_ATTEMPT                  5

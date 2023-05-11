@@ -58,10 +58,10 @@ wpt_alert_payload_t _value3_name;
 wpt_control_payload_t _value4_name; 
 
 // XXX_CHAR_SIZE characteristic sizes.
-#define PRU_CONTROL_CHAR_SIZE                                  5
-#define PTU_STATIC_CHAR_SIZE                                   17
-#define PRU_STATIC_CHAR_SIZE                                   6
-#define PRU_DYNAMIC_CHAR_SIZE                                  18
+#define PRU_CONTROL_CHAR_SIZE                                   5
+#define PTU_STATIC_CHAR_SIZE                                    17
+#define PRU_STATIC_CHAR_SIZE                                    6
+#define PRU_DYNAMIC_CHAR_SIZE                                   18
 #define ALERT_CHAR_SIZE                		                    1
 
 
@@ -70,7 +70,7 @@ wpt_control_payload_t _value4_name;
 /*******************************************************************/
 
 #define OVER_CURRENT                    2.75								   /**< Maximum current tolerated for I2C measurements. Flow will change in the future to handle such alert. */
-#define OVER_VOLTAGE                    70 	    	                           /**< Maximum voltage tolerated for I2C measurements. Flow will change in the future to handle such alert. */
+#define OVER_VOLTAGE                    80 	    	                           /**< Maximum voltage tolerated for I2C measurements. Flow will change in the future to handle such alert. */
 #define OVER_TEMPERATURE                55									   /**< Maximum temperature tolerated for I2C measurements. */
 /*Voltage treshold during FULL-POWER mode */
 #define VOLTAGE_FULL_THRESH 110

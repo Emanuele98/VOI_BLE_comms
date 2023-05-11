@@ -58,8 +58,8 @@
 #define BLE_WPT_INITIAL_CONN_ITVL_MIN       (10 * 1000 / BLE_HCI_CONN_ITVL)
 #define BLE_WPT_INITIAL_CONN_ITVL_MAX       (30 * 1000 / BLE_HCI_CONN_ITVL)
 
-#define CTU_TIMER_PERIOD                    pdMS_TO_TICKS(1000)
-#define CRU_TIMER_PERIOD                    pdMS_TO_TICKS(1000)
+#define CTU_TIMER_PERIOD                    pdMS_TO_TICKS(1500)
+#define CRU_TIMER_PERIOD                    pdMS_TO_TICKS(1500)
 #define LOC_CTU_TIMER_PERIOD               	pdMS_TO_TICKS(300)
 #define LOC_CRU_TIMER_PERIOD                pdMS_TO_TICKS(100)
 
@@ -81,8 +81,8 @@
 
 // RECONNECTION TIMES
 #define RECONNECTION_LOC_FAIL               300           //30 sec
-#define RECONNECTION_COMMS_FAIL             30           //30 sec
-#define RECONNECTION_SCOOTER_LEFT           10           //30 sec
+#define RECONNECTION_COMMS_FAIL             0           //30 sec
+#define RECONNECTION_SCOOTER_LEFT           0           //30 sec  //!
 //#define RX_RECONNECTION_AFTER_PAD_KILLED    30         //30 min
 
 /* ASSUMPTION - scooter is in the same pad until it is disconnected */
@@ -90,7 +90,7 @@
 
 #define RX_RECONNECTION_OVERCURRENT         300          //5 min
 #define RX_RECONNECTION_OVERTEMPERATURE     300          //5 min
-#define RX_RECONNECTION_OVERVOLTAGE         300          //5 min
+#define RX_RECONNECTION_OVERVOLTAGE         300          //30 sec
 
 #define TX_RECONNECTION_FOD                 45           //45 sec
 #define TX_RECONNECTION_OVERCURRENT         300          //5 min
