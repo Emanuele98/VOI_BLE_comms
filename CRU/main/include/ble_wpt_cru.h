@@ -69,10 +69,6 @@ wpt_alert_payload_t _value3_name;
 /*******************************************************************/
 /**                   LOCAL PRU CONFIGURATIONS                    **/
 /*******************************************************************/
-//LIMITS BEFORE SENDING ALERTS
-#define OVER_CURRENT                    2								 	   /**< Maximum current tolerated */
-#define OVER_VOLTAGE                    80 //check under 50 	               /**< Maximum voltage tolerated */
-#define OVER_TEMPERATURE                50									   /**< Maximum temperature tolerated */
 /*Voltage treshold during FULL-POWER mode */
 #define VOLTAGE_FULL_THRESH 110
 /* Voltage treshold for checking charging complete */
@@ -104,6 +100,9 @@ typedef struct
     uint8_t           ble_addr3;    /**< [mandatory] address field 3 (1 byte). */
     uint8_t           ble_addr4;    /**< [mandatory] address field 4 (1 byte). */
     uint8_t           ble_addr5;    /**< [mandatory] address field 5 (1 byte). */
+	union i2c         overcurrent;  /**< [mandatory] overcurrent field (4 byte). */
+	uint8_t		      overvoltage;  /**< [mandatory] overvoltage field (1 byte). */
+	uint8_t		      overtemperature;     /**< [mandatory] overtemperature field (1 byte). */
 } wpt_static_payload_t;
 
 /**@brief Alert characteristic structure. This contains elements necessary for alert payload. */

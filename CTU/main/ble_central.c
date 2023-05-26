@@ -27,8 +27,8 @@ static uint8_t cru_CE8J[6] = {0x86, 0x85, 0xed, 0x0c, 0x38, 0x90};
 static uint8_t cru_D8X5[6] = {0x16, 0x2f, 0x46, 0xef, 0x49, 0xc0}; // Lab isinwheel scooter
 
 //TESTING NEW RX BOARD
-//static uint8_t Actu_addr1[6] = {0x72, 0x85, 0xed, 0x0c, 0x38, 0x90};
-//static uint8_t cru_D8X5[6] = {0x12, 0x26, 0x2c, 0x9e, 0xf0, 0xc8}; 
+//static uint8_t Actu_addr1[6] = {0x5a, 0x1f, 0x2c, 0x9e, 0xf0, 0xc8};
+//static uint8_t cru_D8X5[6] = {0x5a, 0x1f, 0x2c, 0x9e, 0xf0, 0xc8}; 
 
 //timer 
 static time_t switch_pad_ON = 0, loc_success = 0;
@@ -1217,6 +1217,7 @@ static void ble_central_on_disc_complete(const struct peer *peer, int status, vo
     {
         goto err;
     }
+    
 
     // Read the CRU Static parameter characteristic.
     static_chr = peer_chr_find_uuid(peer,
@@ -1227,6 +1228,41 @@ static void ble_central_on_disc_complete(const struct peer *peer, int status, vo
     {
         goto err;
     }
+
+    union i2c overc;
+    uint8_t overv, overt;
+    if(!peer->CRU)
+    {
+        overc.f = TX_OVER_CURRENT;
+        overv = TX_OVER_VOLTAGE;
+        overt = TX_OVER_TEMPERATURE;
+    }
+    else 
+    {
+        overc.f = RX_OVER_CURRENT;
+        overv = RX_OVER_VOLTAGE;
+        overt = RX_OVER_TEMPERATURE;
+    }
+
+    uint8_t thresholds[STATIC_CHAR_SIZE];
+    thresholds[0] = overc.b[0]; // Write overcurrent threshold
+    thresholds[1] = overc.b[1]; // Write overcurrent threshold
+    thresholds[2] = overc.b[2]; // Write overcurrent threshold
+    thresholds[3] = overc.b[3]; // Write overcurrent threshold
+    thresholds[4] = overv; // Write overvoltage threshold
+    thresholds[5] = overt;
+    
+    //* Write alerts threshold
+
+    rc = ble_gattc_write_no_rsp_flat(peer->conn_handle, static_chr->chr.val_handle,
+                            thresholds, sizeof thresholds);
+    
+    if (rc != ESP_OK)
+    {
+        goto err;
+    }
+
+    //* Read addresses
 
     rc = ble_gattc_read(peer->conn_handle, static_chr->chr.val_handle,
                         ble_central_on_static_chr_read, (void *)peer);
@@ -1931,11 +1967,7 @@ static void ble_central_unpack_static_param(const struct ble_gatt_attr *attr, ui
                     && (peer->stat_payload.ble_addr2 == Actu_addr4[2]) && (peer->stat_payload.ble_addr1 == Actu_addr4[1]) && (peer->stat_payload.ble_addr0 == Actu_addr4[0]))
         {
             peer->position = 4;
-        } /*else if ((peer->stat_payload.ble_addr5 == 0x30) && (peer->stat_payload.ble_addr4 == 0x8c) && (peer->stat_payload.ble_addr3 == 0x25) 
-                    && (peer->stat_payload.ble_addr2 == 0xfb) && (peer->stat_payload.ble_addr1 == 0x0b) && (peer->stat_payload.ble_addr0 == 0xac))
-        {
-            peer->position = 1;
-        } */else 
+        } else 
         { 
             peer->position = 0;
             ESP_LOGE(TAG, "ERROR - AUX CTU NOT IDENTIFIED ");
@@ -2082,7 +2114,7 @@ static void ble_central_unpack_dynamic_param(const struct ble_gatt_attr *attr, u
 uint8_t ble_central_update_control_enables(uint8_t enable, uint8_t full_power, uint8_t led, struct peer *peer)
 {
     int rc = 0;
-    uint8_t value[PRU_CONTROL_CHAR_SIZE];
+    uint8_t value[CONTROL_CHAR_SIZE];
     const struct peer_chr *control_chr;
 
     //time(&now);

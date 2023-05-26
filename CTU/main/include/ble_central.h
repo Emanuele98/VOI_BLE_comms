@@ -46,6 +46,14 @@
 #include "sd_card.h"
 #include "wifi.h"
 
+
+#define TX_OVER_CURRENT                    2.75						
+#define TX_OVER_VOLTAGE                    80 	    	            
+#define TX_OVER_TEMPERATURE                55						
+#define RX_OVER_CURRENT                    2					
+#define RX_OVER_VOLTAGE                    80									  
+#define RX_OVER_TEMPERATURE                50									   
+
 // number of aux unit
 #define MAX_AUX_CTU                         4
 
@@ -77,7 +85,8 @@
 
 #define WPT_SVC_UUID16                      0xFFFE
 
-#define PRU_CONTROL_CHAR_SIZE               5
+#define STATIC_CHAR_SIZE                6
+#define CONTROL_CHAR_SIZE               5
 
 // RECONNECTION TIMES
 #define RECONNECTION_LOC_FAIL               300           //30 sec

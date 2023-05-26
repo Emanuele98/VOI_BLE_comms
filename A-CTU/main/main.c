@@ -120,7 +120,7 @@ void dynamic_param_timeout_handler(void *arg)
 void alert_timeout_handler(void *arg)
 {      
   		// Validate temperature levels
-		if ((dyn_payload.temp1.f > OVER_TEMPERATURE) || (dyn_payload.temp2.f > OVER_TEMPERATURE))
+		if ((dyn_payload.temp1.f > static_payload.overtemperature) || (dyn_payload.temp2.f > static_payload.overtemperature))
 		{
             Temp_counter++;
 
@@ -132,7 +132,7 @@ void alert_timeout_handler(void *arg)
     	}
 
         // Validate voltage levels
-		if (dyn_payload.vrect.f > OVER_VOLTAGE)
+		if (dyn_payload.vrect.f > static_payload.overvoltage)
 		{
             Volt_counter++;
             if (Volt_counter > 5)
@@ -143,7 +143,7 @@ void alert_timeout_handler(void *arg)
         }
 
         // Validate current levels
-		if (dyn_payload.irect.f > OVER_CURRENT)
+		if (dyn_payload.irect.f > static_payload.overcurrent.f)
 		{
             Curr_counter++;
             if (Curr_counter > 10)
@@ -181,13 +181,21 @@ static void bleprph_advertise(void)
     //declare MASTER ADDRESS
     ble_addr_t master;
     master.type = 0;
-
+/*
     master.val[0]= 0xde;
     master.val[1]= 0x52;
     master.val[2]= 0xa9;
     master.val[3]= 0xb2;
     master.val[4]= 0x43;
     master.val[5]= 0x54;
+*/
+    /* test */
+    master.val[0]= 0x3e;
+    master.val[1]= 0xac;
+    master.val[2]= 0xc0;
+    master.val[3]= 0xe2;
+    master.val[4]= 0xde;
+    master.val[5]= 0xc4;
 
     rc = ble_gap_adv_start(own_addr_type, &master, BLE_HS_FOREVER,
                            &adv_params, bleprph_gap_event, NULL);

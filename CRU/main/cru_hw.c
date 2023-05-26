@@ -52,7 +52,7 @@ float adc_read_voltage_sensor(void)
     }
     else
     {
-        //printf("--VOLTAGE: %.2f\n", value);
+        printf("--VOLTAGE: %.2f\n", value);
         return value;
     }
 }

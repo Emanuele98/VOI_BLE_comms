@@ -69,9 +69,6 @@ wpt_control_payload_t _value4_name;
 /**                   LOCAL PTU CONFIGURATIONS                    **/
 /*******************************************************************/
 
-#define OVER_CURRENT                    2.75								   /**< Maximum current tolerated for I2C measurements. Flow will change in the future to handle such alert. */
-#define OVER_VOLTAGE                    80 	    	                           /**< Maximum voltage tolerated for I2C measurements. Flow will change in the future to handle such alert. */
-#define OVER_TEMPERATURE                55									   /**< Maximum temperature tolerated for I2C measurements. */
 /*Voltage treshold during FULL-POWER mode */
 #define VOLTAGE_FULL_THRESH 110
 /* Voltage treshold for checking charging complete */
@@ -89,7 +86,7 @@ uint8_t Temp_counter, Volt_counter, Curr_counter;
 union i2c{
 	float f;
 	uint8_t b[4];
-};
+};              
 
 /** @brief Dynamic characteristic structure. This contains elements necessary for dynamic payload. */
 typedef struct
@@ -111,6 +108,9 @@ typedef struct
     uint8_t           ble_addr3;    /**< [mandatory] address field 3 (1 byte). */
     uint8_t           ble_addr4;    /**< [mandatory] address field 4 (1 byte). */
     uint8_t           ble_addr5;    /**< [mandatory] address field 5 (1 byte). */
+	union i2c         overcurrent;  /**< [mandatory] static_payload.overcurrent field (4 byte). */
+	uint8_t		      overvoltage;  /**< [mandatory] static_payload.overvoltage field (1 byte). */
+	uint8_t		      overtemperature;     /**< [mandatory] static_payload.overtemperature field (1 byte). */
 } wpt_static_payload_t;
 
 /**@brief Alert characteristic structure. This contains elements necessary for alert payload. */

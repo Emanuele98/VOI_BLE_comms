@@ -46,7 +46,7 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
                 // Characteristic: cru static payload.
                 .uuid = &WPT_PEER_STAT_UUID.u,
                 .access_cb = gatt_svr_chr_read_peer_static,
-                .flags = BLE_GATT_CHR_F_READ,
+                .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE,
             },
             {
                 // Characteristic: cru dynamic payload.
@@ -71,41 +71,86 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
     },
 };
 
+static int
+gatt_svr_chr_write(struct os_mbuf *om, uint16_t min_len, uint16_t max_len,
+                   void *dst, uint16_t *len)
+{
+    uint16_t om_len;
+    int rc;
+
+    om_len = OS_MBUF_PKTLEN(om);
+    if (om_len < min_len || om_len > max_len) {
+    ESP_LOGW(TAG, "err! length=%d", om_len);
+
+        return BLE_ATT_ERR_INVALID_ATTR_VALUE_LEN;
+    }
+
+    rc = ble_hs_mbuf_to_flat(om, dst, max_len, len);
+    if (rc != 0) {
+        return BLE_ATT_ERR_UNLIKELY;
+    }
+
+    return 0;
+}
+
 static int gatt_svr_chr_read_peer_static(uint16_t conn_handle, uint16_t attr_handle,
                              struct ble_gatt_access_ctxt *ctxt,
                              void *arg)
 {
     ESP_LOGE(TAG, "READ PRU STATIC CALLBACK");
 
-    int err_code ;
+    int err_code = 0 ;
+    uint8_t data[PRU_STATIC_CHAR_SIZE];
 
-/*
-    //INIT STATIC PAYLOAD 
-    uint8_t mac[6] = {0};
-    esp_efuse_mac_get_default(mac);
-    ESP_LOGI(TAG, "MAC Address: \n ");
-    ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x \n", mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
-*/
-    /* Printing ADDR */
-    uint8_t ble_addr[6] = {0};
-    ble_hs_id_copy_addr(0, ble_addr, NULL);
+    //*READ ADDRESSES
+    if (ctxt->op == BLE_GATT_ACCESS_OP_READ_CHR)
+    {
+    /*
+        //INIT STATIC PAYLOAD 
+        uint8_t mac[6] = {0};
+        esp_efuse_mac_get_default(mac);
+        ESP_LOGI(TAG, "MAC Address: \n ");
+        ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x \n", mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
+    */
+        /* Printing ADDR */
+        uint8_t ble_addr[6] = {0};
+        ble_hs_id_copy_addr(0, ble_addr, NULL);
 
-    static_payload.ble_addr0 = ble_addr[0];
-    static_payload.ble_addr1 = ble_addr[1];
-    static_payload.ble_addr2 = ble_addr[2];
-    static_payload.ble_addr3 = ble_addr[3];
-    static_payload.ble_addr4 = ble_addr[4];
-    static_payload.ble_addr5 = ble_addr[5];
+        static_payload.ble_addr0 = ble_addr[0];
+        static_payload.ble_addr1 = ble_addr[1];
+        static_payload.ble_addr2 = ble_addr[2];
+        static_payload.ble_addr3 = ble_addr[3];
+        static_payload.ble_addr4 = ble_addr[4];
+        static_payload.ble_addr5 = ble_addr[5];
 
-    uint8_t data[PRU_STATIC_CHAR_SIZE] = { static_payload.ble_addr0,
-                                           static_payload.ble_addr1,
-                                           static_payload.ble_addr2,
-                                           static_payload.ble_addr3,
-                                           static_payload.ble_addr4,
-                                           static_payload.ble_addr5 }; // 6 bytes of data
-                                                
-    err_code = os_mbuf_append(ctxt->om, &data,
-                        sizeof data);
+        data[0] = static_payload.ble_addr0;
+        data[1] = static_payload.ble_addr1;
+        data[2] = static_payload.ble_addr2;
+        data[3] = static_payload.ble_addr3;
+        data[4] = static_payload.ble_addr4;
+        data[5] = static_payload.ble_addr5;
+                                                    
+        err_code = os_mbuf_append(ctxt->om, &data,
+                            sizeof data);
+    }
+    //* WRITE ALERTS LIMITS
+    else if (ctxt->op == BLE_GATT_ACCESS_OP_WRITE_CHR)
+    {
+        err_code = gatt_svr_chr_write(ctxt->om,
+                    sizeof data,
+                    sizeof data,
+                    &data, NULL);
+        
+        static_payload.overcurrent.b[0] = data[0];
+        static_payload.overcurrent.b[1] = data[1];
+        static_payload.overcurrent.b[2] = data[2];
+        static_payload.overcurrent.b[3] = data[3];
+        static_payload.overvoltage = data[4];
+        static_payload.overtemperature = data[5];
+        ESP_LOGW(TAG, "static_payload.overcurrent: %.2f", static_payload.overcurrent.f);
+        ESP_LOGW(TAG, "static_payload.overvoltage: %d", static_payload.overvoltage);
+        ESP_LOGW(TAG, "static_payload.overtemperature: %d", static_payload.overtemperature);
+    }
 
     //set alert values to initial state 0
     alert_payload.alert_field.overtemperature = 0; 
