@@ -17,7 +17,7 @@ The following protocol is based on, but not entirely follows, the AirFuel Allian
 
 - The data are sent via MQTT to a NodeRED dashboard;
 - Data are then saved in AWS cloud storage;
-- Remove switching done via a smart plug connected to the local WiFi.
+- Remote switching done via a smart plug connected to the local WiFi.
 
 ------------------------------------------------- 
 
